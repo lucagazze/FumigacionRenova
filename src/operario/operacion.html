@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fagaz - Operación en Curso</title>
+  <link rel="manifest" href="../../public/manifest.json" />
+  <link rel="stylesheet" href="../common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  <style>
+    @media (max-width: 640px) {
+      main { padding-left: 0.5rem; padding-right: 0.5rem; }
+      .p-6, .p-8 { padding: 1rem; }
+      h2 { font-size: 1.5rem; }
+      .grid-cols-1 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body class="bg-[var(--background-color)] text-[var(--text-primary)]">
+  <div class="relative flex min-h-screen flex-col overflow-x-hidden">
+    <header id="header"></header>
+    <main class="px-4 sm:px-8 md:px-16 lg:px-24 xl:px-40 flex flex-1 justify-center py-8">
+      <div class="flex flex-col w-full max-w-3xl">
+        <div class="mb-8">
+          <h2 class="text-3xl font-bold">Operación en Curso</h2>
+          <p class="text-[var(--text-secondary)] text-base mt-1">Detalles de la tarea actual del operario.</p>
+        </div>
+        <div class="space-y-6 bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-[var(--border-color)]">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 class="text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-1">Cliente</h3>
+              <p class="text-lg font-medium" id="cliente">...</p>
+            </div>
+            <div>
+              <h3 class="text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-1">Fecha y Hora</h3>
+              <p class="text-lg font-medium" id="fecha">...</p>
+            </div>
+            <div>
+              <h3 class="text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-1">Mercadería</h3>
+              <p class="text-lg font-medium" id="mercaderia">-</p>
+            </div>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-1">Ubicación</h3>
+            <p class="text-lg font-medium" id="ubicacion">...</p>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-2">Progreso del Checklist</h3>
+            <div class="flex items-center justify-between mb-1">
+              <p class="text-[var(--text-secondary)] text-sm font-medium">Completado</p>
+              <p class="text-[var(--primary-color)] text-sm font-bold" id="progreso">0/4</p>
+            </div>
+            <progress class="w-full h-3 rounded-lg progress-bar" max="100" value="0" id="progressBar"></progress>
+            <div class="mt-4">
+              <button class="flex items-center justify-center gap-2 min-w-[84px] cursor-pointer rounded-lg h-10 px-4 bg-[var(--secondary-color)] text-[var(--text-primary)] text-sm font-semibold leading-normal hover:bg-[var(--border-color)] transition-colors" id="btnChecklist">
+                <span class="material-icons" style="font-size:18px">checklist</span>
+                <span>Ver y Continuar Checklist</span>
+              </button>
+            </div>
+          </div>
+          <div class="pt-4 border-t border-[var(--border-color)]">
+            <button class="flex w-full min-w-[84px] items-center justify-center rounded-lg h-12 px-5 bg-[var(--secondary-color)] text-[var(--text-primary)] text-base font-bold leading-normal tracking-[0.015em] hover:bg-opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed" id="btnProducto" disabled>
+              <span>Registrar Producto</span>
+            </button>
+            <p class="text-xs text-[var(--text-secondary)] text-center mt-2">Complete el checklist para registrar el producto.</p>
+          </div>
+          <div class="pt-4 border-t border-[var(--border-color)]">
+            <button class="flex w-full min-w-[84px] items-center justify-center rounded-lg h-12 px-5 bg-[var(--primary-color)] text-white text-base font-bold leading-normal tracking-[0.015em] hover:bg-opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed mt-2" id="btnEnviar" disabled>
+              <span class="mr-2 material-icons" style="font-size:20px">check_circle</span>
+              <span class="truncate">Finalizar Operación</span>
+            </button>
+            <p class="text-xs text-[var(--text-secondary)] text-center mt-2">Debe completar el checklist y registrar el producto para poder finalizar.</p>
+          </div>
+            <button class="flex w-full min-w-[84px] items-center justify-center rounded-lg h-12 px-5 bg-gray-200 text-[var(--text-primary)] text-base font-bold leading-normal tracking-[0.015em] hover:bg-gray-300 transition-colors mt-2" id="btnVolver">
+              <span class="material-icons mr-2" style="font-size:20px">arrow_back</span>
+              <span class="truncate">Volver a Operaciones</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="operacion.js"></script>
+</body>
+</html>

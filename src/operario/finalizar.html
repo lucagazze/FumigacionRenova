@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fagaz - Finalizar Operación</title>
+  <link rel="manifest" href="../../public/manifest.json" />
+  <link rel="stylesheet" href="../common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  <style>
+    @media (max-width: 640px) {
+      main {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+      }
+      .p-6 {
+        padding: 1rem;
+      }
+      h2 {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body class="bg-[var(--background-color)] text-[var(--text-primary)]">
+  <div class="relative flex min-h-screen flex-col overflow-x-hidden">
+    <header id="header"></header>
+    <main class="px-4 sm:px-8 md:px-20 lg:px-40 flex flex-1 justify-center py-8">
+      <div class="flex flex-col w-full max-w-2xl py-5 space-y-6">
+        <div class="p-4">
+          <h2 class="text-3xl font-bold">Finalizar Operación</h2>
+          <p class="text-[var(--secondary-color)] text-sm mt-1">Revise los datos y confirme el cierre de la operación.</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-lg p-6 border border-[var(--border-color)]">
+          <div class="mb-4">
+            <h3 class="text-base font-semibold mb-1">Resumen de la Operación</h3>
+            <ul class="text-sm text-[var(--text-secondary)] space-y-1">
+              <li><b>Cliente:</b> <span id="cliente">-</span></li>
+              <li><b>Mercadería:</b> <span id="mercaderia">-</span></li>
+              <li><b>Área:</b> <span id="area">-</span></li>
+              <li><b>Tratamiento:</b> <span id="tratamiento">-</span></li>
+              <li class="font-bold text-black"><b>Toneladas Totales:</b> <span id="toneladas">-</span></li>
+              <li><b>Fecha de inicio:</b> <span id="fechaInicio">-</span></li>
+              <li><b>Fecha de cierre:</b> <span id="fechaCierre">-</span></li>
+              <li class="font-bold text-black"><b><span id="productoTotalLabel">Total producto usado</span>:</b> <span id="productoTotal">-</span></li>
+            </ul>
+          </div>
+          <div class="mb-4">
+            <h3 class="text-base font-semibold mb-1">Checklist y Evidencias</h3>
+            <ul class="text-sm text-[var(--text-secondary)] space-y-1" id="checklistResumen">
+              <li>Tapar ventiladores <span class="text-green-600">✔</span></li>
+              <li>Sanitizar <span class="text-green-600">✔</span></li>
+              <li>Verificar presencia de IV <span class="text-green-600">✔</span></li>
+              <li>Colocar cartelería <span class="text-green-600">✔</span></li>
+            </ul>
+          </div>
+          <div class="flex justify-end gap-2">
+            <button class="btn-secondary rounded-lg h-12 px-6 text-base font-bold" onclick="window.location.href='registro.html'" type="button">Volver</button>
+            <button class="btn-primary rounded-lg h-12 px-6 text-base font-bold" id="btnConfirmar" type="button">Confirmar y Finalizar</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="finalizar.js"></script>
+</body>
+</html>

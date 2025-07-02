@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fagaz - Operario</title>
+  <link rel="manifest" href="../../public/manifest.json" />
+  <link rel="stylesheet" href="../common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary-color: #53d22c;
+      --secondary-color: #ebf2e9;
+      --text-primary: #121a0f;
+      --text-secondary: #639155;
+      --border-color: #d6e5d2;
+      --background-color: #f9fbf9;
+    }
+    body {
+      font-family: 'Manrope', sans-serif;
+    }
+    .btn-primary {
+      background: var(--primary-color);
+      color: var(--text-primary);
+      transition: background 0.2s;
+    }
+    .btn-primary:hover {
+      background: #43b91e;
+    }
+    .btn-secondary {
+      background: var(--secondary-color);
+      color: var(--text-primary);
+      transition: background 0.2s;
+    }
+    .btn-secondary:hover {
+      background: #d6e5d2;
+    }
+    .input-field {
+      width: 100%;
+      border-radius: 0.5rem;
+      border: 1px solid var(--border-color);
+      background: var(--background-color);
+      color: var(--text-primary);
+      height: 3rem;
+      padding: 0 1rem;
+      font-size: 1rem;
+    }
+    .label-text {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 0.25rem;
+    }
+  </style>
+</head>
+<body class="bg-[var(--background-color)] text-[var(--text-primary)]">
+  <div class="relative flex min-h-screen flex-col overflow-x-hidden">
+    <header id="header"></header>
+    <main class="flex-1 px-2 sm:px-4 md:px-10 lg:px-20 xl:px-40 py-4 sm:py-8">
+      <div class="flex flex-col w-full max-w-4xl mx-auto bg-white p-2 sm:p-6 md:p-8 rounded-xl shadow-lg text-base">
+        <h2 class="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-8 text-center sm:text-left">Operaciones en Curso</h2>
+        <div id="operacionesList" class="space-y-3 sm:space-y-4 mb-6 sm:mb-8 text-sm"></div>
+        <button id="btnNueva" class="btn-primary flex items-center justify-center rounded-lg h-14 px-4 sm:px-6 text-base font-bold leading-normal tracking-wide w-full sm:w-auto fixed sm:static bottom-4 left-1/2 -translate-x-1/2 sm:translate-x-0 z-20 max-w-xs sm:max-w-none shadow-lg sm:shadow-none" type="submit">
+          <span class="material-icons mr-2 sm:mr-3 text-xl sm:text-2xl">add_circle</span> Nueva Operación
+        </button>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="home.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const hamburgerBtn = document.getElementById('hamburgerBtn');
+      const mobileMenu = document.getElementById('mobileMenu');
+      const closeMobileMenu = document.getElementById('closeMobileMenu');
+      const overlay = document.getElementById('mobileMenuOverlay');
+      const logoutMobile = document.getElementById('logoutMobile');
+      if (hamburgerBtn && mobileMenu) {
+        hamburgerBtn.onclick = () => mobileMenu.classList.remove('hidden');
+      }
+      if (closeMobileMenu && mobileMenu) {
+        closeMobileMenu.onclick = () => mobileMenu.classList.add('hidden');
+      }
+      if (overlay && mobileMenu) {
+        overlay.onclick = () => mobileMenu.classList.add('hidden');
+      }
+      // Cerrar menú al hacer click en un link
+      if (mobileMenu) {
+        mobileMenu.querySelectorAll('a').forEach(link => {
+          link.onclick = () => mobileMenu.classList.add('hidden');
+        });
+      }
+      // Logout desde el menú mobile
+      if (logoutMobile) {
+        logoutMobile.onclick = () => {
+          localStorage.removeItem('user');
+          window.location.href = '../login/login.html';
+        };
+      }
+    });
+  </script>
+  <style>
+    @media (max-width: 640px) {
+      #operacionesList > div {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+        padding: 1rem !important;
+      }
+      #operacionesList .btn-secondary {
+        width: 100%;
+        margin-top: 0.5rem;
+        padding: 0.75rem 0;
+        font-size: 1rem;
+      }
+    }
+  </style>
+</body>
+</html>

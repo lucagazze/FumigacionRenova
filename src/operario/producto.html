@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registrar Producto Usado</title>
+  <link rel="manifest" href="../../public/manifest.json" />
+  <link rel="stylesheet" href="../common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  <style>
+    @media (max-width: 640px) {
+      main { padding-left: 0.5rem; padding-right: 0.5rem; }
+      .p-6 { padding: 1rem; }
+      h2 { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body class="bg-[var(--background-color)] text-[var(--text-primary)]">
+  <div class="relative flex min-h-screen flex-col overflow-x-hidden">
+    <header id="header"></header>
+    <main class="px-4 sm:px-8 md:px-20 lg:px-40 flex flex-1 justify-center py-8">
+      <div class="flex flex-col w-full max-w-2xl py-5 space-y-6">
+        <div class="p-4">
+          <h2 class="text-3xl font-bold" id="tituloPagina">Registrar Producto Usado</h2>
+          <p class="text-[var(--secondary-color)]text-sm mt-1">Complete los datos para calcular la cantidad de producto necesario.</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-lg p-6 border border-[var(--border-color)]">
+          <form id="formProducto" class="mb-6 space-y-4">
+            <div id="depositoContainer" class="hidden">
+              <label class="block font-semibold mb-1">Inventario de donde se sacaron las pastillas</label>
+              <select id="deposito" class="input-field" required>
+                <option value="">Seleccionar</option>
+                <option value="Baigorria">Baigorria</option>
+                <option value="Fagaz">Fagaz</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold mb-1">Modalidad de llenado</label>
+              <select id="modalidad" class="input-field" required>
+                <option value="">Seleccionar</option>
+                <option value="trasilado">Trasilado</option>
+                <option value="descarga">Descarga de camiones</option>
+              </select>
+            </div>
+            <div id="toneladasContainer" class="hidden">
+              <label class="block font-semibold mb-1">Cantidad de toneladas</label>
+              <input type="number" id="toneladas" class="input-field" min="1" placeholder="Ej: 100" />
+            </div>
+            <div id="camionesContainer" class="hidden">
+              <label class="block font-semibold mb-1">Cantidad de camiones</label>
+              <input type="number" id="camiones" class="input-field" min="1" placeholder="Ej: 4" />
+            </div>
+            <div>
+              <label class="block font-semibold mb-1">Tipo de tratamiento</label>
+              <select id="tratamiento" class="input-field" required>
+                <option value="">Seleccionar</option>
+                <option value="preventivo">Preventivo</option>
+                <option value="curativo">Curativo</option>
+              </select>
+            </div>
+            <div class="mt-4">
+              <p class="font-semibold">Cantidad de <span id="unidadProducto">producto</span> a usar: <span id="resultadoProducto" class="text-[#53d22c] text-xl font-bold">-</span></p>
+            </div>
+          </form>
+          <div id="resumenProducto" class="border-t pt-6 mt-4">
+            <div id="resumenDepositoContainer" class="hidden mb-2 text-lg"><b>Depósito:</b> <span id="resumenDeposito"></span></div>
+            <div class="mb-2 text-lg"><b>Modalidad:</b> <span id="resumenModalidad"></span></div>
+            <div class="mb-2 text-lg"><b>Toneladas Totales:</b> <span id="resumenToneladas"></span></div>
+            <div class="mb-2 text-lg"><b>Tipo de Tratamiento:</b> <span id="resumenTratamiento"></span></div>
+            <div class="mb-2 text-lg"><b>Dosis:</b> <span id="resumenDosis"></span></div>
+            <div class="mt-4 text-xl font-bold">Total a Utilizar: <span id="resumenTotal" class="text-[#53d22c]"></span></div>
+            <button class="w-full mt-6 bg-[#53d22c] text-white font-bold rounded-lg px-8 py-4 text-lg hover:bg-green-600 transition-colors" id="btnRegistrar">Registrar Aplicación y Descontar Stock</button>
+          </div>
+          <div class="flex justify-end gap-2 mt-4">
+            <button class="btn-secondary rounded-lg h-12 px-6 text-base font-bold" onclick="window.location.href='operacion.html'" type="button">Volver</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="producto.js"></script>
+</body>
+</html>

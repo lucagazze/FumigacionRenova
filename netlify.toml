@@ -1,0 +1,13 @@
+# Configuración para Netlify
+
+[build]
+  # Directorio que Netlify desplegará.
+  # Como es un sitio estático, apuntamos a la raíz del proyecto.
+  publish = "/"
+  # No se necesita un comando de construcción para este proyecto.
+  command = ""
+
+[[redirects]]
+  from = "/"
+  to = "/src/login/login.html"
+  status = 301

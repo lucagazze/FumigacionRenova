@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fagaz - Registro de Limpieza</title>
+  <link rel="stylesheet" href="../common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+</head>
+<body class="bg-[var(--background-color)] text-[var(--text-primary)]">
+  <div class="relative flex min-h-screen flex-col overflow-x-hidden">
+    <header id="header"></header>
+    <main class="flex-1 px-2 sm:px-4 md:px-10 lg:px-20 xl:px-40 py-4 sm:py-8">
+      <div class="w-full max-w-5xl mx-auto">
+        <h1 class="text-3xl sm:text-4xl font-bold text-black mb-6">Registro de Limpieza de Áreas</h1>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg h-fit">
+            <h2 class="text-xl font-semibold mb-4">Añadir Registro de Limpieza</h2>
+            <form id="formLimpieza" class="space-y-4">
+              <div>
+                <label for="area" class="label-text">Área (Silo/Celda)</label>
+                <select id="area" class="input-field" required></select>
+              </div>
+              <div>
+                <label for="fecha" class="label-text">Fecha de Limpieza</label>
+                <input type="date" id="fecha" class="input-field" required>
+              </div>
+              <div>
+                <label for="observaciones" class="label-text">Observaciones</label>
+                <textarea id="observaciones" class="input-field min-h-[100px]" placeholder="Ej: Se encontraron insectos vivos (IV)"></textarea>
+              </div>
+              <button type="submit" class="btn-primary w-full">Guardar Registro</button>
+            </form>
+          </div>
+
+          <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-xl font-semibold mb-4">Historial de Limpiezas</h2>
+            <div id="historialLimpieza" class="overflow-x-auto">
+              </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="limpieza.js"></script>
+</body>
+</html>

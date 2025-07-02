@@ -1,0 +1,14 @@
+/* Estilos globales y variables CSS para Fagaz */
+:root {
+  --primary-color: #53d22c;
+  --secondary-color: #ebf2e9;
+  --text-primary: #121a0f;
+  --text-secondary: #639155;
+  --border-color: #d6e5d2;
+  --background-color: #f9fbf9;
+}
+body {
+  font-family: 'Manrope', 'Noto Sans', sans-serif;
+  background: var(--background-color);
+  color: var(--text-primary);
+}

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fagaz - Gestión de Stock</title>
+  <link rel="manifest" href="../../public/manifest.json" />
+  <link rel="stylesheet" href="../common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+</head>
+<body class="bg-[var(--background-color)] text-[var(--text-primary)]">
+  <div class="relative flex min-h-screen flex-col overflow-x-hidden">
+    <header id="header"></header>
+    <main class="flex-1 px-2 sm:px-4 md:px-10 lg:px-20 xl:px-40 py-4 sm:py-8">
+      <div class="w-full max-w-4xl mx-auto">
+        <h1 class="text-3xl sm:text-4xl font-bold text-black mb-6">Gestión de Stock</h1>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div class="bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-lg font-semibold text-[var(--text-secondary)] mb-4">Stock Actual</h2>
+            <div id="stock-list" class="space-y-2">
+              </div>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-lg font-semibold text-[var(--text-secondary)] mb-4">Añadir Stock</h2>
+            <form id="formAñadirStock" class="space-y-4">
+              <div>
+                <label for="deposito" class="label-text">Depósito</label>
+                <select id="deposito" class="input-field">
+                  <option value="Baigorria">Baigorria</option>
+                  <option value="Fagaz">Fagaz</option>
+                </select>
+              </div>
+               <div>
+                <label for="unidad" class="label-text">Unidad</label>
+                <select id="unidad" class="input-field">
+                  <option value="gramos">Gramos</option>
+                  <option value="pastillas">Pastillas</option>
+                </select>
+              </div>
+              <div>
+                <label for="cantidad" class="label-text">Cantidad</label>
+                <input type="number" id="cantidad" class="input-field" min="1" required>
+                <p id="gramosInfo" class="text-xs text-gray-500 mt-1 hidden">La cantidad de gramos debe ser un múltiplo de 3.</p>
+              </div>
+              <button type="submit" class="btn-primary w-full rounded-lg mt-4">Añadir al Stock</button>
+            </form>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-lg font-semibold text-[var(--text-secondary)] mb-4">Quitar Stock</h2>
+            <form id="formQuitarStock" class="space-y-4">
+              <div>
+                <label for="depositoQuitar" class="label-text">Depósito</label>
+                <select id="depositoQuitar" class="input-field">
+                  <option value="Baigorria">Baigorria</option>
+                  <option value="Fagaz">Fagaz</option>
+                </select>
+              </div>
+               <div>
+                <label for="unidadQuitar" class="label-text">Unidad</label>
+                <select id="unidadQuitar" class="input-field">
+                  <option value="gramos">Gramos</option>
+                  <option value="pastillas">Pastillas</option>
+                </select>
+              </div>
+              <div>
+                <label for="cantidadQuitar" class="label-text">Cantidad</label>
+                <input type="number" id="cantidadQuitar" class="input-field" min="1" required>
+                <p id="gramosInfoQuitar" class="text-xs text-gray-500 mt-1 hidden">La cantidad de gramos debe ser un múltiplo de 3.</p>
+              </div>
+              <button type="submit" class="btn-danger w-full rounded-lg mt-4">Quitar del Stock</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-lg mt-8">
+          <h2 class="text-lg font-semibold text-[var(--text-secondary)] mb-4">Historial de Movimientos de Stock</h2>
+          <div id="historial-stock" class="overflow-x-auto">
+            </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="stock.js"></script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fagaz - Detalle de Operación</title>
+  <link rel="manifest" href="../../public/manifest.json" />
+  <link rel="stylesheet" href="../common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+</head>
+<body class="bg-[var(--background-color)] text-[var(--text-primary)]">
+  <div class="relative flex min-h-screen flex-col overflow-x-hidden">
+    <header id="header"></header>
+    <main class="flex-1 px-2 sm:px-4 md:px-10 lg:px-20 xl:px-40 py-4 sm:py-8">
+      <div class="w-full max-w-4xl mx-auto">
+        <div class="flex justify-between items-center mb-6">
+          <h1 class="text-3xl sm:text-4xl font-bold text-black">Detalle de Operación</h1>
+          <div class="flex gap-2">
+            <button id="btnVolver" class="btn-secondary rounded-lg px-4 py-2 flex items-center gap-2">
+              <span class="material-icons">arrow_back</span><span>Volver</span>
+            </button>
+            <button id="btnHabilitarEdicion" class="btn-primary rounded-lg px-4 py-2 flex items-center gap-2">
+              <span class="material-icons">edit</span><span>Editar</span>
+            </button>
+            <button id="btnEliminar" class="bg-red-600 text-white rounded-lg px-4 py-2 flex items-center gap-2 hover:bg-red-700">
+              <span class="material-icons">delete</span><span>Eliminar</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="resumenOperacion" class="bg-white p-8 rounded-xl shadow-lg space-y-6">
+          <div class="overflow-x-auto">
+            <table class="min-w-full border border-gray-300">
+              <thead class="bg-gray-100"><tr class="bg-gray-100"><th class="py-2 px-4 border-b text-left">Campo</th><th class="py-2 px-4 border-b text-left">Valor</th></tr></thead>
+              <tbody>
+                <tr><td class="py-2 px-4 border-b font-medium">Operario</td><td class="py-2 px-4 border-b font-semibold text-lg" id="resumen-operario"></td></tr>
+                <tr><td class="py-2 px-4 border-b font-medium">Cliente</td><td class="py-2 px-4 border-b font-semibold text-lg" id="resumen-cliente"></td></tr>
+                <tr><td class="py-2 px-4 border-b font-medium">Área</td><td class="py-2 px-4 border-b font-semibold text-lg" id="resumen-area"></td></tr>
+                <tr><td class="py-2 px-4 border-b font-medium">Mercadería</td><td class="py-2 px-4 border-b font-semibold text-lg" id="resumen-mercaderia"></td></tr>
+                <tr><td class="py-2 px-4 border-b font-medium">Tratamiento</td><td class="py-2 px-4 border-b font-semibold text-lg" id="resumen-tratamiento"></td></tr>
+                <tr><td class="py-2 px-4 border-b font-medium">Toneladas (Registro)</td><td class="py-2 px-4 border-b font-semibold text-lg" id="resumen-toneladas"></td></tr>
+                <tr id="resumen-producto-registro-fila" class="hidden"><td class="py-2 px-4 border-b font-medium">Producto en este registro</td><td class="py-2 px-4 border-b font-semibold text-lg" id="resumen-producto-registro"></td></tr>
+                <tr><td class="py-2 px-4 border-b font-medium">Producto Usado (Total Operación)</td><td class="py-2 px-4 border-b font-semibold text-lg" id="resumen-producto-total"></td></tr>
+                <tr><td class="py-2 px-4 border-b font-medium">Estado</td><td class="py-2 px-4 border-b font-semibold text-lg" id="resumen-estado"></td></tr>
+                <tr><td class="py-2 px-4 border-b font-medium">Fecha de Inicio</td><td class="py-2 px-4 border-b font-semibold text-lg" id="resumen-fechaInicio"></td></tr>
+                <tr><td class="py-2 px-4 border-b font-medium">Fecha de Cierre</td><td class="py-2 px-4 border-b font-semibold text-lg" id="resumen-fechaCierre"></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="border-t pt-6">
+            <h3 class="text-xl font-bold mb-4">Checklist y Evidencias</h3>
+            <div id="checklist-container" class="space-y-4"></div>
+          </div>
+        </div>
+
+        <form id="formOperacion" class="bg-white p-8 rounded-xl shadow-lg space-y-6 hidden">
+          <fieldset>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div><label for="operario" class="label-text">Operario</label><input type="text" id="operario" class="input-field"></div>
+              <div><label for="cliente" class="label-text">Cliente</label><input type="text" id="cliente" class="input-field"></div>
+              <div><label for="deposito" class="label-text">Depósito</label><input type="text" id="deposito" class="input-field"></div>
+              <div><label for="area" class="label-text">Área (Silo/Celda)</label><input type="text" id="area" class="input-field"></div>
+              <div><label for="mercaderia" class="label-text">Mercadería</label><input type="text" id="mercaderia" class="input-field"></div>
+              <div><label for="tratamiento" class="label-text">Tratamiento</label><input type="text" id="tratamiento" class="input-field"></div>
+              <div><label for="toneladas" class="label-text">Toneladas</label><input type="number" id="toneladas" class="input-field"></div>
+              <div><label for="producto" class="label-text">Producto Usado (este registro)</label><input type="number" id="producto" class="input-field"></div>
+              <div><label for="estado" class="label-text">Estado</label><select id="estado" class="input-field"><option value="en curso">En curso</option><option value="finalizada">Finalizada</option></select></div>
+            </div>
+          </fieldset>
+          <div class="flex justify-end gap-4 mt-6">
+            <button type="button" id="btnCancelar" class="btn-secondary rounded-lg">Cancelar</button>
+            <button type="submit" id="btnGuardar" class="btn-primary rounded-lg">Guardar Cambios</button>
+          </div>
+        </form>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="operacion_detalle.js"></script>
+</body>
+</html>

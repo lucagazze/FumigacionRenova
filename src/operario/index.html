@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fagaz - Nueva Operación</title>
+<link rel="manifest" href="../../public/manifest.json" />
+<link rel="stylesheet" href="../common/styles.css" />
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<style>
+  :root {
+    --primary-color: #53d22c;
+    --secondary-color: #ebf2e9;
+    --text-primary: #121a0f;
+    --text-secondary: #639155;
+    --border-color: #d6e5d2;
+    --background-color: #f9fbf9;
+  }
+  body { font-family: 'Manrope', sans-serif; }
+  .btn-primary { background: var(--primary-color); color: var(--text-primary); transition: background 0.2s; }
+  .btn-primary:hover { background: #43b91e; }
+  .btn-secondary { background: var(--secondary-color); color: var(--text-primary); transition: background 0.2s; }
+  .btn-secondary:hover { background: #d6e5d2; }
+  .input-field { width: 100%; border-radius: 0.5rem; border: 1px solid var(--border-color); background: var(--background-color); color: var(--text-primary); height: 3rem; padding: 0 1rem; font-size: 1rem; }
+  .label-text { font-size: 0.95rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.25rem; }
+  @media (max-width: 640px) {
+    main { padding-left: 0 !important; padding-right: 0 !important; }
+    .max-w-4xl { max-width: 100vw !important; border-radius: 0 !important; padding: 0.5rem 0.5rem 2rem 0.5rem !important; box-shadow: none !important; }
+    .text-2xl, .text-3xl { font-size: 1.3rem !important; }
+    .h-12, .h-10 { height: 3.2rem !important; }
+    .btn-primary, .btn-secondary { font-size: 1.1rem !important; padding: 1rem 0.5rem !important; width: 100% !important; min-width: 0 !important; }
+    .space-y-6 > * + * { margin-top: 1.2rem !important; }
+    .mb-8 { margin-bottom: 1.5rem !important; }
+    form { padding: 0 !important; }
+    .pt-4.flex.justify-end { padding-top: 0.5rem !important; justify-content: center !important; }
+  }
+</style>
+</head>
+<body class="bg-[var(--background-color)] text-[var(--text-primary)]">
+  <div class="relative flex min-h-screen flex-col overflow-x-hidden">
+    <header id="header"></header>
+    <main class="flex-1 px-2 sm:px-4 md:px-10 lg:px-20 xl:px-40 py-4 sm:py-8">
+      <div class="flex flex-col w-full max-w-4xl mx-auto bg-white p-2 sm:p-6 md:p-8 rounded-xl shadow-lg text-base">
+        <h2 class="text-[var(--text-primary)] text-2xl sm:text-3xl font-bold leading-tight mb-8 text-center">Nueva Operación de Fumigación</h2>
+        <form class="space-y-6" id="nuevaOperacionForm">
+          <div>
+            <label class="label-text block" for="cliente">Cliente</label>
+            <select class="input-field form-select" id="cliente" name="cliente" required>
+              <option value="">Cargando clientes...</option>
+            </select>
+          </div>
+          <div>
+            <label class="label-text block" for="metodo_fumigacion">Método de Fumigación</label>
+            <select class="input-field form-select" id="metodo_fumigacion" name="metodo_fumigacion" required>
+              <option value="">Seleccionar Método</option>
+              <option value="pastillas">Pastillas</option>
+              <option value="liquido">Líquido</option>
+            </select>
+          </div>
+          <div>
+            <label class="label-text block" for="area_tipo">Tipo de Área</label>
+            <select class="input-field form-select" id="area_tipo" name="area_tipo" required>
+              <option value="">Seleccionar Tipo de Área</option>
+              <option value="silo">Silo</option>
+              <option value="celda">Celda</option>
+            </select>
+          </div>
+          <div class="hidden" id="silo_selector_container">
+            <label class="label-text block" for="silo_selector">Silo</label>
+            <select class="input-field form-select" id="silo_selector" name="silo_selector">
+              <option value="">Cargando silos...</option>
+            </select>
+          </div>
+          <div class="hidden" id="celda_selector_container">
+            <label class="label-text block" for="celda_selector">Celda</label>
+            <select class="input-field form-select" id="celda_selector" name="celda_selector">
+              <option value="">Cargando celdas...</option>
+            </select>
+          </div>
+          <div>
+            <label class="label-text block" for="mercaderia">Mercadería</label>
+            <select class="input-field form-select" id="mercaderia" name="mercaderia" required>
+              <option value="">Cargando mercaderías...</option>
+            </select>
+          </div>
+          <div class="pt-4 flex justify-end">
+            <button class="btn-primary flex items-center justify-center rounded-lg h-12 px-6 text-base font-bold leading-normal tracking-wide w-full sm:w-auto" type="submit">
+              Iniciar Operación
+            </button>
+          </div>
+        </form>
+      </div>
+    </main>
+    <footer id="footer"></footer>
+  </div>
+  <div id="modalOperacionEnCurso" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+    <div class="bg-white rounded-xl shadow-xl p-8 max-w-sm w-full text-center">
+      <span class="material-icons-outlined text-[var(--primary-color)] text-5xl mb-2">warning</span>
+      <h3 class="text-xl font-bold mb-2">Operación en curso</h3>
+      <p class="text-[var(--text-secondary)] mb-4">Ya tienes una operación activa. Debes finalizarla antes de iniciar una nueva.</p>
+      <button id="cerrarModalOperacion" class="btn-primary rounded-lg px-6 h-10 font-bold">Entendido</button>
+    </div>
+  </div>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script type="module" src="index.js"></script>
+</body>
+</html>
