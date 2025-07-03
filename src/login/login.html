@@ -20,6 +20,19 @@
       background: linear-gradient(135deg, #f9fbf9 0%, #e8f5e8 100%);
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
+
+    #preloader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: var(--background-color);
+      z-index: 9999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
     
     .login-container {
       backdrop-filter: blur(10px);
@@ -51,8 +64,6 @@
     .input-field:valid {
       border-color: var(--primary-color);
     }
-    
-    /* Iconos eliminados por solicitud del usuario */
     
     .btn-primary {
       background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
@@ -142,11 +153,15 @@
   </style>
 </head>
 <body>
+  <div id="preloader">
+    <img src="/public/assets/img/logotipo.png" alt="Fagaz Logo" class="h-20 w-auto logo-container">
+  </div>
+
   <div class="min-h-screen flex items-center justify-center p-4">
     <div class="login-container w-full max-w-md p-8 rounded-2xl shadow-2xl fade-in">
       <div class="text-center mb-8">
         <div class="logo-container mb-6">
-          <img src="/public/assets/img/logotipo (1).png" alt="Fagaz Logo" class="mx-auto h-20 w-auto">
+          <img src="/public/assets/img/logotipo.png" alt="Fagaz Logo" class="mx-auto h-20 w-auto">
         </div>
         <h1 class="text-3xl font-bold text-[var(--text-primary)] mb-2">Bienvenido</h1>
         <p class="text-gray-600">Ingresa a tu cuenta para continuar</p>
@@ -200,6 +215,13 @@
   
   <script type="module" src="login.js"></script>
   <script>
+    window.addEventListener('load', function() {
+      const preloader = document.getElementById('preloader');
+      if (preloader) {
+        preloader.style.display = 'none';
+      }
+    });
+
     // Mejorar la experiencia de usuario
     document.addEventListener('DOMContentLoaded', function() {
       const form = document.getElementById('loginForm');
