@@ -3,109 +3,116 @@ import { requireRole } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 
 requireRole('admin');
-document.getElementById('header').innerHTML = renderHeader();
 
-const btnVolver = document.getElementById('btnVolver');
-const resumenContainer = document.getElementById('resumenOperacion');
-const urlParams = new URLSearchParams(window.location.search);
-const operacionId = urlParams.get('id'); // Este puede ser el ID de cualquier registro de la operación
+document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('header').innerHTML = renderHeader();
 
-async function cargarOperacion() {
-  if (!operacionId) {
-    resumenContainer.innerHTML = '<p class="text-red-500">ID de operación no encontrado.</p>';
-    return;
-  }
+    const btnVolver = document.getElementById('btnVolver');
+    const btnEliminar = document.getElementById('btnEliminar');
+    const resumenContainer = document.getElementById('resumenOperacion');
+    const checklistItemsContainer = document.getElementById('checklistItems');
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const operacionId = urlParams.get('id');
 
-  // 1. Obtener el registro actual para encontrar el ID original
-  const { data: registroActual, error: registroError } = await supabase
-    .from('operaciones')
-    .select('id, operacion_original_id')
-    .eq('id', operacionId)
-    .single();
-
-  if (registroError) {
-    resumenContainer.innerHTML = '<p class="text-red-500">Error al cargar la operación.</p>';
-    console.error(registroError);
-    return;
-  }
-
-  const originalId = registroActual.operacion_original_id || registroActual.id;
-
-  // 2. Obtener todos los registros relacionados con la operación original
-  const { data: todosLosRegistros, error: todosError } = await supabase
-    .from('operaciones')
-    .select('*, clientes(nombre), depositos(nombre, tipo), mercaderias(nombre), movimientos(*)')
-    .or(`id.eq.${originalId},operacion_original_id.eq.${originalId}`)
-    .order('created_at', { ascending: true });
-
-  if (todosError) {
-    resumenContainer.innerHTML = '<p class="text-red-500">Error al cargar el historial completo de la operación.</p>';
-    console.error(todosError);
-    return;
-  }
-  
-  renderResumen(todosLosRegistros);
-}
-
-function renderResumen(registros) {
-    if (!registros || registros.length === 0) {
-        resumenContainer.innerHTML = '<p>No se encontraron datos para esta operación.</p>';
+    if (!operacionId) {
+        resumenContainer.innerHTML = '<p class="text-red-500">ID de operación no encontrado.</p>';
         return;
     }
 
-    const opInicial = registros[0];
-    let totalProducto = 0;
-    let totalToneladas = 0;
+    // 1. Obtener el registro actual para encontrar el ID original
+    const { data: registroActual, error: registroError } = await supabase
+        .from('operaciones')
+        .select('id, operacion_original_id')
+        .eq('id', operacionId)
+        .single();
 
-    registros.forEach(r => {
-        if (r.tipo_registro === 'producto' && typeof r.producto_usado_cantidad === 'number') {
-            totalProducto += r.producto_usado_cantidad;
-        }
-        if ((r.tipo_registro === 'producto' || r.tipo_registro === 'movimiento') && typeof r.toneladas === 'number') {
-            totalToneladas += r.toneladas;
-        }
-    });
+    if (registroError) {
+        resumenContainer.innerHTML = '<p class="text-red-500">Error al cargar la operación.</p>';
+        console.error(registroError);
+        return;
+    }
 
-    const unidadLabel = opInicial.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';
+    const originalId = registroActual.operacion_original_id || registroActual.id;
 
-    let resumenHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm border-b pb-4 mb-4">
-            <p><strong>Cliente:</strong> ${opInicial.clientes?.nombre || 'N/A'}</p>
-            <p><strong>Depósito:</strong> ${opInicial.depositos?.nombre || 'N/A'} (${opInicial.depositos?.tipo || 'N/A'})</p>
-            <p><strong>Mercadería:</strong> ${opInicial.mercaderias?.nombre || 'N/A'}</p>
-            <p><strong>Método:</strong> ${opInicial.metodo_fumigacion?.charAt(0).toUpperCase() + opInicial.metodo_fumigacion?.slice(1) || 'N/A'}</p>
-            <p><strong>Estado:</strong> <span class="font-bold ${opInicial.estado === 'finalizada' ? 'text-red-600' : 'text-green-600'}">${opInicial.estado}</span></p>
-            <p><strong>Total Toneladas Movidas:</strong> ${totalToneladas.toLocaleString()} tn</p>
-            <p><strong>Total Producto Aplicado:</strong> ${totalProducto.toLocaleString()} ${unidadLabel}</p>
-        </div>
-        <h3 class="text-xl font-bold mb-2">Historial de Registros</h3>
-        <div class="space-y-3">
-    `;
+    // 2. Obtener todos los datos de la operación, incluyendo el checklist
+    const { data: opData, error: opError } = await supabase
+        .from('operaciones')
+        .select(`
+            *, 
+            clientes(nombre), 
+            depositos(nombre, tipo), 
+            mercaderias(nombre),
+            checklist_items(*)
+        `)
+        .eq('id', originalId)
+        .single();
 
-    registros.forEach(r => {
-        let detalleRegistro = '';
-        switch(r.tipo_registro) {
-            case 'inicial': detalleRegistro = `Operación iniciada por <b>${r.operario_nombre}</b>.`; break;
-            case 'producto': detalleRegistro = `<b>${r.operario_nombre}</b> aplicó <b>${r.producto_usado_cantidad?.toLocaleString()} ${unidadLabel}</b> en ${r.toneladas?.toLocaleString()} tn. (Tratamiento: ${r.tratamiento})`; break;
-            case 'movimiento':
-                const mov = r.movimientos && r.movimientos.length > 0 ? r.movimientos[0] : null;
-                detalleRegistro = `<b>${r.operario_nombre}</b> registró un movimiento: ${mov?.observacion || ''} (${r.toneladas?.toLocaleString()} tn). ${mov?.media_url ? `<a href="${mov.media_url}" target="_blank" class="text-blue-600 hover:underline">Ver adjunto</a>` : ''}`;
-                break;
-            case 'finalizacion': detalleRegistro = `Operación finalizada por <b>${r.operario_nombre}</b>.`; break;
-        }
+    if (opError) {
+        resumenContainer.innerHTML = '<p class="text-red-500">Error al cargar los detalles de la operación.</p>';
+        console.error(opError);
+        return;
+    }
 
-        resumenHTML += `
-            <div class="p-3 bg-gray-50 rounded-lg border">
-                <p class="font-semibold">${new Date(r.created_at).toLocaleString('es-AR')}</p>
-                <p class="text-gray-700">${detalleRegistro}</p>
-            </div>
-        `;
-    });
-    
-    resumenHTML += `</div>`;
-    resumenContainer.innerHTML = resumenHTML;
+    renderResumen(opData, resumenContainer);
+    renderChecklist(opData.checklist_items, checklistItemsContainer);
+
+    btnVolver.addEventListener('click', () => window.history.back());
+    btnEliminar.addEventListener('click', () => eliminarOperacion(originalId));
+});
+
+function renderResumen(op, container) {
+    container.innerHTML = `
+        <h3 class="text-xl font-bold text-gray-800 mb-4">Resumen General</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <p><strong>Cliente:</strong> ${op.clientes?.nombre || 'N/A'}</p>
+            <p><strong>Depósito:</strong> ${op.depositos?.nombre || 'N/A'} (${op.depositos?.tipo || 'N/A'})</p>
+            <p><strong>Mercadería:</strong> ${op.mercaderias?.nombre || 'N/A'}</p>
+            <p><strong>Método:</strong> ${op.metodo_fumigacion?.charAt(0).toUpperCase() + op.metodo_fumigacion?.slice(1) || 'N/A'}</p>
+            <p><strong>Estado:</strong> <span class="font-bold ${op.estado === 'finalizada' ? 'text-red-600' : 'text-green-600'}">${op.estado}</span></p>
+            <p><strong>Operario Principal:</strong> ${op.operario_nombre || 'N/A'}</p>
+        </div>`;
 }
 
-btnVolver.addEventListener('click', () => { window.history.back(); });
+function renderChecklist(items, container) {
+    if (!items || items.length === 0) {
+        container.innerHTML = '<p class="text-sm text-gray-500">No se encontraron ítems en el checklist para esta operación.</p>';
+        return;
+    }
 
-document.addEventListener('DOMContentLoaded', cargarOperacion);
+    container.innerHTML = items.map(item => `
+        <div class="bg-gray-50 p-3 rounded-lg border flex justify-between items-center">
+            <div class="flex items-center">
+                <span class="material-icons ${item.completado ? 'text-green-500' : 'text-gray-400'}">
+                    ${item.completado ? 'check_circle' : 'radio_button_unchecked'}
+                </span>
+                <span class="ml-3 font-medium text-gray-700">${item.item}</span>
+            </div>
+            ${item.imagen_url 
+                ? `<a href="${item.imagen_url}" target="_blank" class="text-blue-600 hover:underline flex items-center gap-1 text-sm">
+                        <span class="material-icons text-base">image</span> Ver Foto
+                   </a>` 
+                : '<span class="text-xs text-gray-400">Sin foto</span>'
+            }
+        </div>
+    `).join('');
+}
+
+async function eliminarOperacion(operacionId) {
+    if (confirm('¿Está REALMENTE seguro de que desea eliminar esta operación? Se borrarán TODOS sus registros asociados (aplicaciones, movimientos, checklist, etc.) de forma permanente. Esta acción no se puede deshacer.')) {
+        
+        // Gracias al 'ON DELETE CASCADE' en la base de datos, solo necesitamos borrar la operación original.
+        const { error } = await supabase
+            .from('operaciones')
+            .delete()
+            .eq('id', operacionId);
+
+        if (error) {
+            alert('Error al eliminar la operación: ' + error.message);
+            console.error(error);
+        } else {
+            alert('Operación y todos sus registros asociados han sido eliminados correctamente.');
+            window.location.href = 'dashboard.html';
+        }
+    }
+}

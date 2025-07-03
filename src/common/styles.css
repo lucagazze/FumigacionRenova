@@ -1,44 +1,33 @@
 :root {
-  --primary-color: #53d22c;
-  --secondary-color: #ebf2e9;
-  --text-primary: #121a0f;
-  --text-secondary: #639155;
-  --border-color: #d6e5d2;
-  --background-color: #f0f4f0;
+  --primary-color: #22c55e;
+  --secondary-color: #f0fdf4;
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --border-color: #e5e7eb;
+  --background-color: #f9fafb;
 }
 body {
-  font-family: 'Manrope', 'Noto Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   background-color: var(--background-color);
   color: var(--text-primary);
 }
-
-/* Contenedor principal para centrar todo el contenido de la página */
 .content-container {
   width: 100%;
-  max-width: 80rem; /* 1280px */
+  max-width: 80rem;
   margin-left: auto;
   margin-right: auto;
-  padding: 0 1rem; /* 16px de padding a los costados */
+  padding: 0 1rem;
 }
-
-
-/* --- ESTILO DE TABLA ACTUALIZADO --- */
-/* Se eliminó el max-width y los márgenes para que ocupe el 100% de su contenedor padre */
 .operations-table-container {
   width: 100%;
-  overflow-x: auto; /* Mantiene el scroll horizontal en pantallas muy chicas */
+  overflow-x: auto;
 }
-
-
-/* --- Estilo para la flecha desplegable --- */
 .expand-icon {
   transition: transform 0.3s ease;
 }
 tr.is-open .expand-icon {
   transform: rotate(180deg);
 }
-
-/* Estilos de SVG de Silo (sin cambios) */
 .silo-wrapper {
   cursor: pointer;
   transition: transform 0.2s ease;
@@ -60,11 +49,18 @@ tr.is-open .expand-icon {
   fill: #facc15;
   transition: all 0.5s ease-in-out;
 }
-
-/* Clases de utilidad (sin cambios) */
 .input-field {
-  @apply w-full rounded-lg border-gray-300 bg-white text-gray-800 focus:ring-green-500 focus:border-green-500 h-12 px-4 text-base;
+  @apply w-full rounded-lg border-gray-300 bg-white text-gray-800 shadow-sm focus:ring-green-500 focus:border-green-500 h-11 px-4 text-sm;
+}
+.btn {
+  @apply font-semibold transition-colors duration-200 rounded-lg py-2.5 px-5 text-sm;
 }
 .btn-primary {
-  @apply bg-green-500 text-white hover:bg-green-600 transition-colors duration-200;
+  @apply btn bg-green-500 text-white hover:bg-green-600;
+}
+.btn-secondary {
+  @apply btn bg-gray-200 text-gray-800 hover:bg-gray-300;
+}
+.btn-danger {
+  @apply btn bg-red-500 text-white hover:bg-red-600;
 }

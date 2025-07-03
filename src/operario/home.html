@@ -4,30 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Fagaz - Operario</title>
-    <link rel="icon" href="/public/assets/img/logohead.webp" type="image/png">
     <link rel="stylesheet" href="../common/styles.css" />
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
 </head>
-<body class="bg-[var(--background-color)] text-[var(--text-primary)]">
-  <div class="relative flex min-h-screen flex-col overflow-x-hidden">
-    <header id="header"></header>
-    <main class="flex-1 px-4 sm:px-8 md:px-20 py-8">
-      <div class="w-full max-w-4xl mx-auto">
-        <div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg border">
-            <h2 class="text-2xl sm:text-3xl font-bold mb-6">Operaciones en Curso</h2>
-            <div id="operacionesList" class="space-y-6">
-                </div>
-        </div>
-        <div class="mt-8">
-            <button id="btnNueva" class="w-full bg-green-500 text-white flex items-center justify-center rounded-lg h-14 px-6 text-lg font-bold shadow-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all">
-              <span class="material-icons mr-3">add_circle</span>
-              <span>Registrar Nueva Operación</span>
-            </button>
-        </div>
+<body class="bg-gray-50 text-gray-800">
+  <header id="header"></header>
+  <main class="flex-1 py-8">
+    <div class="content-container">
+      <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-gray-900">Operaciones en Curso</h2>
       </div>
-    </main>
-  </div>
+      <div id="operacionesList" class="space-y-4"></div>
+      <div class="mt-8">
+          <a href="index.html" class="w-full bg-green-500 text-white flex items-center justify-center rounded-lg h-14 px-6 text-lg font-bold shadow-lg hover:bg-green-600 transition-all">
+            <span class="material-icons mr-3">add_circle</span>
+            <span>Registrar Nueva Operación</span>
+          </a>
+      </div>
+    </div>
+  </main>
   <script type="module" src="home.js"></script>
 </body>
 </html>
