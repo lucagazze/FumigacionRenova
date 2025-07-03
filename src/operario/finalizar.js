@@ -1,5 +1,5 @@
 import { renderHeader } from '../common/header.js';
-import { requireRole } from '../common/router.js';
+import { requireRole, getUser } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 
 requireRole('operario');
@@ -78,6 +78,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       btnConfirmar.addEventListener('click', async () => {
         if (confirm('¿Está seguro de que desea finalizar esta operación? Esta acción no se puede deshacer.')) {
           
+          const currentUser = getUser();
+          if (!currentUser) {
+            alert("Error de autenticación. Por favor, inicie sesión de nuevo.");
+            return;
+          }
+          
           const operacionOriginalId = op.operacion_original_id || op.id;
 
           const { error: updateError } = await supabase
@@ -105,7 +111,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               mercaderia: op.mercaderia,
               estado: 'finalizada',
               tipo_registro: 'finalizacion',
-              operario_nombre: op.operario_nombre,
+              operario_nombre: currentUser.name, // CORRECCIÓN: Usar el nombre del usuario actual
               tratamiento: op.tratamiento,
               toneladas: op.toneladas,
               metodo_fumigacion: op.metodo_fumigacion,

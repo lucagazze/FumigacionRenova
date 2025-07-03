@@ -63,7 +63,7 @@ async function renderOperaciones() {
     
     return `
       <div class="bg-white rounded-lg shadow-md p-6 border border-[var(--border-color)] mb-4 hover:shadow-lg hover:border-green-500 transition-all duration-200 cursor-pointer" data-id="${op.id}">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div class="flex flex-col justify-between items-start gap-4">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 text-sm w-full">
             <div class="flex items-center gap-2"><span class="material-icons text-gray-500">person</span><span class="font-semibold">Cliente:</span> <span>${op.cliente || '-'}</span></div>
             <div class="flex items-center gap-2"><span class="material-icons text-gray-500">grass</span><span class="font-semibold">Mercadería:</span> <span>${mercaderia}</span></div>
@@ -73,9 +73,9 @@ async function renderOperaciones() {
             <div class="flex items-center gap-2"><span class="material-icons text-gray-500">science</span><span class="font-semibold">${productoLabel}:</span> <span>${productoUsado}</span></div>
             <div class="flex items-center gap-2 lg:col-span-3"><span class="material-icons text-gray-500">scale</span><span class="font-semibold">Toneladas fumigadas:</span> <span>${toneladasFumigadas}</span></div>
           </div>
-          <div class="hidden md:flex items-center text-green-600">
+          <div class="w-full border-t border-gray-200 mt-2 pt-2 flex justify-center items-center text-green-600">
              <span class="font-bold">Continuar</span>
-             <span class="material-icons">chevron_right</span>
+             <span class="material-icons ml-1">arrow_forward</span>
           </div>
         </div>
       </div>

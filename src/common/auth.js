@@ -2,14 +2,13 @@
 
 const dummyUsers = [
   { email: 'admin@fagaz.com', password: 'admin', role: 'admin', name: 'Administrador' },
-  { email: 'juan.perez@fagaz.com', password: 'password', role: 'operario', name: 'Juan Perez' },
-  { email: 'luis.gonzalez@fagaz.com', password: 'password', role: 'operario', name: 'Luis Gonzalez' },
-  { email: 'carlos.sanchez@fagaz.com', password: 'password', role: 'operario', name: 'Carlos Sanchez' },
-  { email: 'miguel.rodriguez@fagaz.com', password: 'password', role: 'operario', name: 'Miguel Rodriguez' },
-  { email: 'pedro.martinez@fagaz.com', password: 'password', role: 'operario', name: 'Pedro Martinez' },
-  { email: 'jorge.gomez@fagaz.com', password: 'password', role: 'operario', name: 'Jorge Gomez' },
-  { email: 'fernando.diaz@fagaz.com', password: 'password', role: 'operario', name: 'Fernando Diaz' },
-  { email: 'roberto.fernandez@fagaz.com', password: 'password', role: 'operario', name: 'Roberto Fernandez' }
+  { email: 'briancasco@fagaz.com', password: 'operario', role: 'operario', name: 'Brian Casco' },
+  { email: 'gustavoalbornoz@fagaz.com', password: 'operario', role: 'operario', name: 'Gustavo Albornoz' },
+  { email: 'sergioruhl@fagaz.com', password: 'operario', role: 'operario', name: 'Sergio Ruhl' },
+  { email: 'josegauna@fagaz.com', password: 'operario', role: 'operario', name: 'Jose Gauna' },
+  { email: 'leandrobianchini@fagaz.com', password: 'operario', role: 'operario', name: 'Leandro Bianchini' },
+  { email: 'darioaranda@fagaz.com', password: 'operario', role: 'operario', name: 'Dario Aranda' },
+  { email: 'walterbustamante@fagaz.com', password: 'operario', role: 'operario', name: 'Walter Bustamante' },
 ];
 
 export function login(email, password) {
@@ -26,5 +25,5 @@ export function login(email, password) {
 
 export function logout() {
   localStorage.removeItem('user');
-  window.location.href = '/src/login/login.html'; // CORRECCIÓN AQUÍ
+  window.location.href = '/src/login/login.html';
 }

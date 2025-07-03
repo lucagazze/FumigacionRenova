@@ -1,5 +1,5 @@
 import { renderHeader } from '../common/header.js';
-import { requireRole } from '../common/router.js';
+import { requireRole, getUser } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 
 requireRole('operario');
@@ -140,6 +140,12 @@ btnRegistrar.addEventListener('click', async () => {
   const { cantidad, toneladas, unidadLabel } = getResumenTextos();
   const metodo = operacionActual.metodo_fumigacion;
 
+  const currentUser = getUser();
+  if (!currentUser) {
+    alert("Error de autenticación. Por favor, inicie sesión de nuevo.");
+    return;
+  }
+
   if (!modalidad.value || !tratamiento.value || cantidad <= 0) {
     alert('Complete todos los campos y asegúrese de que la cantidad de producto sea válida.');
     return;
@@ -192,7 +198,7 @@ btnRegistrar.addEventListener('click', async () => {
     metodo_fumigacion: metodo,
     producto_usado_cantidad: cantidad,
     tipo_registro: 'producto',
-    operario_nombre: operacionActual.operario_nombre,
+    operario_nombre: currentUser.name, // CORRECCIÓN: Usar el nombre del usuario actual
     tratamiento: tratamiento.value,
     toneladas: toneladas,
   };
