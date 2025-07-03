@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
   
   <style>
-    /* Estilos de las tarjetas y la página */
+    /* Estilos de las tarjetas y la página (estos no usan @apply y pueden quedarse) */
     .action-card:not(.disabled-card) {
       transition: all 0.2s ease-in-out;
     }
@@ -25,20 +25,6 @@
     .disabled-card {
       background-color: #f9fafb;
       opacity: 0.7;
-    }
-
-    /* --- ESTILOS DE BOTONES (AHORA DENTRO DEL HTML) --- */
-    .btn {
-      @apply font-semibold transition-all duration-200 rounded-lg py-2.5 px-5 text-base inline-flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2;
-    }
-    .btn-primary {
-      @apply btn bg-[#53d22b] text-white focus:ring-[#53d22b] hover:opacity-90;
-    }
-    .btn-secondary {
-      @apply btn bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400;
-    }
-    .btn-danger {
-      @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-700;
     }
   </style>
 </head>
@@ -75,7 +61,7 @@
                     <div id="accionesMsgContainer" class="hidden text-center p-4 bg-gray-100 rounded-lg">
                         <p class="text-sm text-gray-600">
                           <span class="font-bold">Paso 1 Incompleto</span><br>
-                          Debes completar y confirmar el checklist de seguridad para continuar.
+                          Debes completar todos los ítems del checklist para continuar.
                         </p>
                     </div>
 
@@ -86,15 +72,16 @@
                 </div>
 
                  <div class="action-card border border-gray-200 rounded-lg p-4" id="cardFinalizar" data-action-target="btnEnviar">
-                    <div class="flex items-center gap-4"><span class="material-icons text-3xl text-red-600">flag</span><div><h4 class="font-bold text-gray-900">Paso 3: Finalizar Tarea</h4><p class="text-sm text-gray-500">Una vez completado todo, cierra la operación.</p><p id="finalizarMsg" class="text-xs text-red-500 mt-1">Requiere checklist completo y al menos una aplicación de producto.</p></div></div>
+                    <div class="flex items-center gap-4"><span class="material-icons text-3xl text-red-600">flag</span><div><h4 class="font-bold text-gray-900">Paso 3: Finalizar Tarea</h4><p class="text-sm text-gray-500">Una vez completado todo, cierra la operación.</p></div></div>
                     <div class="mt-4 pt-4 border-t">
-                        <button class="btn btn-danger w-full text-base" id="btnEnviar" disabled><span class="material-icons text-lg">check_circle</span><span>Confirmar y Finalizar Operación</span></button>
+                        <button class="btn btn-danger w-full text-base" id="btnEnviar"><span class="material-icons text-lg">check_circle</span><span>Confirmar y Finalizar Operación</span></button>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="mt-8 text-center">
-            <button class="font-semibold text-gray-600 hover:text-gray-900 inline-flex items-center gap-2 transition-colors" id="btnVolver"><span class="material-icons text-lg">arrow_back</span><span>Volver a Operaciones en Curso</span></button>
+        <div class="mt-8 flex justify-between items-center">
+            <button class="font-semibold text-gray-600 hover:text-gray-900 inline-flex items-center gap-2 transition-colors" id="btnVolver"><span class="material-icons text-lg">arrow_back</span><span>Volver a Operaciones</span></button>
+            <button class="font-semibold text-red-600 hover:text-red-800 hidden items-center gap-2 transition-colors" id="btnCancelar"><span class="material-icons text-lg">cancel</span><span>Cancelar Operación</span></button>
         </div>
       </div>
     </main>

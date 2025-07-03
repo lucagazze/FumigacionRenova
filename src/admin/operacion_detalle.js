@@ -84,7 +84,14 @@ function renderizarPagina(container, op, historial) {
                     switch(registro.tipo_registro) {
                         case 'inicial': detalle = `Operación iniciada por <b>${registro.operario_nombre}</b>.`; break;
                         case 'producto': detalle = `<b>${registro.operario_nombre}</b> aplicó <b>${registro.producto_usado_cantidad?.toLocaleString()} ${unidadLabel}</b> en ${registro.toneladas?.toLocaleString()} tn.`; break;
-                        case 'movimiento': detalle = `<b>${registro.operario_nombre}</b> registró un movimiento: ${registro.movimientos[0]?.observacion || ''} ${registro.movimientos[0]?.media_url ? `<a href="${registro.movimientos[0].media_url}" target="_blank" class="text-blue-600 hover:underline">[Ver adjunto]</a>` : ''}`; break;
+                        case 'movimiento':
+                            // --- CORRECCIÓN AQUÍ ---
+                            // Se comprueba si 'registro.movimientos' y 'registro.movimientos[0]' existen antes de usarlos.
+                            const movimiento = registro.movimientos && registro.movimientos.length > 0 ? registro.movimientos[0] : null;
+                            const observacion = movimiento?.observacion || 'Sin observación registrada.';
+                            const mediaLink = movimiento?.media_url ? `<a href="${movimiento.media_url}" target="_blank" class="text-blue-600 hover:underline">[Ver adjunto]</a>` : '';
+                            detalle = `<b>${registro.operario_nombre}</b> registró un movimiento: ${observacion} ${mediaLink}`;
+                            break;
                         case 'finalizacion': detalle = `Operación finalizada por <b>${registro.operario_nombre}</b>.`; break;
                     }
                     return `<div class="text-sm p-2 bg-gray-50 border-l-4 border-gray-300"><b>${new Date(registro.created_at).toLocaleString('es-AR')}:</b> ${detalle}</div>`;

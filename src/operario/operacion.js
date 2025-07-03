@@ -11,7 +11,7 @@ const btnProducto = document.getElementById('btnProducto');
 const btnMovimiento = document.getElementById('btnMovimiento');
 const btnEnviar = document.getElementById('btnEnviar');
 const btnVolver = document.getElementById('btnVolver');
-const finalizarMsg = document.getElementById('finalizarMsg');
+const btnCancelar = document.getElementById('btnCancelar');
 const cardChecklist = document.querySelector('[data-action-target="btnChecklist"]');
 
 // --- Lógica de la página ---
@@ -77,52 +77,70 @@ async function renderOperacion() {
         progresoEl.classList.replace('text-yellow-800', 'text-green-800');
         btnChecklist.textContent = 'Ver';
         cardChecklist.classList.add('disabled-card');
-        btnChecklist.disabled = false;
+    } else if (checklistCompleto) {
+        progresoEl.textContent = 'Completo';
+        progresoEl.classList.replace('bg-yellow-100', 'bg-green-100');
+        progresoEl.classList.replace('text-yellow-800', 'text-green-800');
     } else {
         progresoEl.classList.replace('bg-green-100', 'bg-yellow-100');
         progresoEl.classList.replace('text-green-800', 'text-yellow-800');
         cardChecklist.classList.remove('disabled-card');
-        btnChecklist.disabled = false;
     }
+    btnChecklist.disabled = false;
 
-    // --- NUEVA LÓGICA DE BLOQUEO PARA PASO 2 ---
+
     const cardAcciones = document.getElementById('cardAcciones');
     const accionesMsgContainer = document.getElementById('accionesMsgContainer');
     const accionesButtons = document.getElementById('accionesButtons');
 
-    // Habilita/deshabilita toda la sección de tareas
-    const paso2Bloqueado = !checklistConfirmado;
+    const paso2Bloqueado = !checklistCompleto;
     cardAcciones.classList.toggle('disabled-card', paso2Bloqueado);
     accionesMsgContainer.classList.toggle('hidden', !paso2Bloqueado);
     accionesButtons.classList.toggle('hidden', paso2Bloqueado);
     
-    // Deshabilita botones individuales (por si acaso)
     btnProducto.disabled = paso2Bloqueado;
     btnMovimiento.disabled = paso2Bloqueado;
     
-    // Lógica para finalizar la operación
-    const { data: productosRegistrados } = await supabase
+    // Verificar si hay acciones para ocultar el botón de cancelar
+    const { data: historialAcciones } = await supabase
       .from('operaciones')
       .select('id', { count: 'exact' })
       .eq('operacion_original_id', op.id)
-      .eq('tipo_registro', 'producto');
-    
-    const productoRegistrado = productosRegistrados.length > 0;
-    
-    const puedeFinalizar = checklistConfirmado && productoRegistrado;
-    btnEnviar.disabled = !puedeFinalizar;
-
-    if (!checklistConfirmado) {
-        finalizarMsg.textContent = "Debe completar y confirmar el checklist para continuar.";
-    } else if (!productoRegistrado) {
-        finalizarMsg.textContent = "Debe registrar al menos una aplicación de producto para finalizar.";
+      .or('tipo_registro.eq.producto,tipo_registro.eq.movimiento');
+      
+    if (historialAcciones.length > 0) {
+        btnCancelar.classList.add('hidden');
+    } else {
+        btnCancelar.classList.remove('hidden');
+        btnCancelar.classList.add('inline-flex');
     }
-    finalizarMsg.style.display = puedeFinalizar ? 'none' : 'block';
-
-    document.getElementById('cardFinalizar').classList.toggle('disabled-card', btnEnviar.disabled);
+    
+    // --- LÓGICA DE FINALIZACIÓN SIMPLIFICADA ---
+    // El botón y la tarjeta ya no se deshabilitan
+    btnEnviar.disabled = false;
+    document.getElementById('cardFinalizar').classList.remove('disabled-card');
 
     setupCardClickListeners();
 }
+
+async function handleCancelarOperacion() {
+    if (!confirm("¿Está seguro de que desea cancelar esta operación? Todos los datos se eliminarán permanentemente.")) return;
+
+    const op = await getOperacionActual();
+    if (!op) return;
+
+    const { error } = await supabase.from('operaciones').delete().eq('id', op.id);
+
+    if (error) {
+        alert("Error al cancelar la operación. Por favor, inténtelo de nuevo.");
+        console.error("Error deleting operation:", error);
+    } else {
+        localStorage.removeItem('operacion_actual');
+        alert("La operación ha sido cancelada correctamente.");
+        window.location.href = 'home.html';
+    }
+}
+
 
 // --- Event Listeners ---
 btnChecklist.addEventListener('click', () => { window.location.href = 'checklist.html'; });
@@ -130,5 +148,6 @@ btnProducto.addEventListener('click', () => { window.location.href = 'producto.h
 btnMovimiento.addEventListener('click', () => { window.location.href = 'movimiento.html'; });
 btnEnviar.addEventListener('click', () => { window.location.href = 'finalizar.html'; });
 btnVolver.addEventListener('click', () => { window.location.href = 'home.html'; });
+btnCancelar.addEventListener('click', handleCancelarOperacion);
 
 document.addEventListener('DOMContentLoaded', renderOperacion);
