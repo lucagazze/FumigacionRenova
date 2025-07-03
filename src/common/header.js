@@ -47,6 +47,22 @@ export function renderHeader() {
         <button id="hamburgerBtn" class="md:hidden"><span class="material-icons">menu</span></button>
       </div>
     </header>
+    <div id="mobileMenu" class="hidden fixed inset-0 z-50">
+        <div id="mobileMenuOverlay" class="absolute inset-0 bg-black bg-opacity-50"></div>
+        <div class="relative bg-white w-72 h-full p-6 flex flex-col">
+            <div class="flex justify-between items-center mb-8">
+                <img src="/public/assets/img/logotipo.png" alt="Fagaz Logo" class="h-10">
+                <button id="closeMobileMenu"><span class="material-icons">close</span></button>
+            </div>
+            <nav class="flex flex-col gap-3">${navLinks}</nav>
+            <div class="mt-auto">
+                <button id="logoutMobile" class="w-full text-left text-sm font-medium text-gray-600 hover:text-red-600 flex items-center gap-2 p-3 rounded-md hover:bg-gray-100">
+                    <span class="material-icons">logout</span>
+                    <span>Cerrar Sesión</span>
+                </button>
+            </div>
+        </div>
+    </div>
   `;
 }
 
