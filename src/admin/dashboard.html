@@ -9,51 +9,92 @@
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
 </head>
 <body class="bg-gray-50 text-gray-800">
-  <div class="relative flex min-h-screen flex-col">
-    <header id="header"></header>
-    
-    <main class="flex-1 py-8">
-      <div class="content-container">
-        <div class="mb-10">
-            <h2 class="text-3xl font-bold text-black mb-4">Depósitos con Operaciones en Curso</h2>
-            <div id="silosEnCursoContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6 text-center">
-                </div>
-        </div>
-
-        <div class="flex justify-between items-center mb-6">
-          <h1 class="text-3xl font-bold text-black">Registro Histórico de Operaciones</h1>
-          <button id="toggleFiltrosBtn" class="bg-white rounded-lg px-4 py-2 flex items-center gap-2 hover:bg-gray-100 transition-colors border text-sm">
+  <header id="header"></header>
+  <main class="flex-1 py-8">
+    <div class="content-container space-y-8">
+      <div>
+        <h2 class="text-2xl font-bold text-gray-900 mb-4">Depósitos con Operaciones en Curso</h2>
+        <div id="silosEnCursoContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6 text-center"></div>
+      </div>
+      <div>
+        <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+          <h2 class="text-2xl font-bold text-gray-900">Registro Histórico de Operaciones</h2>
+          <button id="toggleFiltrosBtn" class="btn bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">
             <span class="material-icons text-base">filter_list</span>
             <span>Filtros</span>
           </button>
         </div>
-        
-        <div id="filtrosContainer" class="hidden mb-6 bg-white p-4 rounded-lg shadow-md border">
-          <form id="filtrosRegistro" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+
+        <div id="filtrosContainer" class="hidden mb-6 bg-white p-6 rounded-xl shadow-sm border">
+          <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <span class="material-icons">filter_alt</span>
+                Filtros de Búsqueda
+              </h3>
+              <button id="btnLimpiarFiltros" class="text-sm font-semibold text-blue-600 hover:underline">Limpiar</button>
+          </div>
+          <form id="filtrosRegistro" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
              <div>
-                <label class="block text-xs font-semibold mb-1 text-gray-700">Depósito</label>
-                <select id="filtroDeposito" class="input-field text-sm"></select>
+                <label class="block text-sm font-medium mb-1 text-gray-600">Cliente</label>
+                <div class="input-wrapper">
+                    <span class="material-icons input-icon">search</span>
+                    <input type="text" id="filtroCliente" class="input-field input-field-with-icon" placeholder="Buscar...">
+                </div>
               </div>
               <div>
-                <label class="block text-xs font-semibold mb-1 text-gray-700">Estado</label>
-                <select id="filtroEstado" class="input-field text-sm">
-                    <option value="">Todos</option>
-                    <option value="en curso">En curso</option>
-                    <option value="finalizada">Finalizada</option>
-                </select>
+                <label class="block text-sm font-medium mb-1 text-gray-600">Mercadería</label>
+                <div class="input-wrapper">
+                    <span class="material-icons input-icon">grass</span>
+                    <select id="filtroMercaderia" class="input-field input-field-with-icon"></select>
+                </div>
               </div>
-              <div class="col-span-full flex justify-end">
-                <button type="button" id="btnLimpiarFiltros" class="bg-gray-200 text-xs px-3 py-1 rounded-md">Limpiar</button>
+              <div>
+                <label class="block text-sm font-medium mb-1 text-gray-600">Método</label>
+                <div class="input-wrapper">
+                    <span class="material-icons input-icon">waves</span>
+                    <select id="filtroMetodo" class="input-field input-field-with-icon">
+                        <option value="">Todos</option><option value="pastillas">Pastillas</option><option value="liquido">Líquido</option>
+                    </select>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-1 text-gray-600">Tipo de Registro</label>
+                <div class="input-wrapper">
+                    <span class="material-icons input-icon">receipt_long</span>
+                    <select id="filtroTipo" class="input-field input-field-with-icon">
+                        <option value="">Todos</option><option value="inicial">Inicio</option><option value="producto">Aplicación</option><option value="movimiento">Movimiento</option><option value="finalizacion">Finalización</option>
+                    </select>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-1 text-gray-600">Fecha</label>
+                <div class="flex items-center gap-2">
+                    <div class="input-wrapper flex-1"><span class="material-icons input-icon">calendar_today</span><input type="date" id="filtroFechaDesde" class="input-field input-field-with-icon"></div>
+                    <div class="input-wrapper flex-1"><span class="material-icons input-icon">calendar_today</span><input type="date" id="filtroFechaHasta" class="input-field input-field-with-icon"></div>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-1 text-gray-600">Depósito (Origen Stock)</label>
+                <div class="input-wrapper">
+                    <span class="material-icons input-icon">warehouse</span>
+                    <select id="filtroDepositoStock" class="input-field input-field-with-icon">
+                        <option value="">Todos</option><option value="Fagaz">Fagaz</option><option value="Baigorria">Baigorria</option>
+                    </select>
+                </div>
+              </div>
+               <div>
+                <label class="block text-sm font-medium mb-1 text-gray-600">Silo / Celda</label>
+                <div class="input-wrapper">
+                    <span class="material-icons input-icon">store</span>
+                    <select id="filtroSiloCelda" class="input-field input-field-with-icon"></select>
+                </div>
               </div>
           </form>
         </div>
-
-        <div id="operacionesContainer">
-            </div>
-
+        <div id="operacionesContainer" class="operations-table-container"></div>
       </div>
-    </main>
-  </div>
+    </div>
+  </main>
   <script type="module" src="dashboard.js"></script>
 </body>
 </html>

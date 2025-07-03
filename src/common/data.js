@@ -3,7 +3,17 @@ import { supabase } from './supabase.js';
 export async function getOperaciones() {
   const { data, error } = await supabase
     .from('operaciones')
-    .select(`*, clientes(nombre), depositos(nombre, tipo, limpiezas(fecha_garantia_limpieza)), mercaderias(nombre), movimientos(observacion, media_url)`)
+    .select(`
+      *, 
+      clientes(nombre), 
+      depositos(
+        nombre, 
+        tipo,
+        limpiezas(fecha_garantia_limpieza)
+      ), 
+      mercaderias(nombre), 
+      movimientos(observacion, media_url)
+    `)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -18,18 +28,11 @@ export async function renderOperaciones(container, operaciones, isAdmin = false)
       container.innerHTML = '<p class="text-center p-8 text-gray-500">No se encontraron operaciones.</p>';
       return;
   }
-
-  if (!isAdmin) {
-      renderOperacionesDesplegables(container, operaciones);
-      return;
-  }
   
-  // Vista de tabla plana para Admin...
+  renderOperacionesDesplegables(container, operaciones, isAdmin);
 }
 
-// --- FUNCIÓN ACTUALIZADA PARA LA VISTA DESPLEGABLE DEL OPERARIO ---
-function renderOperacionesDesplegables(container, operaciones) {
-    // ... (lógica de cálculo de totales sin cambios)
+function renderOperacionesDesplegables(container, operaciones, isAdmin) {
     const runningTotals = new Map();
     const recordSpecificTotals = new Map();
     const sortedOps = [...operaciones].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
@@ -41,7 +44,10 @@ function renderOperacionesDesplegables(container, operaciones) {
         recordSpecificTotals.set(op.id, newTotal);
     }
     
-    const headers = ["Fecha/Hora", "Tipo", "Cliente", "Operario", "Método", "Tratamiento", "Depósito", "Estado", ""];
+    const headers = ["Fecha/Hora", "Tipo", "Cliente", "Operario", "Depósito", "Estado"];
+    if (isAdmin) headers.push("Acciones");
+    headers.push("");
+
     const tableHeaders = headers.map(h => `<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">${h}</th>`).join('');
 
     const tableRows = operaciones.map(op => {
@@ -54,22 +60,22 @@ function renderOperacionesDesplegables(container, operaciones) {
             default: tipoText = 'N/A'; tipoClass = 'bg-gray-100 text-gray-800';
         }
 
-        // Fila principal (visible)
-        const mainRow = `
-            <tr class="cursor-pointer hover:bg-gray-50 border-b" data-toggle-details="details-${op.id}">
-                <td class="px-4 py-4 whitespace-nowrap">${new Date(op.created_at).toLocaleString('es-AR')}</td>
-                <td class="px-4 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${tipoClass}">${tipoText}</span></td>
-                <td class="px-4 py-4 whitespace-nowrap">${op.clientes?.nombre || '-'}</td>
-                <td class="px-4 py-4 whitespace-nowrap">${op.operario_nombre || '-'}</td>
-                <td class="px-4 py-4 whitespace-nowrap">${op.metodo_fumigacion || '-'}</td>
-                <td class="px-4 py-4 whitespace-nowrap">${op.tratamiento || '-'}</td>
-                <td class="px-4 py-4 whitespace-nowrap">${op.depositos?.nombre || '-'} (${op.depositos?.tipo || '-'})</td>
-                <td class="px-4 py-4 whitespace-nowrap font-semibold ${op.estado === 'finalizada' ? 'text-red-600' : 'text-green-600'}">${op.estado}</td>
-                <td class="px-4 py-4 text-center"><span class="material-icons expand-icon">expand_more</span></td>
-            </tr>
-        `;
+        const mainRowCells = [
+            `<td class="px-4 py-4 whitespace-nowrap text-sm">${new Date(op.created_at).toLocaleString('es-AR')}</td>`,
+            `<td class="px-4 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${tipoClass}">${tipoText}</span></td>`,
+            `<td class="px-4 py-4 whitespace-nowrap text-sm">${op.clientes?.nombre || '-'}</td>`,
+            `<td class="px-4 py-4 whitespace-nowrap text-sm">${op.operario_nombre || '-'}</td>`,
+            `<td class="px-4 py-4 whitespace-nowrap text-sm">${op.depositos?.nombre || '-'} (${op.depositos?.tipo || '-'})</td>`,
+            `<td class="px-4 py-4 whitespace-nowrap font-semibold ${op.estado === 'finalizada' ? 'text-red-600' : 'text-green-600'}">${op.estado}</td>`
+        ];
 
-        // Fila de detalles (oculta por defecto)
+        if (isAdmin) {
+            mainRowCells.push(`<td class="px-4 py-4 whitespace-nowrap text-sm"><a href="operacion_detalle.html?id=${op.id}" class="text-blue-600 hover:underline font-semibold">Ver Detalle</a></td>`);
+        }
+        mainRowCells.push(`<td class="px-4 py-4 text-center"><span class="material-icons expand-icon">expand_more</span></td>`);
+        const mainRow = `<tr class="cursor-pointer hover:bg-gray-50 border-b" data-toggle-details="details-${op.id}">${mainRowCells.join('')}</tr>`;
+
+        // --- SECCIÓN DE DETALLES MODIFICADA ---
         const tnRegistro = op.toneladas ? `${op.toneladas.toLocaleString()} tn` : 'N/A';
         const productoAplicado = op.tipo_registro === 'producto' ? `${(op.producto_usado_cantidad || 0).toLocaleString()} ${op.metodo_fumigacion === 'liquido' ? 'cm³' : 'un.'}` : 'N/A';
         const tnAcumuladas = op.tipo_registro === 'producto' ? `${(recordSpecificTotals.get(op.id) || 0).toLocaleString()} tn` : 'N/A';
@@ -87,11 +93,13 @@ function renderOperacionesDesplegables(container, operaciones) {
         
         const detailsRow = `
             <tr id="details-${op.id}" class="details-row hidden bg-gray-50 border-b">
-                <td colspan="9" class="p-4">
+                <td colspan="${headers.length}" class="p-4">
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div><strong>Tn. en este Registro:</strong><br>${tnRegistro}</div>
-                        <div><strong>Producto Aplicado:</strong><br>${productoAplicado}</div>
+                        <div><strong>Método:</strong><br>${op.metodo_fumigacion || 'N/A'}</div>
+                        <div><strong>Tratamiento:</strong><br>${op.tratamiento || 'N/A'}</div>
+                        <div><strong>Tn. en Registro:</strong><br>${tnRegistro}</div>
                         <div><strong>Tn. Acumuladas:</strong><br>${tnAcumuladas}</div>
+                        <div><strong>Producto Aplicado:</strong><br>${productoAplicado}</div>
                         <div class="${vencimientoClass}"><strong>Venc. Vigencia Limpieza:</strong><br>${vencimientoLimpieza}</div>
                     </div>
                 </td>

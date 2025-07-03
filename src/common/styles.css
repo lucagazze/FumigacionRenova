@@ -28,32 +28,24 @@ body {
 tr.is-open .expand-icon {
   transform: rotate(180deg);
 }
-.silo-wrapper {
-  cursor: pointer;
-  transition: transform 0.2s ease;
-  width: 100px;
+
+/* Estilos para campos de formulario con íconos */
+.input-wrapper {
+  @apply relative;
 }
-.silo-wrapper:hover {
-  transform: scale(1.05);
-}
-.silo-svg {
-  width: 100%;
-  height: auto;
-}
-.silo-outline {
-  fill: #E5E7EB;
-  stroke: #9CA3AF;
-  stroke-width: 2;
-}
-.silo-fill-rect {
-  fill: #facc15;
-  transition: all 0.5s ease-in-out;
+.input-icon {
+  @apply absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none;
 }
 .input-field {
-  @apply w-full rounded-lg border-gray-300 bg-white text-gray-800 shadow-sm focus:ring-green-500 focus:border-green-500 h-11 px-4 text-sm;
+  @apply w-full rounded-lg border-gray-300 bg-white text-gray-800 shadow-sm focus:ring-2 focus:ring-green-300 focus:border-green-500 h-11 px-4 text-sm;
 }
+.input-field-with-icon {
+  @apply pl-10; /* Padding izquierdo para dejar espacio al ícono */
+}
+
+/* Estilos de botones */
 .btn {
-  @apply font-semibold transition-colors duration-200 rounded-lg py-2.5 px-5 text-sm;
+  @apply font-semibold transition-colors duration-200 rounded-lg py-2.5 px-5 text-sm inline-flex items-center justify-center gap-2;
 }
 .btn-primary {
   @apply btn bg-green-500 text-white hover:bg-green-600;
@@ -62,5 +54,12 @@ tr.is-open .expand-icon {
   @apply btn bg-gray-200 text-gray-800 hover:bg-gray-300;
 }
 .btn-danger {
-  @apply btn bg-red-500 text-white hover:bg-red-600;
+  @apply btn bg-red-600 text-white hover:bg-red-700;
 }
+
+/* Estilos de silo (sin cambios) */
+.silo-wrapper { cursor: pointer; transition: transform 0.2s ease; width: 100px; }
+.silo-wrapper:hover { transform: scale(1.05); }
+.silo-svg { width: 100%; height: auto; }
+.silo-outline { fill: #E5E7EB; stroke: #9CA3AF; stroke-width: 2; }
+.silo-fill-rect { fill: #facc15; transition: all 0.5s ease-in-out; }
