@@ -9,6 +9,7 @@ export async function getOperaciones() {
       depositos(
         nombre, 
         tipo,
+        capacidad_toneladas, 
         limpiezas(fecha_garantia_limpieza)
       ), 
       mercaderias(nombre), 
@@ -33,38 +34,38 @@ export async function renderOperaciones(container, operaciones, isAdmin = false)
 }
 
 async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
-    // Mapa para almacenar los datos de la operación original (para resúmenes)
     const operationSummaries = new Map();
 
-    // Primero, procesamos todas las operaciones para calcular los totales
     for (const op of operaciones) {
         const key = op.operacion_original_id || op.id;
-        if (!operationSummaries.has(key)) {
-            const { data: originalOp } = await supabase
-                .from('operaciones')
-                .select('created_at, metodo_fumigacion, mercaderias(nombre)')
-                .eq('id', key)
-                .single();
 
+        if (!operationSummaries.has(key)) {
             operationSummaries.set(key, {
                 totalToneladas: 0,
                 totalProducto: 0,
-                startDate: originalOp.created_at,
-                metodo: originalOp.metodo_fumigacion,
-                mercaderia: originalOp.mercaderias.nombre,
-                tratamiento: null, // Se inicializa para guardarlo después
+                startDate: null,
+                metodo: null,
+                mercaderia: null,
+                tratamiento: null,
             });
         }
 
         const summary = operationSummaries.get(key);
+
         if (op.toneladas) {
             summary.totalToneladas += op.toneladas;
         }
         if (op.producto_usado_cantidad) {
             summary.totalProducto += op.producto_usado_cantidad;
         }
-        // Si encontramos un registro de producto, guardamos el tratamiento para el resumen final
-        if (op.tipo_registro === 'producto' && op.tratamiento && !summary.tratamiento) {
+
+        if (op.tipo_registro === 'inicial') {
+            summary.startDate = op.created_at;
+            summary.metodo = op.metodo_fumigacion;
+            summary.mercaderia = op.mercaderias?.nombre || 'N/A';
+        }
+        
+        if (op.tipo_registro === 'producto' && op.tratamiento) {
             summary.tratamiento = op.tratamiento;
         }
     }
@@ -155,18 +156,20 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
             const durationHours = Math.floor(durationMs / 3600000);
             const durationMins = Math.round((durationMs % 3600000) / 60000);
             const tratamiento = summary.tratamiento ? summary.tratamiento.charAt(0).toUpperCase() + summary.tratamiento.slice(1) : 'N/A';
+            const metodo = summary.metodo ? summary.metodo.charAt(0).toUpperCase() + summary.metodo.slice(1) : 'N/A';
 
             detailsContentHTML = `
                 <div class="p-4 bg-gray-100">
                     <h4 class="font-bold text-base mb-3">Resumen de Operación Finalizada</h4>
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-sm">
+                    <div class="grid grid-cols-4 gap-4 text-sm">
                         <div><strong>Mercadería:</strong><br>${summary.mercaderia}</div>
+                        <div><strong>Método:</strong><br>${metodo}</div>
                         <div><strong>Tratamiento:</strong><br>${tratamiento}</div>
                         <div><strong>Total Toneladas:</strong><br>${summary.totalToneladas.toLocaleString()} tn</div>
                         <div><strong>Total Producto:</strong><br>${summary.totalProducto.toLocaleString()} ${unidadLabel}</div>
                         <div><strong>Inicio:</strong><br>${startDate.toLocaleString('es-AR')}</div>
                         <div><strong>Fin:</strong><br>${endDate.toLocaleString('es-AR')}</div>
-                        <div class="col-span-2"><strong>Duración:</strong><br>~ ${durationHours}h ${durationMins}m</div>
+                        <div><strong>Duración:</strong><br>~ ${durationHours}h ${durationMins}m</div>
                     </div>
                 </div>
             `;

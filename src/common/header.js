@@ -15,6 +15,7 @@ export function renderHeader() {
   if (user?.role === 'admin') {
     navLinks = `
         <a class="${getLinkClasses('dashboard.html')}" href="dashboard.html">Dashboard</a>
+        <a class="${getLinkClasses('historial.html')}" href="historial.html">Historial</a>
         <a class="${getLinkClasses('stock.html')}" href="stock.html">Stock</a>
         <a class="${getLinkClasses('gestion.html')}" href="gestion.html">Gestión</a>
         <a class="${getLinkClasses('limpieza.html')}" href="limpieza.html">Limpieza</a>
@@ -23,7 +24,7 @@ export function renderHeader() {
     navLinks = `
         <a class="${getLinkClasses('home.html')}" href="home.html">Operaciones en curso</a>
         <a class="${getLinkClasses('index.html')}" href="index.html">Registrar Nueva Operación</a>
-        <a class="${getLinkClasses('registro.html')}" href="registro.html">Registro de operaciones</a>
+        <a class="${getLinkClasses('registro.html')}" href="registro.html">Registros (Tabla)</a>
     `;
   }
   
@@ -48,3 +49,23 @@ export function renderHeader() {
 }
 
 // Lógica de logout y menú móvil (sin cambios)
+
+document.addEventListener('click', (e) => {
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    window.location.href = '/src/login/login.html';
+  };
+
+  if (e.target.closest('#btnLogout') || e.target.closest('#logoutMobile')) {
+      handleLogout();
+  }
+
+  const hamburgerBtn = document.getElementById('hamburgerBtn');
+  const mobileMenu = document.getElementById('mobileMenu');
+  const closeMobileMenu = document.getElementById('closeMobileMenu');
+  const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+
+  if (hamburgerBtn?.contains(e.target)) mobileMenu?.classList.remove('hidden');
+  if (closeMobileMenu?.contains(e.target)) mobileMenu?.classList.add('hidden');
+  if (mobileMenuOverlay?.contains(e.target)) mobileMenu?.classList.add('hidden');
+});
