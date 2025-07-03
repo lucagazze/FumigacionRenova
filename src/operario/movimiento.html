@@ -4,9 +4,47 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fagaz - Registrar Movimiento</title>
+
   <link rel="stylesheet" href="../common/styles.css" />
+
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+
+  <style>
+    .btn {
+      font-weight: 600 !important;
+      transition-property: all !important;
+      transition-duration: 200ms !important;
+      border-radius: 0.5rem !important; /* rounded-lg */
+      padding-top: 0.625rem !important; /* py-2.5 */
+      padding-bottom: 0.625rem !important;
+      padding-left: 1.25rem !important; /* px-5 */
+      padding-right: 1.25rem !important;
+      font-size: 1rem !important; /* text-base */
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 0.5rem !important; /* gap-2 */
+      box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important; /* shadow-sm */
+    }
+    .btn:hover {
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important; /* hover:shadow-md */
+    }
+    .btn-primary {
+      background-color: #53d22b !important;
+      color: white !important;
+    }
+    .btn-primary:hover {
+      opacity: 0.9 !important;
+    }
+    .btn-secondary {
+      background-color: #e5e7eb !important; /* bg-gray-200 */
+      color: #374151 !important; /* text-gray-800 */
+    }
+    .btn-secondary:hover {
+       background-color: #d1d5db !important; /* hover:bg-gray-300 */
+    }
+  </style>
 </head>
 <body class="bg-[var(--background-color)] text-[var(--text-primary)]">
   <div class="relative flex min-h-screen flex-col overflow-x-hidden">
@@ -25,12 +63,15 @@
             </div>
             <div>
               <label for="mediaFile" class="block font-semibold mb-1">Archivos (Fotos o Videos)</label>
-              <input type="file" id="mediaFile" accept="image/*,video/*" class="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-gray-100 hover:file:bg-gray-200" required multiple>
+              <input type="file" id="mediaFile" accept="image/*,video/*" class="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-gray-100 hover:file:bg-gray-200" multiple>
               <div id="preview" class="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
             </div>
-            <div class="flex justify-end gap-4 pt-4">
-                <button type="button" id="btnVolver" class="btn btn-secondary">Volver</button>
-                <button type="submit" id="btnGuardar" class="btn btn-primary flex items-center gap-2">
+            <div class="flex flex-col sm:flex-row justify-end gap-4 pt-4">
+                <button type="button" id="btnVolver" class="btn btn-secondary w-full sm:w-auto">
+                    <span class="material-icons text-lg">arrow_back</span>
+                    <span>Volver</span>
+                </button>
+                <button type="submit" id="btnGuardar" class="btn btn-primary w-full sm:w-auto">
                     <span id="btnText">Guardar Movimiento</span>
                     <div id="spinner" class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin hidden"></div>
                 </button>

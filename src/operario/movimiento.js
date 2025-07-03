@@ -42,7 +42,7 @@ mediaFileInput.addEventListener('change', (event) => {
     const newFiles = Array.from(event.target.files);
     filesToUpload.push(...newFiles);
     renderPreviews();
-    // Resetear el input para permitir seleccionar los mismos archivos si se eliminan
+    // Se resetea el input para permitir seleccionar los mismos archivos si se eliminan de la vista previa.
     mediaFileInput.value = ''; 
 });
 
@@ -62,6 +62,7 @@ form.addEventListener('submit', async (e) => {
     const user = getUser();
     const observacion = document.getElementById('observacion').value;
 
+    // Esta validación manual es la que debe funcionar, una vez eliminado el 'required' del HTML.
     if (!operacionId || !user || filesToUpload.length === 0 || !observacion) {
         alert('Faltan datos. Asegúrese de tener una operación activa, seleccionado al menos un archivo y escrito una observación.');
         return;

@@ -116,6 +116,17 @@ btnRegistrar.addEventListener('click', async () => {
           alert(`Error al descontar stock: ${error?.message || stockData.error}`);
           return;
       }
+
+      // Registra el movimiento en el historial de stock.
+      await supabase.from('historial_stock').insert([{
+          // --- CAMBIO CLAVE AQUÍ ---
+          tipo_movimiento: 'uso', // Se registra como 'uso' para diferenciarlo de la extracción manual.
+          deposito: depositoOrigen,
+          tipo_producto: 'pastillas',
+          cantidad_unidades_movidas: cantidad,
+          cantidad_kg_movido: cantidadKg,
+          descripcion: `Uso en operación por ${currentUser.name}`
+      }]);
   }
 
   const { error: insertError } = await supabase.from('operaciones').insert([{

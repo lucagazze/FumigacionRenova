@@ -49,7 +49,7 @@ async function renderHistorialStock() {
     return;
   }
 
-  if (historial.length === 0) {
+  if (data.length === 0) {
     historialStockEl.innerHTML = '<p class="text-center text-gray-500">No hay movimientos de stock.</p>';
     return;
   }
@@ -66,7 +66,7 @@ async function renderHistorialStock() {
         </tr>
       </thead>
       <tbody class="bg-white divide-y divide-gray-200">
-        ${historial.map(item => {
+        ${data.map(item => {
           const tipoClass = item.tipo_movimiento === 'adicion' ? 'text-green-600' : 'text-red-600';
           const cantidadDetalle = item.tipo_producto === 'pastillas' 
             ? `${item.cantidad_unidades_movidas?.toLocaleString()} unidades (${item.cantidad_kg_movido} Kg)` 

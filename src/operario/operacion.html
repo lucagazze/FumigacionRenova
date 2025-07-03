@@ -8,80 +8,63 @@
   <link rel="stylesheet" href="../common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
-  
-  <style>
-    /* Estilos de las tarjetas y la página (estos no usan @apply y pueden quedarse) */
-    .action-card:not(.disabled-card) {
-      transition: all 0.2s ease-in-out;
-    }
-    .action-card[data-action-target]:not(.disabled-card) {
-      cursor: pointer;
-    }
-    .action-card[data-action-target]:not(.disabled-card):hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-      border-color: var(--primary-color);
-    }
-    .disabled-card {
-      background-color: #f9fafb;
-      opacity: 0.7;
-    }
-  </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
   <div class="relative flex min-h-screen flex-col overflow-x-hidden">
     <header id="header"></header>
     <main class="px-4 sm:px-8 flex flex-1 justify-center py-8">
-      <div class="flex flex-col w-full max-w-3xl">
-        <div class="mb-8 text-left">
-          <h2 class="text-3xl font-bold text-gray-900">Operación en Curso</h2>
-          <p class="text-gray-500 text-base mt-1">Sigue los pasos para completar la tarea actual.</p>
+      <div class="flex flex-col w-full max-w-lg">
+        <div class="bg-white p-6 rounded-2xl shadow-lg border border-gray-200 mb-8">
+          <h3 class="text-lg font-bold text-gray-800 mb-4">Detalles de la Operación</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm">
+            <div class="flex items-center gap-3"><span class="material-icons text-gray-400">person</span><div><p class="text-gray-500">Cliente</p><p class="font-semibold text-gray-900" id="cliente">Cargando...</p></div></div>
+            <div class="flex items-center gap-3"><span class="material-icons text-gray-400">store</span><div><p class="text-gray-500">Depósito</p><p class="font-semibold text-gray-900" id="ubicacion">Cargando...</p></div></div>
+            <div class="flex items-center gap-3"><span class="material-icons text-gray-400">grass</span><div><p class="text-gray-500">Mercadería</p><p class="font-semibold text-gray-900" id="mercaderia">Cargando...</p></div></div>
+            <div class="flex items-center gap-3"><span class="material-icons text-gray-400">calendar_today</span><div><p class="text-gray-500">Fecha de Inicio</p><p class="font-semibold text-gray-900" id="fecha">Cargando...</p></div></div>
+          </div>
         </div>
 
-        <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-gray-200">
-            <div class="pb-4 border-b border-gray-200">
-                <h3 class="text-lg font-bold text-gray-800 mb-4">Detalles</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm">
-                    <div class="flex items-center gap-3"><span class="material-icons text-gray-400">person</span><div><p class="text-gray-500">Cliente</p><p class="font-semibold text-gray-900" id="cliente">Cargando...</p></div></div>
-                    <div class="flex items-center gap-3"><span class="material-icons text-gray-400">store</span><div><p class="text-gray-500">Depósito</p><p class="font-semibold text-gray-900" id="ubicacion">Cargando...</p></div></div>
-                    <div class="flex items-center gap-3"><span class="material-icons text-gray-400">grass</span><div><p class="text-gray-500">Mercadería</p><p class="font-semibold text-gray-900" id="mercaderia">Cargando...</p></div></div>
-                    <div class="flex items-center gap-3"><span class="material-icons text-gray-400">calendar_today</span><div><p class="text-gray-500">Fecha de Inicio</p><p class="font-semibold text-gray-900" id="fecha">Cargando...</p></div></div>
-                </div>
+        <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-gray-200 space-y-4">
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <h4 class="font-bold text-gray-700 uppercase tracking-wider text-sm">Progreso del Checklist</h4>
+              <span id="progressText" class="font-bold text-gray-600">0/4</span>
             </div>
-            <div class="mt-6 space-y-4">
-                <div class="action-card border border-gray-200 rounded-lg p-4 flex items-center justify-between" data-action-target="btnChecklist">
-                    <div class="flex items-center gap-4"><span class="material-icons text-3xl text-green-600">checklist</span><div><h4 class="font-bold text-gray-900">Paso 1: Checklist de Seguridad</h4><p class="text-sm text-gray-500">Verifica los puntos de seguridad requeridos.</p></div></div>
-                    <div class="flex items-center gap-4"><span id="progreso" class="text-sm font-bold bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full">0/4</span><button id="btnChecklist" class="btn btn-secondary">Ver</button></div>
-                </div>
-                <progress class="w-full hidden" max="100" value="0" id="progressBar"></progress>
+            <progress id="progressBar" class="w-full [&::-webkit-progress-bar]:rounded-lg [&::-webkit-progress-value]:rounded-lg [&::-webkit-progress-bar]:bg-slate-200 [&::-webkit-progress-value]:bg-green-500 [&::-moz-progress-bar]:bg-green-500" max="100" value="0"></progress>
+            <p id="progressLabel" class="text-sm text-gray-500 mt-1">Completa el checklist para continuar.</p>
+          </div>
+          
+          <button id="btnChecklist" class="w-full text-center py-2 px-4 text-sm font-semibold text-gray-800 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+            <span class="material-icons text-base">add</span>
+            Ver y Continuar Checklist
+          </button>
+          
+          <div class="border-t border-gray-200 !mt-5 !mb-5"></div>
 
-                <div class="action-card border border-gray-200 rounded-lg p-4" id="cardAcciones">
-                    <div class="flex items-center gap-4 mb-4"><span class="material-icons text-3xl text-blue-600">construction</span><div><h4 class="font-bold text-gray-900">Paso 2: Realizar Tareas</h4><p class="text-sm text-gray-500">Aplica producto y registra movimientos adicionales.</p></div></div>
-                    
-                    <div id="accionesMsgContainer" class="hidden text-center p-4 bg-gray-100 rounded-lg">
-                        <p class="text-sm text-gray-600">
-                          <span class="font-bold">Paso 1 Incompleto</span><br>
-                          Debes completar todos los ítems del checklist para continuar.
-                        </p>
-                    </div>
+          <div id="taskButtonsContainer" class="space-y-4">
+            <button id="btnProducto" class="w-full text-center p-2.5 font-semibold text-green-800 bg-green-50 border-2 border-green-200 rounded-lg transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200">
+              Registrar Pastillas Usadas
+            </button>            
+            <button id="btnMovimiento" class="w-full text-center p-2.5 font-semibold text-blue-800 bg-blue-50 border-2 border-blue-200 rounded-lg transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200">
+              Registrar Movimiento
+            </button>
+          </div>
 
-                    <div id="accionesButtons" class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
-                       <button class="btn btn-secondary text-base" id="btnMovimiento"><span class="material-icons text-lg">camera_alt</span><span>Registrar Movimiento</span></button>
-                       <button class="btn btn-primary text-base" id="btnProducto" disabled><span class="material-icons text-lg">science</span><span>Aplicar Producto</span></button>
-                    </div>
-                </div>
-
-                 <div class="action-card border border-gray-200 rounded-lg p-4" id="cardFinalizar" data-action-target="btnEnviar">
-                    <div class="flex items-center gap-4"><span class="material-icons text-3xl text-red-600">flag</span><div><h4 class="font-bold text-gray-900">Paso 3: Finalizar Tarea</h4><p class="text-sm text-gray-500">Una vez completado todo, cierra la operación.</p></div></div>
-                    <div class="mt-4 pt-4 border-t">
-                        <button class="btn btn-danger w-full text-base" id="btnEnviar"><span class="material-icons text-lg">check_circle</span><span>Confirmar y Finalizar Operación</span></button>
-                    </div>
-                </div>
-            </div>
+          <button id="btnEnviar" class="w-full text-center p-3 font-bold text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center gap-2 disabled:bg-gray-400">
+            <span class="material-icons">check_circle</span>
+            Finalizar Operación
+          </button>
         </div>
+        
         <div class="mt-8 flex justify-between items-center">
-            <button class="font-semibold text-gray-600 hover:text-gray-900 inline-flex items-center gap-2 transition-colors" id="btnVolver"><span class="material-icons text-lg">arrow_back</span><span>Volver a Operaciones</span></button>
-            <button class="font-semibold text-red-600 hover:text-red-800 hidden items-center gap-2 transition-colors" id="btnCancelar"><span class="material-icons text-lg">cancel</span><span>Cancelar Operación</span></button>
+            <button class="font-semibold text-gray-600 hover:text-gray-900 inline-flex items-center gap-2 transition-colors" id="btnVolver">
+              <span class="material-icons text-lg">arrow_back</span>
+              <span>Volver a Operaciones</span>
+            </button>
+            <button class="font-semibold text-red-600 hover:text-red-800 hidden items-center gap-2 transition-colors" id="btnCancelar">
+              <span class="material-icons text-lg">cancel</span>
+              <span>Cancelar Operación</span>
+            </button>
         </div>
       </div>
     </main>

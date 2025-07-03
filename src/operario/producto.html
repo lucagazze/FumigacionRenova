@@ -4,9 +4,47 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Registrar Producto Usado</title>
+  
   <link rel="stylesheet" href="../common/styles.css" />
+
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+
+  <style>
+    .btn {
+      font-weight: 600 !important;
+      transition-property: all !important;
+      transition-duration: 200ms !important;
+      border-radius: 0.5rem !important; /* rounded-lg */
+      padding-top: 0.625rem !important; /* py-2.5 */
+      padding-bottom: 0.625rem !important;
+      padding-left: 1.25rem !important; /* px-5 */
+      padding-right: 1.25rem !important;
+      font-size: 1rem !important; /* text-base */
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 0.5rem !important; /* gap-2 */
+      box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important; /* shadow-sm */
+    }
+    .btn:hover {
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important; /* hover:shadow-md */
+    }
+    .btn-primary {
+      background-color: #53d22b !important;
+      color: white !important;
+    }
+    .btn-primary:hover {
+      opacity: 0.9 !important;
+    }
+    .btn-secondary {
+      background-color: #e5e7eb !important; /* bg-gray-200 */
+      color: #374151 !important; /* text-gray-800 */
+    }
+    .btn-secondary:hover {
+       background-color: #d1d5db !important; /* hover:bg-gray-300 */
+    }
+  </style>
 </head>
 <body class="bg-[var(--background-color)] text-[var(--text-primary)]">
   <div class="relative flex min-h-screen flex-col overflow-x-hidden">
@@ -61,10 +99,10 @@
                 <p><b>Dosis:</b> <span id="resumenDosis">-</span></p>
                 <p class="mt-4 text-xl font-bold">Total a Utilizar: <span id="resumenTotal" class="text-green-600"></span></p>
             </div>
-            <button class="w-full mt-6 bg-green-500 text-white font-bold rounded-lg px-8 py-4 text-lg hover:bg-green-600" id="btnRegistrar">Registrar Aplicación</button>
+            <button class="btn btn-primary w-full mt-6" id="btnRegistrar">Registrar Aplicación</button>
           </div>
           <div class="flex justify-end gap-2 mt-6">
-            <button class="bg-gray-200 rounded-lg h-12 px-6 text-base font-bold" onclick="window.location.href='operacion.html'" type="button">Volver</button>
+            <button class="btn btn-secondary" onclick="window.location.href='operacion.html'" type="button">Volver</button>
           </div>
         </div>
       </div>

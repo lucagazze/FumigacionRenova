@@ -12,22 +12,11 @@ const btnMovimiento = document.getElementById('btnMovimiento');
 const btnEnviar = document.getElementById('btnEnviar');
 const btnVolver = document.getElementById('btnVolver');
 const btnCancelar = document.getElementById('btnCancelar');
-const cardChecklist = document.querySelector('[data-action-target="btnChecklist"]');
 
-// --- Lógica de la página ---
-
-let areCardListenersSetup = false;
-function setupCardClickListeners() {
-    if (areCardListenersSetup) return;
-    document.querySelectorAll('.action-card[data-action-target]').forEach(card => {
-        card.addEventListener('click', (e) => {
-            if (e.target.closest('button, a, input')) return;
-            const targetButton = document.getElementById(card.dataset.actionTarget);
-            if (targetButton && !targetButton.disabled) targetButton.click();
-        });
-    });
-    areCardListenersSetup = true;
-}
+const progressBar = document.getElementById('progressBar');
+const progressText = document.getElementById('progressText');
+const progressLabel = document.getElementById('progressLabel');
+const productoHelper = document.getElementById('productoHelper');
 
 async function getOperacionActual() {
     const id = localStorage.getItem('operacion_actual');
@@ -61,47 +50,32 @@ async function renderOperacion() {
     document.getElementById('fecha').textContent = new Date(op.created_at).toLocaleString('es-AR');
     document.getElementById('mercaderia').textContent = op.mercaderias?.nombre || '---';
 
-    // Lógica del Checklist
+    // Lógica del Checklist y la Barra de Progreso
     const checklist = op.checklist_items || [];
     const completados = checklist.filter(i => i.completado).length;
-    const totalItems = checklist.length || 4;
+    const totalItems = checklist.length || 4; // Asumir 4 si no hay items
+    const porcentaje = totalItems > 0 ? (completados / totalItems) * 100 : 0;
     const checklistCompleto = completados === totalItems && totalItems > 0;
-    const checklistConfirmado = op.checklist_confirmado === true;
 
-    const progresoEl = document.getElementById('progreso');
-    progresoEl.textContent = `${completados}/${totalItems}`;
-    
-    if (checklistConfirmado) {
-        progresoEl.textContent = 'Confirmado';
-        progresoEl.classList.replace('bg-yellow-100', 'bg-green-100');
-        progresoEl.classList.replace('text-yellow-800', 'text-green-800');
-        btnChecklist.textContent = 'Ver';
-        cardChecklist.classList.add('disabled-card');
-    } else if (checklistCompleto) {
-        progresoEl.textContent = 'Completo';
-        progresoEl.classList.replace('bg-yellow-100', 'bg-green-100');
-        progresoEl.classList.replace('text-yellow-800', 'text-green-800');
+    // Actualizar UI de progreso
+    progressBar.value = porcentaje;
+    progressText.textContent = `${completados}/${totalItems}`;
+
+    if (checklistCompleto) {
+        progressLabel.textContent = '¡Checklist completado!';
+        progressLabel.classList.add('text-green-600', 'font-bold');
     } else {
-        progresoEl.classList.replace('bg-green-100', 'bg-yellow-100');
-        progresoEl.classList.replace('text-green-800', 'text-yellow-800');
-        cardChecklist.classList.remove('disabled-card');
+        progressLabel.textContent = 'Completa el checklist para continuar.';
+        progressLabel.classList.remove('text-green-600', 'font-bold');
     }
-    btnChecklist.disabled = false;
 
-
-    const cardAcciones = document.getElementById('cardAcciones');
-    const accionesMsgContainer = document.getElementById('accionesMsgContainer');
-    const accionesButtons = document.getElementById('accionesButtons');
-
-    const paso2Bloqueado = !checklistCompleto;
-    cardAcciones.classList.toggle('disabled-card', paso2Bloqueado);
-    accionesMsgContainer.classList.toggle('hidden', !paso2Bloqueado);
-    accionesButtons.classList.toggle('hidden', paso2Bloqueado);
+    // Habilitar/deshabilitar botones según el progreso del checklist
+    btnProducto.disabled = !checklistCompleto;
+    btnMovimiento.disabled = !checklistCompleto;
+    btnEnviar.disabled = !checklistCompleto;
+    productoHelper.classList.toggle('hidden', !checklistCompleto);
     
-    btnProducto.disabled = paso2Bloqueado;
-    btnMovimiento.disabled = paso2Bloqueado;
-    
-    // Verificar si hay acciones para ocultar el botón de cancelar
+    // Ocultar botón de cancelar si ya hay acciones registradas
     const { data: historialAcciones } = await supabase
       .from('operaciones')
       .select('id', { count: 'exact' })
@@ -114,13 +88,6 @@ async function renderOperacion() {
         btnCancelar.classList.remove('hidden');
         btnCancelar.classList.add('inline-flex');
     }
-    
-    // --- LÓGICA DE FINALIZACIÓN SIMPLIFICADA ---
-    // El botón y la tarjeta ya no se deshabilitan
-    btnEnviar.disabled = false;
-    document.getElementById('cardFinalizar').classList.remove('disabled-card');
-
-    setupCardClickListeners();
 }
 
 async function handleCancelarOperacion() {
@@ -140,7 +107,6 @@ async function handleCancelarOperacion() {
         window.location.href = 'home.html';
     }
 }
-
 
 // --- Event Listeners ---
 btnChecklist.addEventListener('click', () => { window.location.href = 'checklist.html'; });
