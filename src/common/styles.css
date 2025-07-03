@@ -7,8 +7,43 @@
   --border-color: #d6e5d2;
   --background-color: #f9fbf9;
 }
+
 body {
   font-family: 'Manrope', 'Noto Sans', sans-serif;
   background: var(--background-color);
   color: var(--text-primary);
+}
+
+/* NUEVO: Contenedor de operaciones con scroll horizontal */
+.operations-table-container {
+  width: 100%;
+  max-width: 80vw; /* Ocupa máximo el 80% del ancho de la pantalla */
+  overflow-x: auto; /* Permite el desplazamiento horizontal si el contenido no entra */
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Silo-fill visualization styles */
+.silo-container {
+    position: relative;
+    width: 100px; /* Ancho del silo */
+    height: 150px; /* Alto del silo */
+    cursor: pointer;
+}
+
+.silo-bg {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.silo-fill {
+    position: absolute;
+    bottom: 12%; /* Ajusta esto para que coincida con la base del interior del silo en tu imagen */
+    left: 12%; /* Ajusta para que coincida con el borde izquierdo del interior */
+    width: 76%; /* Ajusta para que coincida con el ancho del interior */
+    background-color: #facc15; /* Color del grano (amarillo) */
+    transition: height 0.5s ease-in-out;
+    border-radius: 0 0 30px 30px; /* Redondear base del relleno */
+    opacity: 0.7;
 }

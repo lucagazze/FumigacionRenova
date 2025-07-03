@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fagaz - Registrar Movimiento</title>
+  <link rel="stylesheet" href="../common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+</head>
+<body class="bg-[var(--background-color)] text-[var(--text-primary)]">
+  <div class="relative flex min-h-screen flex-col overflow-x-hidden">
+    <header id="header"></header>
+    <main class="px-4 sm:px-8 flex flex-1 justify-center py-8">
+      <div class="flex flex-col w-full max-w-2xl py-5 space-y-6">
+        <div class="p-4">
+          <h2 class="text-3xl font-bold">Registrar Movimiento</h2>
+          <p class="text-gray-500 text-sm mt-1">Sube una foto o video y añade una observación.</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+          <form id="formMovimiento" class="space-y-4">
+            <div>
+              <label class="block font-semibold mb-1">Toneladas Movidas (Opcional)</label>
+              <input type="number" id="toneladasMovidas" class="input-field" placeholder="Ej: 1500">
+            </div>
+            <div>
+              <label for="observacion" class="block font-semibold mb-1">Observación</label>
+              <textarea id="observacion" class="input-field min-h-[100px]" placeholder="Ej: Llenado de silo desde camiones." required></textarea>
+            </div>
+            <div>
+              <label for="mediaFile" class="block font-semibold mb-1">Archivo (Foto o Video)</label>
+              <input type="file" id="mediaFile" accept="image/*,video/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" required>
+              <div id="preview" class="mt-4"></div>
+            </div>
+            <div class="flex justify-end gap-4 pt-4">
+                <button type="button" id="btnVolver" class="bg-gray-200 rounded-lg h-12 px-6 font-bold">Volver</button>
+                <button type="submit" id="btnGuardar" class="bg-blue-500 text-white rounded-lg h-12 px-6 font-bold flex items-center gap-2">
+                    <span id="btnText">Guardar Movimiento</span>
+                    <div id="spinner" class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin hidden"></div>
+                </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="movimiento.js"></script>
+</body>
+</html>
