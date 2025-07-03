@@ -74,34 +74,65 @@ function renderOperacionesDesplegables(container, operaciones, isAdmin) {
         }
         mainRowCells.push(`<td class="px-4 py-4 text-center"><span class="material-icons expand-icon">expand_more</span></td>`);
         const mainRow = `<tr class="cursor-pointer hover:bg-gray-50 border-b" data-toggle-details="details-${op.id}">${mainRowCells.join('')}</tr>`;
-
-        // --- SECCIÓN DE DETALLES MODIFICADA ---
-        const tnRegistro = op.toneladas ? `${op.toneladas.toLocaleString()} tn` : 'N/A';
-        const productoAplicado = op.tipo_registro === 'producto' ? `${(op.producto_usado_cantidad || 0).toLocaleString()} ${op.metodo_fumigacion === 'liquido' ? 'cm³' : 'un.'}` : 'N/A';
-        const tnAcumuladas = op.tipo_registro === 'producto' ? `${(recordSpecificTotals.get(op.id) || 0).toLocaleString()} tn` : 'N/A';
         
-        let vencimientoLimpieza = 'N/A';
-        let vencimientoClass = 'text-gray-700';
-        if(op.depositos && op.depositos.limpiezas.length > 0){
-            const ultimaGarantia = op.depositos.limpiezas.reduce((a, b) => new Date(a.fecha_garantia_limpieza) > new Date(b.fecha_garantia_limpieza) ? a : b);
-            if(ultimaGarantia.fecha_garantia_limpieza) {
-                const fechaVenc = new Date(ultimaGarantia.fecha_garantia_limpieza + 'T00:00:00');
-                vencimientoLimpieza = fechaVenc.toLocaleDateString('es-AR');
-                if (fechaVenc < new Date()) vencimientoClass = 'text-red-600 font-bold';
+        // --- LÓGICA CONDICIONAL PARA LOS DETALLES ---
+        let detailsContentHTML = '';
+
+        if (op.tipo_registro === 'movimiento') {
+            const movimiento = op.movimientos && op.movimientos.length > 0 ? op.movimientos[0] : null;
+            let mediaHTML = '<p><strong>Adjunto:</strong> Ninguno</p>';
+            if (movimiento && movimiento.media_url) {
+                const url = movimiento.media_url;
+                if (url.endsWith('.jpg') || url.endsWith('.jpeg') || url.endsWith('.png') || url.endsWith('.gif')) {
+                    mediaHTML = `<img src="${url}" class="mt-2 max-w-xs md:max-w-sm rounded-lg shadow-md" alt="Adjunto">`;
+                } else {
+                    mediaHTML = `<video src="${url}" class="mt-2 max-w-xs md:max-w-sm rounded-lg shadow-md" controls></video>`;
+                }
             }
+            detailsContentHTML = `
+                <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <p><strong>Observación del movimiento:</strong></p>
+                        <p class="mt-1 p-2 bg-gray-100 rounded">${movimiento?.observacion || 'Sin observación.'}</p>
+                    </div>
+                    <div>
+                        ${mediaHTML}
+                    </div>
+                </div>
+            `;
+        } else {
+            // --- VISTA DE DETALLE POR DEFECTO PARA LOS DEMÁS TIPOS ---
+            const tnRegistro = op.toneladas ? `${op.toneladas.toLocaleString()} tn` : 'N/A';
+            const productoAplicado = op.tipo_registro === 'producto' ? `${(op.producto_usado_cantidad || 0).toLocaleString()} ${op.metodo_fumigacion === 'liquido' ? 'cm³' : 'un.'}` : 'N/A';
+            const tnAcumuladas = op.tipo_registro === 'producto' ? `${(recordSpecificTotals.get(op.id) || 0).toLocaleString()} tn` : 'N/A';
+            
+            let vencimientoLimpieza = 'N/A';
+            let vencimientoClass = 'text-gray-700';
+            if(op.depositos && op.depositos.limpiezas.length > 0){
+                const ultimaGarantia = op.depositos.limpiezas.reduce((a, b) => new Date(a.fecha_garantia_limpieza) > new Date(b.fecha_garantia_limpieza) ? a : b);
+                if(ultimaGarantia.fecha_garantia_limpieza) {
+                    const fechaVenc = new Date(ultimaGarantia.fecha_garantia_limpieza + 'T00:00:00');
+                    vencimientoLimpieza = fechaVenc.toLocaleDateString('es-AR');
+                    if (fechaVenc < new Date()) vencimientoClass = 'text-red-600 font-bold';
+                }
+            }
+            
+            detailsContentHTML = `
+                <div class="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div><strong>Método:</strong><br>${op.metodo_fumigacion || 'N/A'}</div>
+                    <div><strong>Tratamiento:</strong><br>${op.tratamiento || 'N/A'}</div>
+                    <div><strong>Tn. en Registro:</strong><br>${tnRegistro}</div>
+                    <div><strong>Tn. Acumuladas:</strong><br>${tnAcumuladas}</div>
+                    <div><strong>Producto Aplicado:</strong><br>${productoAplicado}</div>
+                    <div class="${vencimientoClass}"><strong>Venc. Vigencia Limpieza:</strong><br>${vencimientoLimpieza}</div>
+                </div>
+            `;
         }
         
         const detailsRow = `
             <tr id="details-${op.id}" class="details-row hidden bg-gray-50 border-b">
-                <td colspan="${headers.length}" class="p-4">
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div><strong>Método:</strong><br>${op.metodo_fumigacion || 'N/A'}</div>
-                        <div><strong>Tratamiento:</strong><br>${op.tratamiento || 'N/A'}</div>
-                        <div><strong>Tn. en Registro:</strong><br>${tnRegistro}</div>
-                        <div><strong>Tn. Acumuladas:</strong><br>${tnAcumuladas}</div>
-                        <div><strong>Producto Aplicado:</strong><br>${productoAplicado}</div>
-                        <div class="${vencimientoClass}"><strong>Venc. Vigencia Limpieza:</strong><br>${vencimientoLimpieza}</div>
-                    </div>
+                <td colspan="${headers.length}">
+                    ${detailsContentHTML}
                 </td>
             </tr>
         `;
@@ -110,7 +141,7 @@ function renderOperacionesDesplegables(container, operaciones, isAdmin) {
     }).join('');
 
     container.innerHTML = `
-    <div class="bg-white rounded-lg shadow-md border overflow-hidden">
+    <div class="bg-white rounded-lg shadow-md border overflow-x-auto">
       <table class="min-w-full">
         <thead class="bg-gray-50"><tr>${tableHeaders}</tr></thead>
         <tbody>${tableRows}</tbody>

@@ -45,21 +45,35 @@ tr.is-open .expand-icon {
 
 /* Estilos de botones */
 .btn {
-  @apply font-semibold transition-colors duration-200 rounded-lg py-2.5 px-5 text-sm inline-flex items-center justify-center gap-2;
+  @apply font-semibold transition-all duration-200 rounded-lg py-2.5 px-5 text-sm inline-flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md disabled:hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2;
 }
 .btn-primary {
-  @apply btn bg-green-500 text-white hover:bg-green-600;
+  @apply btn bg-green-500 text-white hover:bg-green-600 focus:ring-green-500;
 }
 .btn-secondary {
-  @apply btn bg-gray-200 text-gray-800 hover:bg-gray-300;
+  @apply btn bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-300;
 }
 .btn-danger {
-  @apply btn bg-red-600 text-white hover:bg-red-700;
+  @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-600;
 }
 
-/* Estilos de silo (sin cambios) */
+/* Estilos de silo */
 .silo-wrapper { cursor: pointer; transition: transform 0.2s ease; width: 100px; }
 .silo-wrapper:hover { transform: scale(1.05); }
 .silo-svg { width: 100%; height: auto; }
 .silo-outline { fill: #E5E7EB; stroke: #9CA3AF; stroke-width: 2; }
 .silo-fill-rect { fill: #facc15; transition: all 0.5s ease-in-out; }
+
+/* Spinner para cargas */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(0,0,0,.1);
+  border-radius: 50%;
+  border-top-color: #4b5563; /* text-secondary */
+  animation: spin 0.8s ease-in-out infinite;
+}

@@ -19,7 +19,7 @@
       <div>
         <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
           <h2 class="text-2xl font-bold text-gray-900">Registro Histórico de Operaciones</h2>
-          <button id="toggleFiltrosBtn" class="btn bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">
+          <button id="toggleFiltrosBtn" class="btn btn-secondary">
             <span class="material-icons text-base">filter_list</span>
             <span>Filtros</span>
           </button>
@@ -31,63 +31,45 @@
                 <span class="material-icons">filter_alt</span>
                 Filtros de Búsqueda
               </h3>
-              <button id="btnLimpiarFiltros" class="text-sm font-semibold text-blue-600 hover:underline">Limpiar</button>
+              <button id="btnLimpiarFiltros" class="text-sm font-semibold text-blue-600 hover:underline">Limpiar Filtros</button>
           </div>
-          <form id="filtrosRegistro" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
+          <form id="filtrosRegistro" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
              <div>
                 <label class="block text-sm font-medium mb-1 text-gray-600">Cliente</label>
                 <div class="input-wrapper">
                     <span class="material-icons input-icon">search</span>
-                    <input type="text" id="filtroCliente" class="input-field input-field-with-icon" placeholder="Buscar...">
+                    <input type="text" id="filtroCliente" class="input-field input-field-with-icon" placeholder="Buscar por nombre...">
                 </div>
               </div>
               <div>
                 <label class="block text-sm font-medium mb-1 text-gray-600">Mercadería</label>
-                <div class="input-wrapper">
-                    <span class="material-icons input-icon">grass</span>
-                    <select id="filtroMercaderia" class="input-field input-field-with-icon"></select>
-                </div>
+                <select id="filtroMercaderia" class="input-field"></select>
               </div>
               <div>
                 <label class="block text-sm font-medium mb-1 text-gray-600">Método</label>
-                <div class="input-wrapper">
-                    <span class="material-icons input-icon">waves</span>
-                    <select id="filtroMetodo" class="input-field input-field-with-icon">
-                        <option value="">Todos</option><option value="pastillas">Pastillas</option><option value="liquido">Líquido</option>
-                    </select>
-                </div>
+                <select id="filtroMetodo" class="input-field">
+                    <option value="">Todos</option><option value="pastillas">Pastillas</option><option value="liquido">Líquido</option>
+                </select>
               </div>
               <div>
-                <label class="block text-sm font-medium mb-1 text-gray-600">Tipo de Registro</label>
-                <div class="input-wrapper">
-                    <span class="material-icons input-icon">receipt_long</span>
-                    <select id="filtroTipo" class="input-field input-field-with-icon">
-                        <option value="">Todos</option><option value="inicial">Inicio</option><option value="producto">Aplicación</option><option value="movimiento">Movimiento</option><option value="finalizacion">Finalización</option>
-                    </select>
-                </div>
+                <label class="block text-sm font-medium mb-1 text-gray-600">Silo / Celda</label>
+                <select id="filtroSiloCelda" class="input-field"></select>
               </div>
               <div>
-                <label class="block text-sm font-medium mb-1 text-gray-600">Fecha</label>
-                <div class="flex items-center gap-2">
-                    <div class="input-wrapper flex-1"><span class="material-icons input-icon">calendar_today</span><input type="date" id="filtroFechaDesde" class="input-field input-field-with-icon"></div>
-                    <div class="input-wrapper flex-1"><span class="material-icons input-icon">calendar_today</span><input type="date" id="filtroFechaHasta" class="input-field input-field-with-icon"></div>
-                </div>
+                <label class="block text-sm font-medium mb-1 text-gray-600">Fecha Desde</label>
+                <input type="date" id="filtroFechaDesde" class="input-field">
               </div>
               <div>
-                <label class="block text-sm font-medium mb-1 text-gray-600">Depósito (Origen Stock)</label>
-                <div class="input-wrapper">
-                    <span class="material-icons input-icon">warehouse</span>
-                    <select id="filtroDepositoStock" class="input-field input-field-with-icon">
-                        <option value="">Todos</option><option value="Fagaz">Fagaz</option><option value="Baigorria">Baigorria</option>
-                    </select>
-                </div>
+                <label class="block text-sm font-medium mb-1 text-gray-600">Fecha Hasta</label>
+                <input type="date" id="filtroFechaHasta" class="input-field">
               </div>
                <div>
-                <label class="block text-sm font-medium mb-1 text-gray-600">Silo / Celda</label>
-                <div class="input-wrapper">
-                    <span class="material-icons input-icon">store</span>
-                    <select id="filtroSiloCelda" class="input-field input-field-with-icon"></select>
-                </div>
+                <label class="block text-sm font-medium mb-1 text-gray-600">Estado</label>
+                <select id="filtroEstado" class="input-field">
+                    <option value="">Todos</option>
+                    <option value="en curso">En Curso</option>
+                    <option value="finalizada">Finalizada</option>
+                </select>
               </div>
           </form>
         </div>
