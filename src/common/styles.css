@@ -63,7 +63,7 @@ tr.is-open .expand-icon {
     --tw-ring-color: rgb(34 197 94 / 0.4);
 }
 .input-field-with-icon {
-  padding-left: 2.5rem;
+  padding-left: 2.5rem !important;
 }
 
 /* --- ESTILOS DE BOTONES CORREGIDOS --- */
