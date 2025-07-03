@@ -41,7 +41,7 @@ async function setupPage() {
   } else if (metodo === 'liquido') {
       tituloPagina.textContent = 'Registrar Líquido Usado';
       unidadProducto.textContent = 'cm³';
-      depositoFijoInfo.style.display = 'none';
+      depositoFijoInfo.style.display = 'block'; // Mostrar también para líquido
   }
   
   updateCalculations();
@@ -117,16 +117,59 @@ btnRegistrar.addEventListener('click', async () => {
           return;
       }
 
-      // Registra el movimiento en el historial de stock.
       await supabase.from('historial_stock').insert([{
-          // --- CAMBIO CLAVE AQUÍ ---
-          tipo_movimiento: 'uso', // Se registra como 'uso' para diferenciarlo de la extracción manual.
+          tipo_movimiento: 'uso',
           deposito: depositoOrigen,
           tipo_producto: 'pastillas',
           cantidad_unidades_movidas: cantidad,
           cantidad_kg_movido: cantidadKg,
           descripcion: `Uso en operación por ${currentUser.name}`
       }]);
+
+  } else if (operacionActual.metodo_fumigacion === 'liquido') {
+      // --- INICIO: Lógica para descontar líquido ---
+      const DENSIDAD_LIQUIDO = 1.2; // g/cm³ -> kg/L
+      const cantidadKg = (cantidad * DENSIDAD_LIQUIDO) / 1000; // Convertir cm³ a kg
+
+      const { data: stockActual, error: fetchError } = await supabase
+        .from('stock')
+        .select('id, cantidad_kg')
+        .eq('deposito', depositoOrigen)
+        .eq('tipo_producto', 'liquido')
+        .single();
+
+      if (fetchError) {
+          alert('Error al obtener el stock de líquido.');
+          console.error(fetchError);
+          return;
+      }
+      
+      if (stockActual.cantidad_kg < cantidadKg) {
+          alert(`No hay suficiente stock de líquido en ${depositoOrigen}. Stock actual: ${stockActual.cantidad_kg.toFixed(2)} Kg. Necesario: ${cantidadKg.toFixed(2)} Kg.`);
+          return;
+      }
+
+      const nuevoStockKg = stockActual.cantidad_kg - cantidadKg;
+      const { error: updateError } = await supabase
+        .from('stock')
+        .update({ cantidad_kg: nuevoStockKg })
+        .eq('id', stockActual.id);
+        
+      if (updateError) {
+          alert('Error al actualizar el stock de líquido.');
+          console.error(updateError);
+          return;
+      }
+
+      await supabase.from('historial_stock').insert([{
+          tipo_movimiento: 'uso',
+          deposito: depositoOrigen,
+          tipo_producto: 'liquido',
+          cantidad_kg_movido: cantidadKg,
+          cantidad_unidades_movidas: null,
+          descripcion: `Uso en operación por ${currentUser.name}`
+      }]);
+      // --- FIN: Lógica para descontar líquido ---
   }
 
   const { error: insertError } = await supabase.from('operaciones').insert([{
@@ -135,7 +178,7 @@ btnRegistrar.addEventListener('click', async () => {
     deposito_id: operacionActual.deposito_id,
     mercaderia_id: operacionActual.mercaderia_id,
     estado: 'en curso',
-    deposito_origen_stock: operacionActual.metodo_fumigacion === 'pastillas' ? depositoOrigen : null,
+    deposito_origen_stock: depositoOrigen,
     metodo_fumigacion: operacionActual.metodo_fumigacion,
     producto_usado_cantidad: cantidad,
     tipo_registro: 'producto',
@@ -152,7 +195,7 @@ btnRegistrar.addEventListener('click', async () => {
     return;
   }
   
-  alert(`Registro de aplicación guardado correctamente.`);
+  alert(`Registro de aplicación guardado y stock descontado correctamente.`);
   window.location.href = 'operacion.html';
 });
 

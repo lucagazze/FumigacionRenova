@@ -31,31 +31,91 @@ tr.is-open .expand-icon {
 
 /* Estilos para campos de formulario con íconos */
 .input-wrapper {
-  @apply relative;
+  position: relative;
 }
 .input-icon {
-  @apply absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none;
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  pointer-events: none;
 }
 .input-field {
-  @apply w-full rounded-lg border-gray-300 bg-white text-gray-800 shadow-sm focus:ring-2 focus:ring-green-300 focus:border-green-500 h-11 px-4 text-sm;
+  width: 100%;
+  border-radius: 0.5rem;
+  border-width: 1px;
+  border-color: #d1d5db;
+  background-color: #ffffff;
+  color: #1f2937;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  height: 2.75rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+.input-field:focus {
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+    border-color: #22c55e;
+    --tw-ring-color: rgb(34 197 94 / 0.4);
 }
 .input-field-with-icon {
-  @apply pl-10;
+  padding-left: 2.5rem;
 }
 
 /* --- ESTILOS DE BOTONES CORREGIDOS --- */
 .btn {
-  @apply font-semibold transition-all duration-200 rounded-lg py-2.5 px-5 text-base inline-flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2;
+  font-weight: 600;
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+  border-radius: 0.5rem;
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  font-size: 1rem;
+  line-height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn:hover {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+.btn:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
 }
 .btn-primary {
-  @apply btn text-white focus:ring-[#53d22b] hover:opacity-90;
+  color: #ffffff;
   background-color: #53d22b;
 }
+.btn-primary:hover {
+  opacity: 0.9;
+}
 .btn-secondary {
-  @apply btn bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400;
+  background-color: #e5e7eb;
+  color: #374151;
+}
+.btn-secondary:hover {
+  background-color: #d1d5db;
 }
 .btn-danger {
-  @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-700;
+  background-color: #dc2626;
+  color: #ffffff;
+}
+.btn-danger:hover {
+  background-color: #b91c1c;
 }
 
 /* Estilos de silo */

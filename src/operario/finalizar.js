@@ -48,10 +48,55 @@ async function renderResumen() {
 async function finalizarOperacion(op) {
     if (confirm('¿Está seguro de que desea finalizar esta operación? Esta acción no se puede deshacer.')) {
         const currentUser = getUser();
+        const finalizacionTime = new Date();
+
+        // --- LÓGICA DE GARANTÍA ---
+        let con_garantia = false;
+        let fecha_vencimiento_garantia = null;
+
+        // 1. Verificar duración de la operación (menos de 5 días)
+        const { data: allOps } = await supabase.from('operaciones')
+            .select('created_at')
+            .or(`id.eq.${op.id},operacion_original_id.eq.${op.id}`)
+            .order('created_at', { ascending: true });
         
-        await supabase.from('operaciones').update({ estado: 'finalizada', updated_at: new Date().toISOString() })
-            .or(`id.eq.${op.id},operacion_original_id.eq.${op.id}`);
+        const fechaInicio = new Date(allOps[0].created_at);
+        const duracionMs = finalizacionTime - fechaInicio;
+        const duracionDias = duracionMs / (1000 * 60 * 60 * 24);
+        const cumplePlazo = duracionDias <= 5;
+
+        // 2. Verificar vigencia de limpieza
+        const { data: limpieza } = await supabase.from('limpiezas')
+            .select('fecha_garantia_limpieza')
+            .eq('deposito_id', op.deposito_id)
+            .order('fecha_limpieza', { ascending: false })
+            .limit(1).single();
+
+        let cumpleLimpieza = false;
+        if (limpieza && limpieza.fecha_garantia_limpieza) {
+            const fechaVencLimpieza = new Date(limpieza.fecha_garantia_limpieza + 'T00:00:00');
+            if (finalizacionTime <= fechaVencLimpieza) {
+                cumpleLimpieza = true;
+            }
+        }
         
+        // 3. Asignar garantía si se cumplen las condiciones
+        if (cumplePlazo && cumpleLimpieza) {
+            con_garantia = true;
+            let vencimiento = new Date(finalizacionTime);
+            vencimiento.setDate(vencimiento.getDate() + 40);
+            fecha_vencimiento_garantia = vencimiento.toISOString().split('T')[0];
+        }
+
+        // Actualizar el estado y la garantía de todos los registros de la operación
+        await supabase.from('operaciones').update({ 
+            estado: 'finalizada', 
+            updated_at: finalizacionTime.toISOString(),
+            con_garantia,
+            fecha_vencimiento_garantia
+        }).or(`id.eq.${op.id},operacion_original_id.eq.${op.id}`);
+        
+        // Insertar el registro de finalización
         await supabase.from('operaciones').insert([{
             operacion_original_id: op.id,
             cliente_id: op.cliente_id,
@@ -60,7 +105,9 @@ async function finalizarOperacion(op) {
             estado: 'finalizada',
             tipo_registro: 'finalizacion',
             operario_nombre: currentUser.name,
-            metodo_fumigacion: op.metodo_fumigacion
+            metodo_fumigacion: op.metodo_fumigacion,
+            con_garantia,
+            fecha_vencimiento_garantia
         }]);
 
         localStorage.removeItem('operacion_actual');
@@ -68,5 +115,6 @@ async function finalizarOperacion(op) {
         window.location.href = 'home.html';
     }
 }
+
 
 document.addEventListener('DOMContentLoaded', renderResumen);

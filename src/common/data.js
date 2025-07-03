@@ -71,7 +71,7 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
     }
     
     const headers = ["Fecha/Hora", "Tipo", "Cliente", "Operario", "Depósito", "Estado"];
-    if (isAdmin) headers.push("Acciones");
+    if (isAdmin) headers.push("Garantía", "Acciones");
     headers.push("");
 
     const tableHeaders = headers.map(h => `<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">${h}</th>`).join('');
@@ -96,6 +96,22 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
         ];
 
         if (isAdmin) {
+            let garantiaHtml = '<span class="text-gray-400">-</span>';
+            if (op.estado === 'finalizada') {
+                if (op.con_garantia) {
+                    const hoy = new Date();
+                    hoy.setHours(0,0,0,0);
+                    const vencimiento = new Date(op.fecha_vencimiento_garantia + 'T00:00:00');
+                    if (vencimiento >= hoy) {
+                        garantiaHtml = `<span title="Vence el ${vencimiento.toLocaleDateString('es-AR')}" class="material-icons text-green-600">check_circle</span>`;
+                    } else {
+                        garantiaHtml = `<span title="Venció el ${vencimiento.toLocaleDateString('es-AR')}" class="material-icons text-yellow-600">warning</span>`;
+                    }
+                } else {
+                    garantiaHtml = `<span title="No cumple condiciones" class="material-icons text-red-600">cancel</span>`;
+                }
+            }
+            mainRowCells.push(`<td class="px-4 py-4 text-center">${garantiaHtml}</td>`);
             mainRowCells.push(`<td class="px-4 py-4 whitespace-nowrap text-sm"><a href="operacion_detalle.html?id=${op.id}" class="text-blue-600 hover:underline font-semibold">Ver Detalle</a></td>`);
         }
         mainRowCells.push(`<td class="px-4 py-4 text-center"><span class="material-icons expand-icon">expand_more</span></td>`);
@@ -130,8 +146,10 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
                 </div>
             `;
         } else if (op.tipo_registro === 'movimiento') {
-            const movimiento = op.movimientos;
+            // --- CORRECCIÓN: Se extrae el objeto del movimiento de la lista (array) ---
+            const movimiento = op.movimientos && op.movimientos.length > 0 ? op.movimientos[0] : null;
             let mediaHTML = '';
+            // Se comprueba que 'movimiento' exista antes de acceder a sus propiedades
             if (movimiento && Array.isArray(movimiento.media_url) && movimiento.media_url.length > 0) {
                 mediaHTML = movimiento.media_url.map(url => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="block group"><img src="${url}" class="h-24 w-full object-cover rounded-lg shadow-md border group-hover:shadow-xl transition-shadow" alt="Adjunto"></a>`).join('');
             }

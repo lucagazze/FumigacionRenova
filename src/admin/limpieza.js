@@ -84,6 +84,70 @@ async function renderHistorial() {
     historialContainer.appendChild(table);
 }
 
+async function actualizarGarantiasPorLimpieza(deposito_id) {
+    // 1. Encontrar todas las operaciones finalizadas para ese depósito
+    const { data: opsFinalizadas, error: opsError } = await supabase
+        .from('operaciones')
+        .select('id, operacion_original_id, created_at, deposito_id')
+        .eq('deposito_id', deposito_id)
+        .eq('estado', 'finalizada')
+        .eq('tipo_registro', 'inicial');
+
+    if (opsError) {
+        console.error("Error buscando operaciones para actualizar garantía:", opsError);
+        return;
+    }
+    if (!opsFinalizadas || opsFinalizadas.length === 0) {
+        return; // No hay nada que hacer
+    }
+
+    // 2. Obtener la última fecha de garantía de limpieza para el depósito
+    const { data: limpieza, error: limpiezaError } = await supabase.from('limpiezas')
+        .select('fecha_garantia_limpieza')
+        .eq('deposito_id', deposito_id)
+        .order('fecha_limpieza', { ascending: false })
+        .limit(1).single();
+    
+    if (limpiezaError || !limpieza) return;
+
+    // 3. Iterar sobre cada operación y reevaluar
+    for (const op of opsFinalizadas) {
+        const opId = op.operacion_original_id || op.id;
+
+        const { data: allRecords } = await supabase.from('operaciones')
+            .select('created_at, tipo_registro')
+            .or(`id.eq.${opId},operacion_original_id.eq.${opId}`)
+            .order('created_at', { ascending: true });
+
+        const registroFinal = allRecords.find(r => r.tipo_registro === 'finalizacion');
+        if (!registroFinal) continue;
+
+        const finalizacionTime = new Date(registroFinal.created_at);
+        const fechaInicio = new Date(allRecords[0].created_at);
+
+        const duracionDias = (finalizacionTime - fechaInicio) / (1000 * 60 * 60 * 24);
+        const cumplePlazo = duracionDias <= 5;
+        
+        const fechaVencLimpieza = new Date(limpieza.fecha_garantia_limpieza + 'T00:00:00');
+        const cumpleLimpieza = finalizacionTime <= fechaVencLimpieza;
+
+        let con_garantia = false;
+        let fecha_vencimiento_garantia = null;
+        if (cumplePlazo && cumpleLimpieza) {
+            con_garantia = true;
+            let vencimiento = new Date(finalizacionTime);
+            vencimiento.setDate(vencimiento.getDate() + 40);
+            fecha_vencimiento_garantia = vencimiento.toISOString().split('T')[0];
+        }
+
+        // 4. Actualizar la operación en la BD
+        await supabase.from('operaciones')
+            .update({ con_garantia, fecha_vencimiento_garantia })
+            .or(`id.eq.${opId},operacion_original_id.eq.${opId}`);
+    }
+}
+
+
 formLimpieza.addEventListener('submit', async (e) => {
     e.preventDefault();
     const deposito_id = depositoSelect.value;
@@ -107,9 +171,10 @@ formLimpieza.addEventListener('submit', async (e) => {
         console.error('Error inserting cleaning record:', error);
         alert('Hubo un error al guardar el registro.');
     } else {
-        alert('Registro de limpieza guardado con éxito.');
+        alert('Registro de limpieza guardado con éxito. Se actualizarán las garantías de las operaciones afectadas.');
         formLimpieza.reset();
-        renderHistorial();
+        await renderHistorial();
+        await actualizarGarantiasPorLimpieza(deposito_id);
     }
 });
 

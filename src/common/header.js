@@ -24,7 +24,7 @@ export function renderHeader() {
     navLinks = `
         <a class="${getLinkClasses('home.html')}" href="home.html">Operaciones en curso</a>
         <a class="${getLinkClasses('index.html')}" href="index.html">Registrar Nueva Operación</a>
-        <a class="${getLinkClasses('registro.html')}" href="registro.html">Registros (Tabla)</a>
+        <a class="${getLinkClasses('registro.html')}" href="registro.html">Registros</a>
     `;
   }
   

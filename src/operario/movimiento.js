@@ -42,7 +42,6 @@ mediaFileInput.addEventListener('change', (event) => {
     const newFiles = Array.from(event.target.files);
     filesToUpload.push(...newFiles);
     renderPreviews();
-    // Se resetea el input para permitir seleccionar los mismos archivos si se eliminan de la vista previa.
     mediaFileInput.value = ''; 
 });
 
@@ -62,7 +61,6 @@ form.addEventListener('submit', async (e) => {
     const user = getUser();
     const observacion = document.getElementById('observacion').value;
 
-    // Esta validación manual es la que debe funcionar, una vez eliminado el 'required' del HTML.
     if (!operacionId || !user || filesToUpload.length === 0 || !observacion) {
         alert('Faltan datos. Asegúrese de tener una operación activa, seleccionado al menos un archivo y escrito una observación.');
         return;
@@ -102,8 +100,9 @@ form.addEventListener('submit', async (e) => {
             return data.publicUrl;
         });
 
+        // --- CORRECCIÓN: Se cambia 'id' por 'operacion_id' ---
         const { error: insertMovimientoError } = await supabase.from('movimientos').insert({
-            id: nuevoRegistroOp.id,
+            operacion_id: nuevoRegistroOp.id,
             observacion,
             media_url: mediaUrls,
         });

@@ -4,6 +4,8 @@ import { supabase } from '../common/supabase.js';
 
 requireRole('admin');
 
+// Se eliminan las variables globales `currentOpData` y `currentAllRecords` que solo usaba la función de reevaluación.
+
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('header').innerHTML = renderHeader();
     const btnVolver = document.getElementById('btnVolver');
@@ -17,9 +19,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // --- LÓGICA DE DATOS CORREGIDA ---
-
-    // 1. Obtener el registro actual para encontrar el ID original de la operación.
     const { data: registroActual } = await supabase.from('operaciones').select('id, operacion_original_id').eq('id', operacionId).single();
     if (!registroActual) {
         container.innerHTML = '<p class="text-red-500">No se pudo encontrar la operación.</p>';
@@ -27,12 +26,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const originalId = registroActual.operacion_original_id || registroActual.id;
 
-    // 2. Obtener TODOS los registros relacionados con esa operación en una sola consulta.
     const { data: allRecords, error } = await supabase
         .from('operaciones')
         .select(`*, clientes(nombre), depositos(nombre, tipo), mercaderias(nombre), checklist_items(*), movimientos(*)`)
-        .or(`id.eq.${originalId},operacion_original_id.eq.${originalId}`) // Trae el registro inicial Y todos sus hijos.
-        .order('created_at', { ascending: true }); // Ordena los eventos cronológicamente.
+        .or(`id.eq.${originalId},operacion_original_id.eq.${originalId}`)
+        .order('created_at', { ascending: true });
 
     if (error || !allRecords || allRecords.length === 0) {
         container.innerHTML = '<p class="text-red-500">Error al cargar los detalles de la operación.</p>';
@@ -40,15 +38,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
     
-    // El registro inicial (opData) es el primero de la lista cronológica
     const opData = allRecords.find(r => r.tipo_registro === 'inicial');
 
-    // 3. Renderizar todo con la lista completa de registros.
     renderizarPagina(container, opData, allRecords);
 
-    // 4. Asignar eventos
     btnVolver.addEventListener('click', () => window.history.back());
-    // La lógica para eliminar se mantiene igual, ya que elimina la operación por su ID original.
     container.querySelector('#btnEliminar')?.addEventListener('click', () => eliminarOperacion(originalId));
 });
 
@@ -60,8 +54,30 @@ function renderizarPagina(container, op, allRecords) {
         if (r.tipo_registro === 'producto' || r.tipo_registro === 'movimiento') totalToneladas += (r.toneladas || 0);
         if (r.tipo_registro === 'producto') totalProducto += (r.producto_usado_cantidad || 0);
     });
+
     const unidadLabel = op.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';
     const tratamiento = allRecords.find(r => r.tratamiento)?.tratamiento || 'N/A';
+    
+    let garantiaHTML = '';
+    const registroFinal = allRecords.find(r => r.tipo_registro === 'finalizacion');
+
+    if (op.estado === 'finalizada' && registroFinal) {
+        if (registroFinal.con_garantia) {
+            const hoy = new Date();
+            hoy.setHours(0,0,0,0);
+            const vencimiento = new Date(registroFinal.fecha_vencimiento_garantia + 'T00:00:00');
+            const vencimientoStr = vencimiento.toLocaleDateString('es-AR');
+            if (vencimiento >= hoy) {
+                garantiaHTML = `<div class="text-green-600 font-bold"><strong>Garantía:</strong><br>Vigente hasta ${vencimientoStr}</div>`;
+            } else {
+                garantiaHTML = `<div class="text-yellow-600 font-bold"><strong>Garantía:</strong><br>Vencida el ${vencimientoStr}</div>`;
+            }
+        } else {
+            garantiaHTML = `<div class="text-red-600 font-bold"><strong>Garantía:</strong><br>Sin garantía</div>`;
+        }
+    } else {
+         garantiaHTML = `<div><strong>Garantía:</strong><br>En curso</div>`;
+    }
 
     const resumenHTML = `
         <div class="flex justify-between items-center">
@@ -80,14 +96,14 @@ function renderizarPagina(container, op, allRecords) {
             <div><strong>Estado:</strong><br><span class="font-bold ${op.estado === 'finalizada' ? 'text-red-600' : 'text-green-600'}">${op.estado}</span></div>
             <div class="font-semibold"><strong>Total Toneladas:</strong><br>${totalToneladas.toLocaleString()} tn</div>
             <div class="font-semibold"><strong>Total Producto:</strong><br>${totalProducto.toLocaleString()} ${unidadLabel}</div>
+            ${garantiaHTML}
         </div>`;
 
-    // --- RENDERIZADO DE LÍNEA DE TIEMPO CORREGIDO ---
     const historialHTML = `
         <div class="border-t pt-6 mt-6">
             <h3 class="text-xl font-bold text-gray-800 mb-4">Línea de Tiempo de la Operación</h3>
             <div class="space-y-2">
-                ${allRecords.map(registro => { // Se usa la lista completa 'allRecords'
+                ${allRecords.map(registro => {
                     let detalle = '';
                     switch(registro.tipo_registro) {
                         case 'inicial': detalle = `Operación iniciada por <b>${registro.operario_nombre}</b>.`; break;
@@ -120,12 +136,16 @@ function renderizarPagina(container, op, allRecords) {
             </div>
         </div>`;
     
+    // --- CAMBIO: Se elimina la sección "Acciones de Garantía" ---
     container.innerHTML = resumenHTML + historialHTML + checklistHTML;
 }
 
+// --- CAMBIO: Se elimina toda la función `revaluarGarantia` ---
+
 async function eliminarOperacion(operacionId) {
     if (confirm('¿ESTÁ SEGURO? Esta acción eliminará la operación y TODOS sus registros asociados de forma PERMANENTE.')) {
-        const { error } = await supabase.from('operaciones').delete().eq('id', operacionId);
+        // Corrección: El borrado debe usar el ID original para eliminar todo el grupo.
+        const { error } = await supabase.from('operaciones').delete().or(`id.eq.${operacionId},operacion_original_id.eq.${operacionId}`);
         if (error) {
             alert('Error al eliminar la operación: ' + error.message);
         } else {
