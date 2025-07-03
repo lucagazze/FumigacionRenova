@@ -33,16 +33,18 @@ async function setupPage() {
   
   operacionActual = data;
   const metodo = operacionActual.metodo_fumigacion;
+  const depositoOrigen = operacionActual.deposito_origen_stock || 'Fagaz'; // Fallback por si no está definido
 
   if (metodo === 'pastillas') {
       tituloPagina.textContent = 'Registrar Pastillas Usadas';
       unidadProducto.textContent = 'pastillas';
-      depositoFijoInfo.style.display = 'block';
   } else if (metodo === 'liquido') {
       tituloPagina.textContent = 'Registrar Líquido Usado';
-      unidadProducto.textContent = 'cm³';
-      depositoFijoInfo.style.display = 'block';
+      unidadProducto.textContent = 'L'; // Cambiado a Litros
   }
+  
+  depositoFijoInfo.querySelector('b').textContent = depositoOrigen;
+  depositoFijoInfo.style.display = 'block';
   
   updateCalculations();
 }
@@ -65,17 +67,17 @@ function updateCalculations() {
         if (tratamiento.value === 'preventivo') { dosis = '2 pastillas/tn'; cantidad = toneladas * 2; }
         else if (tratamiento.value === 'curativo') { dosis = '3 pastillas/tn'; cantidad = toneladas * 3; }
     } else if (metodo === 'liquido') {
-        unidadLabel = 'cm³';
-        if (tratamiento.value === 'preventivo') { dosis = '12 cm³/tn'; cantidad = toneladas * 12; }
-        else if (tratamiento.value === 'curativo') { dosis = '20 cm³/tn'; cantidad = toneladas * 20; }
+        unidadLabel = 'L';
+        if (tratamiento.value === 'preventivo') { dosis = '12 cm³/tn'; cantidad = (toneladas * 12) / 1000; }
+        else if (tratamiento.value === 'curativo') { dosis = '20 cm³/tn'; cantidad = (toneladas * 20) / 1000; }
     }
     
-    resultadoProducto.textContent = cantidad > 0 ? cantidad.toLocaleString() : '-';
+    resultadoProducto.textContent = cantidad > 0 ? cantidad.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
     resumenModalidad.textContent = modalidad.options[modalidad.selectedIndex]?.text || '-';
     resumenToneladas.textContent = `${toneladas.toLocaleString()} tn`;
     resumenTratamiento.textContent = tratamiento.options[tratamiento.selectedIndex]?.text || '-';
     resumenDosis.textContent = dosis;
-    resumenTotal.textContent = `${cantidad.toLocaleString()} ${unidadLabel}`;
+    resumenTotal.textContent = `${resultadoProducto.textContent} ${unidadLabel}`;
 }
 
 modalidad.addEventListener('change', () => {
@@ -94,21 +96,29 @@ btnRegistrar.addEventListener('click', async () => {
   if (modalidad.value === 'trasilado') toneladas = Number(toneladasInput.value);
   else if (modalidad.value === 'descarga') toneladas = (Number(camionesInput.value) || 0) * 28;
 
-  const cantidad = parseFloat(resultadoProducto.textContent.replace(/,/g, '')) || 0;
+  let cantidadCm3;
+  const metodo = operacionActual.metodo_fumigacion;
 
-  if (!modalidad.value || !tratamiento.value || cantidad <= 0) {
+  if (metodo === 'liquido') {
+      const cantidadLitros = parseFloat(resultadoProducto.textContent.replace('.', '').replace(',', '.')) || 0;
+      cantidadCm3 = cantidadLitros * 1000;
+  } else {
+      cantidadCm3 = parseFloat(resultadoProducto.textContent.replace(/,/g, '')) || 0;
+  }
+
+  if (!modalidad.value || !tratamiento.value || cantidadCm3 <= 0) {
     alert('Complete todos los campos y asegúrese de que la cantidad sea válida.');
     return;
   }
   
-  const depositoOrigen = "Fagaz";
+  const depositoOrigen = operacionActual.deposito_origen_stock || "Fagaz";
   
   if (operacionActual.metodo_fumigacion === 'pastillas') {
-      const cantidadKg = (cantidad * 3) / 1000;
+      const cantidadKg = (cantidadCm3 * 3) / 1000;
       
       const { data: stockData, error } = await supabase.rpc('descontar_stock_pastillas', {
           deposito_nombre: depositoOrigen,
-          unidades_a_descontar: cantidad,
+          unidades_a_descontar: cantidadCm3,
           kg_a_descontar: cantidadKg
       });
       
@@ -121,14 +131,14 @@ btnRegistrar.addEventListener('click', async () => {
           tipo_movimiento: 'uso',
           deposito: depositoOrigen,
           tipo_producto: 'pastillas',
-          cantidad_unidades_movidas: cantidad,
+          cantidad_unidades_movidas: cantidadCm3,
           cantidad_kg_movido: cantidadKg,
           descripcion: `Uso en operación por ${currentUser.nombre} ${currentUser.apellido}`
       }]);
 
   } else if (operacionActual.metodo_fumigacion === 'liquido') {
       const DENSIDAD_LIQUIDO = 1.2; // g/cm³ -> kg/L
-      const cantidadKg = (cantidad * DENSIDAD_LIQUIDO) / 1000;
+      const cantidadKg = (cantidadCm3 * DENSIDAD_LIQUIDO) / 1000;
 
       const { data: stockActual, error: fetchError } = await supabase
         .from('stock')
@@ -178,7 +188,7 @@ btnRegistrar.addEventListener('click', async () => {
     estado: 'en curso',
     deposito_origen_stock: depositoOrigen,
     metodo_fumigacion: operacionActual.metodo_fumigacion,
-    producto_usado_cantidad: cantidad,
+    producto_usado_cantidad: cantidadCm3,
     tipo_registro: 'producto',
     operario_nombre: `${currentUser.nombre} ${currentUser.apellido}`, // CORREGIDO
     tratamiento: tratamiento.value,

@@ -139,11 +139,16 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
                 </div>
             `;
         } else if (op.tipo_registro === 'producto') {
+            const productoAplicado = op.metodo_fumigacion === 'liquido' 
+                ? `${(op.producto_usado_cantidad / 1000).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L`
+                : `${(op.producto_usado_cantidad || 0).toLocaleString()} un.`;
+
             detailsContentHTML = `
-                <div class="p-4 bg-gray-100 grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                <div class="p-4 bg-gray-100 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div><strong>Tipo de Producto:</strong><br>${op.metodo_fumigacion === 'liquido' ? 'Líquido' : 'Pastillas'}</div>
                     <div><strong>Tratamiento:</strong><br>${op.tratamiento || 'N/A'}</div>
                     <div><strong>Tn. en Registro:</strong><br>${op.toneladas ? op.toneladas.toLocaleString() + ' tn' : 'N/A'}</div>
-                    <div><strong>Producto Aplicado:</strong><br>${(op.producto_usado_cantidad || 0).toLocaleString()} ${op.metodo_fumigacion === 'liquido' ? 'cm³' : 'un.'}</div>
+                    <div><strong>Producto Aplicado:</strong><br>${productoAplicado}</div>
                 </div>
             `;
         } else if (op.tipo_registro === 'muestreo') {
