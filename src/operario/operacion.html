@@ -8,77 +8,106 @@
   <link rel="stylesheet" href="../common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  <style>
+    /* Estilo para la barra de progreso */
+    progress[value] {
+      --color: #53d22b; /* Color verde principal */
+      --background: #e5e7eb; /* Color de fondo gris */
+
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      border: none;
+      width: 100%;
+      height: 8px;
+      border-radius: 9999px;
+      background: var(--background);
+      overflow: hidden;
+    }
+    progress[value]::-webkit-progress-bar {
+      border-radius: 9999px;
+      background: var(--background);
+    }
+    progress[value]::-webkit-progress-value {
+      border-radius: 0;
+      background: var(--color);
+    }
+    progress[value]::-moz-progress-bar {
+      border-radius: 0;
+      background: var(--color);
+    }
+  </style>
 </head>
-<body class="bg-[var(--background-color)] text-[var(--text-primary)]">
+<body class="bg-gray-50 text-gray-800">
   <div class="relative flex min-h-screen flex-col overflow-x-hidden">
     <header id="header"></header>
-    <main class="px-4 sm:px-8 md:px-16 flex flex-1 justify-center py-8">
-      <div class="flex flex-col w-full max-w-3xl">
-        <div class="mb-8">
+    <main class="px-4 sm:px-8 flex flex-1 justify-center py-8">
+      <div class="flex flex-col w-full max-w-2xl">
+        <div class="mb-6 text-center">
           <h2 class="text-3xl font-bold">Operación en Curso</h2>
           <p class="text-gray-500 text-base mt-1">Detalles de la tarea actual.</p>
         </div>
-        <div class="space-y-6 bg-white p-6 sm:p-8 rounded-xl shadow-lg border">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <div class="space-y-6 bg-white p-8 rounded-xl shadow-lg border">
+          <div class="grid grid-cols-2 gap-x-6 gap-y-4">
             <div>
-              <h3 class="text-sm font-semibold uppercase text-gray-500 mb-1">Cliente</h3>
+              <h3 class="text-xs font-semibold uppercase text-gray-500 tracking-wider">Cliente</h3>
               <p class="text-lg font-medium" id="cliente">Cargando...</p>
             </div>
             <div>
-              <h3 class="text-sm font-semibold uppercase text-gray-500 mb-1">Fecha de Inicio</h3>
+              <h3 class="text-xs font-semibold uppercase text-gray-500 tracking-wider">Fecha de Inicio</h3>
               <p class="text-lg font-medium" id="fecha">Cargando...</p>
             </div>
              <div>
-              <h3 class="text-sm font-semibold uppercase text-gray-500 mb-1">Mercadería</h3>
+              <h3 class="text-xs font-semibold uppercase text-gray-500 tracking-wider">Mercadería</h3>
               <p class="text-lg font-medium" id="mercaderia">Cargando...</p>
             </div>
             <div>
-              <h3 class="text-sm font-semibold uppercase text-gray-500 mb-1">Depósito</h3>
+              <h3 class="text-xs font-semibold uppercase text-gray-500 tracking-wider">Depósito</h3>
               <p class="text-lg font-medium" id="ubicacion">Cargando...</p>
             </div>
           </div>
           
           <div class="pt-4 border-t">
-            <h3 class="text-sm font-semibold uppercase text-gray-500 mb-2">Progreso del Checklist</h3>
+            <h3 class="text-xs font-semibold uppercase text-gray-500 tracking-wider mb-2">Progreso del Checklist</h3>
             <div class="flex items-center justify-between mb-1">
               <p class="text-gray-600 text-sm font-medium">Completado</p>
-              <p class="text-green-600 text-sm font-bold" id="progreso">0/4</p>
+              <p class="text-sm font-bold" id="progreso" style="color: var(--primary-color);">0/4</p>
             </div>
-            <progress class="w-full h-2 rounded-lg" max="100" value="0" id="progressBar"></progress>
-            <div class="mt-4">
-              <button class="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-gray-100 text-gray-800 text-sm font-semibold hover:bg-gray-200" id="btnChecklist">
-                <span class="material-icons text-lg">checklist</span>
+            <progress class="w-full" max="100" value="0" id="progressBar"></progress>
+            <div class="mt-3">
+              <button class="text-sm font-semibold text-gray-600 hover:text-gray-900 flex items-center gap-2" id="btnChecklist">
+                <span class="material-icons text-lg">edit</span>
                 <span>Ver / Completar Checklist</span>
               </button>
             </div>
           </div>
 
           <div class="pt-4 border-t grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button class="flex w-full items-center justify-center rounded-lg h-12 px-5 bg-blue-500 text-white text-base font-bold hover:bg-blue-600" id="btnMovimiento">
-              <span class="material-icons mr-2">camera_alt</span>
+            <button class="btn btn-secondary text-base" id="btnMovimiento">
+              <span class="material-icons text-lg ">camera_alt</span>
               <span>Registrar Movimiento</span>
             </button>
-            <button class="flex w-full items-center justify-center rounded-lg h-12 px-5 bg-gray-700 text-white text-base font-bold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed" id="btnProducto" disabled>
-              <span class="material-icons mr-2">science</span>
+            <button class="btn btn-primary  text-base" id="btnProducto" disabled>
+              <span class="material-icons text-lg">science</span>
               <span>Aplicar Producto</span>
             </button>
           </div>
           
           <div class="pt-4 border-t">
-            <button class="flex w-full items-center justify-center rounded-lg h-12 px-5 bg-red-600 text-white text-base font-bold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed" id="btnEnviar" disabled>
-              <span class="material-icons mr-2">check_circle</span>
+            <button class="btn btn-danger w-full text-base" id="btnEnviar" disabled>
+              <span class="material-icons text-lg">check_circle</span>
               <span>Finalizar Operación</span>
             </button>
             <p id="finalizarMsg" class="text-xs text-center text-red-500 mt-2">Complete el checklist y registre al menos una aplicación de producto para poder finalizar.</p>
           </div>
+        </div>
 
-          <div class="pt-4 border-t">
-            <button class="flex w-full items-center justify-center rounded-lg h-12 px-5 bg-gray-200 text-gray-800 text-base font-bold hover:bg-gray-300" id="btnVolver">
-              <span class="material-icons mr-2">arrow_back</span>
+        <div class="mt-6">
+            <button class="btn btn-secondary w-full text-base" id="btnVolver">
+              <span class="material-icons text-lg">arrow_back</span>
               <span class="truncate">Volver a Operaciones</span>
             </button>
-          </div>
-
         </div>
       </div>
     </main>

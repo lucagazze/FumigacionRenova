@@ -12,13 +12,47 @@ const btnGuardar = document.getElementById('btnGuardar');
 const btnText = document.getElementById('btnText');
 const spinner = document.getElementById('spinner');
 
+let filesToUpload = [];
+
+function renderPreviews() {
+    previewContainer.innerHTML = '';
+    filesToUpload.forEach((file, index) => {
+        const previewURL = URL.createObjectURL(file);
+        let previewElement;
+        const container = document.createElement('div');
+        container.className = 'relative group';
+
+        if (file.type.startsWith('image/')) {
+            previewElement = `<img src="${previewURL}" class="h-28 w-full object-cover rounded-lg" alt="Vista previa">`;
+        } else {
+            previewElement = `<video src="${previewURL}" class="h-28 w-full object-cover rounded-lg"></video>`;
+        }
+        
+        container.innerHTML = `
+            ${previewElement}
+            <button type="button" data-index="${index}" class="absolute top-1 right-1 bg-red-600 text-white rounded-full h-6 w-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity delete-btn">
+                <span class="material-icons text-sm">close</span>
+            </button>
+        `;
+        previewContainer.appendChild(container);
+    });
+}
+
 mediaFileInput.addEventListener('change', (event) => {
-    const file = event.target.files[0];
-    if (!file) { previewContainer.innerHTML = ''; return; }
-    const previewURL = URL.createObjectURL(file);
-    previewContainer.innerHTML = file.type.startsWith('image/')
-        ? `<img src="${previewURL}" class="max-h-48 rounded-lg mx-auto" alt="Vista previa">`
-        : `<video src="${previewURL}" class="max-h-48 rounded-lg mx-auto" controls></video>`;
+    const newFiles = Array.from(event.target.files);
+    filesToUpload.push(...newFiles);
+    renderPreviews();
+    // Resetear el input para permitir seleccionar los mismos archivos si se eliminan
+    mediaFileInput.value = ''; 
+});
+
+previewContainer.addEventListener('click', (e) => {
+    const deleteButton = e.target.closest('.delete-btn');
+    if (deleteButton) {
+        const indexToRemove = parseInt(deleteButton.dataset.index, 10);
+        filesToUpload.splice(indexToRemove, 1);
+        renderPreviews();
+    }
 });
 
 form.addEventListener('submit', async (e) => {
@@ -26,12 +60,10 @@ form.addEventListener('submit', async (e) => {
     
     const operacionId = localStorage.getItem('operacion_actual');
     const user = getUser();
-    const file = mediaFileInput.files[0];
     const observacion = document.getElementById('observacion').value;
-    const toneladasMovidas = document.getElementById('toneladasMovidas').value;
 
-    if (!operacionId || !user || !file || !observacion) {
-        alert('Faltan datos. Asegúrese de tener una operación activa, seleccionado un archivo y escrito una observación.');
+    if (!operacionId || !user || filesToUpload.length === 0 || !observacion) {
+        alert('Faltan datos. Asegúrese de tener una operación activa, seleccionado al menos un archivo y escrito una observación.');
         return;
     }
 
@@ -40,12 +72,6 @@ form.addEventListener('submit', async (e) => {
     spinner.classList.remove('hidden');
 
     try {
-        const filePath = `movimientos/${operacionId}/${Date.now()}-${file.name}`;
-        const { error: uploadError } = await supabase.storage.from('movimientos-media').upload(filePath, file);
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage.from('movimientos-media').getPublicUrl(filePath);
-        
         const { data: opData } = await supabase.from('operaciones').select('*').eq('id', operacionId).single();
         if (!opData) throw new Error("No se pudo obtener la operación original.");
 
@@ -57,19 +83,31 @@ form.addEventListener('submit', async (e) => {
             estado: 'en curso',
             tipo_registro: 'movimiento',
             operario_nombre: user.name,
-            toneladas: toneladasMovidas ? parseFloat(toneladasMovidas) : null,
-            metodo_fumigacion: opData.metodo_fumigacion
         }).select().single();
         
-        if(insertOpError) throw insertOpError;
+        if (insertOpError) throw insertOpError;
 
-        await supabase.from('movimientos').insert({
-            id: nuevoRegistroOp.id, // Usar el mismo ID para la relación 1 a 1
-            operacion_id: operacionId,
-            observacion,
-            media_url: urlData.publicUrl,
-            toneladas_movidas: toneladasMovidas ? parseFloat(toneladasMovidas) : null,
+        const uploadPromises = filesToUpload.map(file => {
+            const cleanFileName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+            const filePath = `movimientos/${nuevoRegistroOp.id}/${Date.now()}-${cleanFileName}`;
+            return supabase.storage.from('movimientos-media').upload(filePath, file);
         });
+        
+        const uploadResults = await Promise.all(uploadPromises);
+        
+        const mediaUrls = uploadResults.map(result => {
+            if (result.error) throw result.error;
+            const { data } = supabase.storage.from('movimientos-media').getPublicUrl(result.data.path);
+            return data.publicUrl;
+        });
+
+        const { error: insertMovimientoError } = await supabase.from('movimientos').insert({
+            id: nuevoRegistroOp.id,
+            observacion,
+            media_url: mediaUrls,
+        });
+
+        if (insertMovimientoError) throw insertMovimientoError;
 
         alert('Movimiento registrado con éxito.');
         window.location.href = 'operacion.html';

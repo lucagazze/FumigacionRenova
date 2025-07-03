@@ -15,26 +15,22 @@
       <div class="flex flex-col w-full max-w-2xl py-5 space-y-6">
         <div class="p-4">
           <h2 class="text-3xl font-bold">Registrar Movimiento</h2>
-          <p class="text-gray-500 text-sm mt-1">Sube una foto o video y añade los detalles del movimiento.</p>
+          <p class="text-gray-500 text-sm mt-1">Sube una o varias fotos/videos y añade los detalles del movimiento.</p>
         </div>
         <div class="bg-white rounded-xl shadow-lg p-6 border">
           <form id="formMovimiento" class="space-y-4">
-            <div>
-              <label for="toneladasMovidas" class="block font-semibold mb-1">Toneladas Movidas (Opcional)</label>
-              <input type="number" id="toneladasMovidas" class="input-field" placeholder="Ej: 1500">
-            </div>
             <div>
               <label for="observacion" class="block font-semibold mb-1">Observación</label>
               <textarea id="observacion" class="input-field min-h-[100px]" placeholder="Ej: Llenado de silo desde camiones." required></textarea>
             </div>
             <div>
-              <label for="mediaFile" class="block font-semibold mb-1">Archivo (Foto o Video)</label>
-              <input type="file" id="mediaFile" accept="image/*,video/*" class="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-gray-100 hover:file:bg-gray-200" required>
-              <div id="preview" class="mt-4"></div>
+              <label for="mediaFile" class="block font-semibold mb-1">Archivos (Fotos o Videos)</label>
+              <input type="file" id="mediaFile" accept="image/*,video/*" class="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-gray-100 hover:file:bg-gray-200" required multiple>
+              <div id="preview" class="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
             </div>
             <div class="flex justify-end gap-4 pt-4">
-                <button type="button" id="btnVolver" class="bg-gray-200 rounded-lg h-12 px-6 font-bold">Volver</button>
-                <button type="submit" id="btnGuardar" class="bg-blue-500 text-white rounded-lg h-12 px-6 font-bold flex items-center gap-2">
+                <button type="button" id="btnVolver" class="btn btn-secondary">Volver</button>
+                <button type="submit" id="btnGuardar" class="btn btn-primary flex items-center gap-2">
                     <span id="btnText">Guardar Movimiento</span>
                     <div id="spinner" class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin hidden"></div>
                 </button>

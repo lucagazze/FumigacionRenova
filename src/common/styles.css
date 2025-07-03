@@ -1,5 +1,5 @@
 :root {
-  --primary-color: #22c55e;
+  --primary-color: #53d22b;
   --secondary-color: #f0fdf4;
   --text-primary: #1f2937;
   --text-secondary: #4b5563;
@@ -40,21 +40,22 @@ tr.is-open .expand-icon {
   @apply w-full rounded-lg border-gray-300 bg-white text-gray-800 shadow-sm focus:ring-2 focus:ring-green-300 focus:border-green-500 h-11 px-4 text-sm;
 }
 .input-field-with-icon {
-  @apply pl-10; /* Padding izquierdo para dejar espacio al ícono */
+  @apply pl-10;
 }
 
-/* Estilos de botones */
+/* --- ESTILOS DE BOTONES CORREGIDOS --- */
 .btn {
-  @apply font-semibold transition-all duration-200 rounded-lg py-2.5 px-5 text-sm inline-flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md disabled:hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2;
+  @apply font-semibold transition-all duration-200 rounded-lg py-2.5 px-5 text-base inline-flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2;
 }
 .btn-primary {
-  @apply btn bg-green-500 text-white hover:bg-green-600 focus:ring-green-500;
+  @apply btn text-white focus:ring-[#53d22b] hover:opacity-90;
+  background-color: #53d22b;
 }
 .btn-secondary {
-  @apply btn bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-300;
+  @apply btn bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400;
 }
 .btn-danger {
-  @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-600;
+  @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-700;
 }
 
 /* Estilos de silo */
@@ -74,6 +75,6 @@ tr.is-open .expand-icon {
   height: 20px;
   border: 2px solid rgba(0,0,0,.1);
   border-radius: 50%;
-  border-top-color: #4b5563; /* text-secondary */
+  border-top-color: #4b5563;
   animation: spin 0.8s ease-in-out infinite;
 }

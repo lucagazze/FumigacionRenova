@@ -75,40 +75,44 @@ function renderOperacionesDesplegables(container, operaciones, isAdmin) {
         mainRowCells.push(`<td class="px-4 py-4 text-center"><span class="material-icons expand-icon">expand_more</span></td>`);
         const mainRow = `<tr class="cursor-pointer hover:bg-gray-50 border-b" data-toggle-details="details-${op.id}">${mainRowCells.join('')}</tr>`;
         
-        // --- LÓGICA CONDICIONAL PARA LOS DETALLES ---
         let detailsContentHTML = '';
 
         if (op.tipo_registro === 'movimiento') {
-            const movimiento = op.movimientos && op.movimientos.length > 0 ? op.movimientos[0] : null;
-            let mediaHTML = '<p><strong>Adjunto:</strong> Ninguno</p>';
-            if (movimiento && movimiento.media_url) {
-                const url = movimiento.media_url;
-                if (url.endsWith('.jpg') || url.endsWith('.jpeg') || url.endsWith('.png') || url.endsWith('.gif')) {
-                    mediaHTML = `<img src="${url}" class="mt-2 max-w-xs md:max-w-sm rounded-lg shadow-md" alt="Adjunto">`;
-                } else {
-                    mediaHTML = `<video src="${url}" class="mt-2 max-w-xs md:max-w-sm rounded-lg shadow-md" controls></video>`;
-                }
+            const movimiento = op.movimientos;
+            let mediaHTML = '';
+            if (movimiento && Array.isArray(movimiento.media_url) && movimiento.media_url.length > 0) {
+                mediaHTML = movimiento.media_url.map(url => {
+                    const isImage = ['.jpg', '.jpeg', '.png', '.gif'].some(ext => url.toLowerCase().includes(ext));
+                    if (isImage) {
+                        return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="block group"><img src="${url}" class="h-32 w-full object-cover rounded-lg shadow-md border group-hover:shadow-xl transition-shadow" alt="Adjunto"></a>`;
+                    } else {
+                        return `<video src="${url}" class="h-32 w-full object-cover rounded-lg shadow-md border bg-black" controls></video>`;
+                    }
+                }).join('');
             }
+
             detailsContentHTML = `
-                <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div class="p-4 space-y-4 text-sm">
                     <div>
-                        <p><strong>Observación del movimiento:</strong></p>
-                        <p class="mt-1 p-2 bg-gray-100 rounded">${movimiento?.observacion || 'Sin observación.'}</p>
+                        <p class="font-semibold">Observación del movimiento:</p>
+                        <p class="mt-1 p-2 bg-gray-100 rounded break-words">${movimiento?.observacion || 'Sin observación.'}</p>
                     </div>
                     <div>
-                        ${mediaHTML}
+                        <p class="font-semibold">Archivos Adjuntos:</p>
+                        <div class="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                            ${mediaHTML || '<p class="col-span-full text-gray-500">No hay archivos adjuntos.</p>'}
+                        </div>
                     </div>
                 </div>
             `;
         } else {
-            // --- VISTA DE DETALLE POR DEFECTO PARA LOS DEMÁS TIPOS ---
             const tnRegistro = op.toneladas ? `${op.toneladas.toLocaleString()} tn` : 'N/A';
             const productoAplicado = op.tipo_registro === 'producto' ? `${(op.producto_usado_cantidad || 0).toLocaleString()} ${op.metodo_fumigacion === 'liquido' ? 'cm³' : 'un.'}` : 'N/A';
             const tnAcumuladas = op.tipo_registro === 'producto' ? `${(recordSpecificTotals.get(op.id) || 0).toLocaleString()} tn` : 'N/A';
             
             let vencimientoLimpieza = 'N/A';
             let vencimientoClass = 'text-gray-700';
-            if(op.depositos && op.depositos.limpiezas.length > 0){
+            if(op.depositos && op.depositos.limpiezas && op.depositos.limpiezas.length > 0){
                 const ultimaGarantia = op.depositos.limpiezas.reduce((a, b) => new Date(a.fecha_garantia_limpieza) > new Date(b.fecha_garantia_limpieza) ? a : b);
                 if(ultimaGarantia.fecha_garantia_limpieza) {
                     const fechaVenc = new Date(ultimaGarantia.fecha_garantia_limpieza + 'T00:00:00');

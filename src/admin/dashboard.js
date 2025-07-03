@@ -13,6 +13,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const silosEnCursoContainer = document.getElementById('silosEnCursoContainer');
     const filtrosForm = document.getElementById('filtrosRegistro');
     const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltros');
+    const filtroFechaInput = document.getElementById('filtroFecha');
+
+    // Inicializar el selector de rango de fechas
+    $(filtroFechaInput).daterangepicker({
+        autoUpdateInput: false,
+        opens: 'left',
+        locale: {
+            cancelLabel: 'Limpiar',
+            applyLabel: 'Aplicar',
+            fromLabel: 'Desde',
+            toLabel: 'Hasta',
+            format: 'DD/MM/YYYY'
+        }
+    });
+
+    $(filtroFechaInput).on('apply.daterangepicker', function(ev, picker) {
+        $(this).val(picker.startDate.format('DD/MM/YYYY') + ' - ' + picker.endDate.format('DD/MM/YYYY'));
+        aplicarFiltros();
+    });
+
+    $(filtroFechaInput).on('cancel.daterangepicker', function(ev, picker) {
+        $(this).val('');
+        aplicarFiltros();
+    });
 
     async function renderSilosEnCurso() {
         const { data: opsEnCurso, error } = await supabase.from('operaciones').select(`toneladas, tipo_registro, depositos (id, nombre, tipo, capacidad_toneladas, clientes (nombre))`).eq('estado', 'en curso');
@@ -30,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         opsEnCurso.forEach(op => {
             if (!op.depositos) return;
             const key = op.depositos.id;
-            let currentData = toneladasPorDeposito.get(key) || { deposito: op.depositos, totalToneladas: 0 };
+            let currentData = toneladasPorDeposito.get(key) || { deposito: op.depositos, totalToneladas: 0, operacionOriginalId: op.operacion_original_id || op.id, cliente: op.clientes };
             if ((op.tipo_registro === 'producto' || op.tipo_registro === 'movimiento') && typeof op.toneladas === 'number') {
                 currentData.totalToneladas += op.toneladas;
             }
@@ -71,50 +95,74 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function poblarFiltros() {
-        const { data: mercaderias } = await supabase.from('mercaderias').select('nombre').order('nombre');
-        const { data: depositos } = await supabase.from('depositos').select('id, nombre, tipo, clientes(nombre)').order('nombre');
-        
-        const filtroMercaderia = document.getElementById('filtroMercaderia');
-        filtroMercaderia.innerHTML = '<option value="">Todas</option>';
-        mercaderias.forEach(m => filtroMercaderia.innerHTML += `<option value="${m.nombre}">${m.nombre}</option>`);
+        // Poblar Clientes
+        const { data: clientes } = await supabase.from('clientes').select('id, nombre').order('nombre');
+        const filtroCliente = document.getElementById('filtroCliente');
+        if (filtroCliente) {
+            filtroCliente.innerHTML = '<option value="">Todos</option>';
+            clientes.forEach(c => filtroCliente.innerHTML += `<option value="${c.id}">${c.nombre}</option>`);
+        }
 
+        // Poblar Depósitos (Silos y Celdas)
+        const { data: depositos } = await supabase.from('depositos').select('id, nombre, tipo, clientes(nombre)').order('nombre');
         const filtroSiloCelda = document.getElementById('filtroSiloCelda');
-        filtroSiloCelda.innerHTML = '<option value="">Todos</option>';
-        depositos.forEach(d => filtroSiloCelda.innerHTML += `<option value="${d.id}">${d.nombre} (${d.tipo}) - ${d.clientes.nombre}</option>`);
+        if (filtroSiloCelda) {
+            filtroSiloCelda.innerHTML = '<option value="">Todos</option>';
+            depositos.forEach(d => filtroSiloCelda.innerHTML += `<option value="${d.id}">${d.nombre} (${d.tipo}) - ${d.clientes.nombre}</option>`);
+        }
     }
 
     async function aplicarFiltros() {
-        operacionesContainer.innerHTML = `<p class="text-center p-8">Cargando operaciones...</p>`;
+        operacionesContainer.innerHTML = '<div class="text-center p-8"><div class="spinner"></div><p class="mt-2 text-gray-500">Cargando registros...</p></div>';
         let operaciones = await getOperaciones();
         
-        const cliente = document.getElementById('filtroCliente').value.toLowerCase();
-        const mercaderia = document.getElementById('filtroMercaderia').value;
-        const metodo = document.getElementById('filtroMetodo').value;
-        const fechaDesde = document.getElementById('filtroFechaDesde').value;
-        const fechaHasta = document.getElementById('filtroFechaHasta').value;
-        const siloCeldaId = document.getElementById('filtroSiloCelda').value;
+        const clienteId = document.getElementById('filtroCliente').value;
+        const tipo = document.getElementById('filtroTipo').value;
         const estado = document.getElementById('filtroEstado').value;
+        const siloCeldaId = document.getElementById('filtroSiloCelda').value;
+        
+        const dateRange = $(filtroFechaInput).data('daterangepicker');
+        const fechaDesde = dateRange.startDate.isValid() ? dateRange.startDate.toDate() : null;
+        const fechaHasta = dateRange.endDate.isValid() ? dateRange.endDate.toDate() : null;
 
-        if (cliente) operaciones = operaciones.filter(op => op.clientes?.nombre.toLowerCase().includes(cliente));
-        if (mercaderia) operaciones = operaciones.filter(op => op.mercaderias?.nombre === mercaderia);
-        if (metodo) operaciones = operaciones.filter(op => op.metodo_fumigacion === metodo);
-        if (siloCeldaId) operaciones = operaciones.filter(op => op.deposito_id === siloCeldaId);
+        if (clienteId) operaciones = operaciones.filter(op => op.cliente_id === clienteId);
+        if (tipo) operaciones = operaciones.filter(op => op.tipo_registro === tipo);
         if (estado) operaciones = operaciones.filter(op => op.estado === estado);
-        if (fechaDesde) operaciones = operaciones.filter(op => new Date(op.created_at) >= new Date(fechaDesde));
-        if (fechaHasta) operaciones = operaciones.filter(op => new Date(op.created_at) <= new Date(fechaHasta + 'T23:59:59'));
+        if (siloCeldaId) operaciones = operaciones.filter(op => op.deposito_id === siloCeldaId);
+        
+        if (fechaDesde) {
+            fechaDesde.setHours(0, 0, 0, 0);
+            operaciones = operaciones.filter(op => new Date(op.created_at) >= fechaDesde);
+        }
+        if (fechaHasta) {
+            fechaHasta.setHours(23, 59, 59, 999);
+            operaciones = operaciones.filter(op => new Date(op.created_at) <= fechaHasta);
+        }
 
         renderOperaciones(operacionesContainer, operaciones, true);
     }
 
     toggleFiltrosBtn.addEventListener('click', () => filtrosContainer.classList.toggle('hidden'));
-    filtrosForm.addEventListener('input', aplicarFiltros);
-    btnLimpiarFiltros.addEventListener('click', () => { filtrosForm.reset(); aplicarFiltros(); });
     
+    filtrosForm.addEventListener('change', aplicarFiltros);
+
+    btnLimpiarFiltros.addEventListener('click', () => { 
+        filtrosForm.reset();
+        $(filtroFechaInput).data('daterangepicker').setStartDate(moment());
+        $(filtroFechaInput).data('daterangepicker').setEndDate(moment());
+        $(filtroFechaInput).val('');
+        
+        aplicarFiltros(); 
+    });
+
     operacionesContainer.addEventListener('click', (e) => {
         const headerRow = e.target.closest('tr[data-toggle-details]');
         if (headerRow) {
             headerRow.classList.toggle('is-open');
-            document.getElementById(headerRow.dataset.toggleDetails)?.classList.toggle('hidden');
+            const detailsElement = document.getElementById(headerRow.dataset.toggleDetails);
+            if (detailsElement) {
+                detailsElement.classList.toggle('hidden');
+            }
         }
     });
 
