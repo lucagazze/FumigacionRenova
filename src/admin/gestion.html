@@ -35,8 +35,9 @@
           </div>
 
           <div class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-xl font-semibold mb-4">Depósitos (Silos/Celdas)</h2>
+            <h2 id="depositoFormTitle" class="text-xl font-semibold mb-4">Añadir Depósito</h2>
             <form id="formDeposito" class="space-y-4 mb-4">
+              <input type="hidden" id="depositoId">
               <input type="text" id="nombreDeposito" placeholder="Nombre del depósito (Ej: 301)" class="input-field w-full" required>
               <select id="tipoDeposito" class="input-field w-full">
                 <option value="silo">Silo</option>
@@ -46,8 +47,12 @@
                 <option value="">Seleccionar Cliente</option>
               </select>
               <input type="number" id="capacidadDeposito" placeholder="Capacidad en Toneladas" class="input-field w-full" required>
-              <button type="submit" class="btn-primary w-full py-3 rounded-lg">Añadir Depósito</button>
+              <div class="flex gap-2">
+                <button type="submit" class="btn-primary w-full py-3 rounded-lg">Guardar Depósito</button>
+                <button type="button" id="btnCancelarEdicion" class="btn-secondary w-full py-3 rounded-lg hidden">Cancelar</button>
+              </div>
             </form>
+            <h2 class="text-xl font-semibold mb-4 border-t pt-4">Depósitos Existentes</h2>
             <div id="listaDepositos" class="space-y-2 max-h-60 overflow-y-auto"></div>
           </div>
 

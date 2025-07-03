@@ -19,6 +19,8 @@ export function renderHeader() {
         <a class="${getLinkClasses('stock.html')}" href="stock.html">Stock</a>
         <a class="${getLinkClasses('gestion.html')}" href="gestion.html">Gestión</a>
         <a class="${getLinkClasses('limpieza.html')}" href="limpieza.html">Limpieza</a>
+        <a class="${getLinkClasses('muestreos.html')}" href="muestreos.html">Muestreos</a>
+        <a class="${getLinkClasses('usuarios.html')}" href="usuarios.html">Usuarios</a>
     `;
   } else if (user?.role === 'operario') {
     navLinks = `
@@ -47,8 +49,6 @@ export function renderHeader() {
     </header>
   `;
 }
-
-// Lógica de logout y menú móvil (sin cambios)
 
 document.addEventListener('click', (e) => {
   const handleLogout = () => {

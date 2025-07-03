@@ -8,7 +8,7 @@ document.getElementById('header').innerHTML = renderHeader();
 // --- Elementos del DOM ---
 const btnChecklist = document.getElementById('btnChecklist');
 const btnProducto = document.getElementById('btnProducto');
-const btnMovimiento = document.getElementById('btnMovimiento');
+const btnMuestreo = document.getElementById('btnMuestreo');
 const btnEnviar = document.getElementById('btnEnviar');
 const btnVolver = document.getElementById('btnVolver');
 const btnCancelar = document.getElementById('btnCancelar');
@@ -16,7 +16,6 @@ const btnCancelar = document.getElementById('btnCancelar');
 const progressBar = document.getElementById('progressBar');
 const progressText = document.getElementById('progressText');
 const progressLabel = document.getElementById('progressLabel');
-const productoHelper = document.getElementById('productoHelper');
 
 async function getOperacionActual() {
     const id = localStorage.getItem('operacion_actual');
@@ -53,7 +52,7 @@ async function renderOperacion() {
     // Lógica del Checklist y la Barra de Progreso
     const checklist = op.checklist_items || [];
     const completados = checklist.filter(i => i.completado).length;
-    const totalItems = checklist.length || 4; // Asumir 4 si no hay items
+    const totalItems = checklist.length || 4;
     const porcentaje = totalItems > 0 ? (completados / totalItems) * 100 : 0;
     const checklistCompleto = completados === totalItems && totalItems > 0;
 
@@ -71,18 +70,17 @@ async function renderOperacion() {
 
     // Habilitar/deshabilitar botones según el progreso del checklist
     btnProducto.disabled = !checklistCompleto;
-    btnMovimiento.disabled = !checklistCompleto;
+    btnMuestreo.disabled = !checklistCompleto;
     btnEnviar.disabled = !checklistCompleto;
-    productoHelper.classList.toggle('hidden', !checklistCompleto);
     
     // Ocultar botón de cancelar si ya hay acciones registradas
-    const { data: historialAcciones } = await supabase
+    const { data: historialAcciones, count } = await supabase
       .from('operaciones')
       .select('id', { count: 'exact' })
       .eq('operacion_original_id', op.id)
-      .or('tipo_registro.eq.producto,tipo_registro.eq.movimiento');
+      .or('tipo_registro.eq.producto,tipo_registro.eq.muestreo');
       
-    if (historialAcciones.length > 0) {
+    if (count > 0) {
         btnCancelar.classList.add('hidden');
     } else {
         btnCancelar.classList.remove('hidden');
@@ -111,7 +109,7 @@ async function handleCancelarOperacion() {
 // --- Event Listeners ---
 btnChecklist.addEventListener('click', () => { window.location.href = 'checklist.html'; });
 btnProducto.addEventListener('click', () => { window.location.href = 'producto.html'; });
-btnMovimiento.addEventListener('click', () => { window.location.href = 'movimiento.html'; });
+btnMuestreo.addEventListener('click', () => { window.location.href = 'muestreo.html'; });
 btnEnviar.addEventListener('click', () => { window.location.href = 'finalizar.html'; });
 btnVolver.addEventListener('click', () => { window.location.href = 'home.html'; });
 btnCancelar.addEventListener('click', handleCancelarOperacion);

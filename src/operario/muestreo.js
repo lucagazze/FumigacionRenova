@@ -5,7 +5,7 @@ import { supabase } from '../common/supabase.js';
 requireRole('operario');
 document.getElementById('header').innerHTML = renderHeader();
 
-const form = document.getElementById('formMovimiento');
+const form = document.getElementById('formMuestreo');
 const mediaFileInput = document.getElementById('mediaFile');
 const previewContainer = document.getElementById('preview');
 const btnGuardar = document.getElementById('btnGuardar');
@@ -80,40 +80,39 @@ form.addEventListener('submit', async (e) => {
             deposito_id: opData.deposito_id,
             mercaderia_id: opData.mercaderia_id,
             estado: 'en curso',
-            tipo_registro: 'movimiento',
-            operario_nombre: user.name,
+            tipo_registro: 'muestreo',
+            operario_nombre: `${user.nombre} ${user.apellido}`, // CORREGIDO
         }).select().single();
         
         if (insertOpError) throw insertOpError;
 
         const uploadPromises = filesToUpload.map(file => {
             const cleanFileName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-            const filePath = `movimientos/${nuevoRegistroOp.id}/${Date.now()}-${cleanFileName}`;
-            return supabase.storage.from('movimientos-media').upload(filePath, file);
+            const filePath = `muestreos-media/${nuevoRegistroOp.id}/${Date.now()}-${cleanFileName}`;
+            return supabase.storage.from('muestreos-media').upload(filePath, file);
         });
         
         const uploadResults = await Promise.all(uploadPromises);
         
         const mediaUrls = uploadResults.map(result => {
             if (result.error) throw result.error;
-            const { data } = supabase.storage.from('movimientos-media').getPublicUrl(result.data.path);
+            const { data } = supabase.storage.from('muestreos-media').getPublicUrl(result.data.path);
             return data.publicUrl;
         });
 
-        // --- CORRECCIÓN: Se cambia 'id' por 'operacion_id' ---
-        const { error: insertMovimientoError } = await supabase.from('movimientos').insert({
+        const { error: insertMuestreoError } = await supabase.from('muestreos').insert({
             operacion_id: nuevoRegistroOp.id,
             observacion,
             media_url: mediaUrls,
         });
 
-        if (insertMovimientoError) throw insertMovimientoError;
+        if (insertMuestreoError) throw insertMuestreoError;
 
-        alert('Movimiento registrado con éxito.');
+        alert('Muestreo registrado con éxito.');
         window.location.href = 'operacion.html';
 
     } catch (error) {
-        console.error('Error al registrar movimiento:', error);
+        console.error('Error al registrar muestreo:', error);
         alert(`Error: ${error.message || 'No se pudo completar la operación.'}`);
     } finally {
         btnGuardar.disabled = false;

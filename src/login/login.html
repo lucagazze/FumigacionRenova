@@ -141,7 +141,7 @@
       border-radius: 8px;
       font-size: 14px;
       margin-bottom: 16px;
-      display: none;
+      /* La clase 'hidden' de Tailwind controlará la visibilidad */
     }
     
     @media (max-width: 640px) {
@@ -167,10 +167,10 @@
         <p class="text-gray-600">Ingresa a tu cuenta para continuar</p>
       </div>
       
-      <div id="errorMessage" class="error-message">
+      <div id="errorMessage" class="error-message hidden">
         <div class="flex items-center">
           <span class="material-icons mr-2">error</span>
-          <span id="errorText">Credenciales incorrectas</span>
+          <span id="errorText"></span>
         </div>
       </div>
       
@@ -220,56 +220,6 @@
       if (preloader) {
         preloader.style.display = 'none';
       }
-    });
-
-    // Mejorar la experiencia de usuario
-    document.addEventListener('DOMContentLoaded', function() {
-      const form = document.getElementById('loginForm');
-      const loginBtn = document.getElementById('loginBtn');
-      const loginText = document.getElementById('loginText');
-      const loadingSpinner = document.getElementById('loadingSpinner');
-      const errorMessage = document.getElementById('errorMessage');
-      
-      // Agregar efectos de focus a los inputs
-      const inputs = document.querySelectorAll('.input-field');
-      inputs.forEach(input => {
-        input.addEventListener('focus', function() {
-          this.parentElement.classList.add('focused');
-        });
-        
-        input.addEventListener('blur', function() {
-          this.parentElement.classList.remove('focused');
-        });
-      });
-      
-      // Manejar el estado de loading del botón
-      form.addEventListener('submit', function(e) {
-        loginBtn.disabled = true;
-        loginText.style.display = 'none';
-        loadingSpinner.style.display = 'block';
-        errorMessage.style.display = 'none';
-        
-        // Simular delay para mejor UX
-        setTimeout(() => {
-          // El login.js manejará la lógica real
-        }, 100);
-      });
-      
-      // Función para mostrar errores
-      window.showLoginError = function(message) {
-        document.getElementById('errorText').textContent = message;
-        errorMessage.style.display = 'block';
-        loginBtn.disabled = false;
-        loginText.style.display = 'block';
-        loadingSpinner.style.display = 'none';
-      };
-      
-      // Función para resetear el botón
-      window.resetLoginButton = function() {
-        loginBtn.disabled = false;
-        loginText.style.display = 'block';
-        loadingSpinner.style.display = 'none';
-      };
     });
   </script>
 </body>

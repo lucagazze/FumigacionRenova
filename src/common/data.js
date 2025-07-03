@@ -4,7 +4,8 @@ export async function getOperaciones() {
   const { data, error } = await supabase
     .from('operaciones')
     .select(`
-      *, 
+      *,
+      eliminado, 
       clientes(nombre), 
       depositos(
         nombre, 
@@ -13,7 +14,7 @@ export async function getOperaciones() {
         limpiezas(fecha_garantia_limpieza)
       ), 
       mercaderias(nombre), 
-      movimientos(observacion, media_url)
+      muestreos(observacion, media_url)
     `)
     .order('created_at', { ascending: false });
 
@@ -46,7 +47,7 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
                 startDate: null,
                 metodo: null,
                 mercaderia: null,
-                tratamiento: null,
+                tratamientos: new Set(),
             });
         }
 
@@ -66,7 +67,7 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
         }
         
         if (op.tipo_registro === 'producto' && op.tratamiento) {
-            summary.tratamiento = op.tratamiento;
+            summary.tratamientos.add(op.tratamiento);
         }
     }
     
@@ -81,7 +82,7 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
         switch(op.tipo_registro) {
             case 'inicial': tipoText = 'Inicio'; tipoClass = 'bg-green-100 text-green-800'; break;
             case 'producto': tipoText = 'Aplicación'; tipoClass = 'bg-blue-100 text-blue-800'; break;
-            case 'movimiento': tipoText = 'Movimiento'; tipoClass = 'bg-yellow-100 text-yellow-800'; break;
+            case 'muestreo': tipoText = 'Muestreo'; tipoClass = 'bg-yellow-100 text-yellow-800'; break;
             case 'finalizacion': tipoText = 'Finalización'; tipoClass = 'bg-red-100 text-red-800'; break;
             default: tipoText = 'N/A'; tipoClass = 'bg-gray-100 text-gray-800';
         }
@@ -145,19 +146,17 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
                     <div><strong>Producto Aplicado:</strong><br>${(op.producto_usado_cantidad || 0).toLocaleString()} ${op.metodo_fumigacion === 'liquido' ? 'cm³' : 'un.'}</div>
                 </div>
             `;
-        } else if (op.tipo_registro === 'movimiento') {
-            // --- CORRECCIÓN: Se extrae el objeto del movimiento de la lista (array) ---
-            const movimiento = op.movimientos && op.movimientos.length > 0 ? op.movimientos[0] : null;
+        } else if (op.tipo_registro === 'muestreo') {
+            const muestreo = op.muestreos && op.muestreos.length > 0 ? op.muestreos[0] : null;
             let mediaHTML = '';
-            // Se comprueba que 'movimiento' exista antes de acceder a sus propiedades
-            if (movimiento && Array.isArray(movimiento.media_url) && movimiento.media_url.length > 0) {
-                mediaHTML = movimiento.media_url.map(url => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="block group"><img src="${url}" class="h-24 w-full object-cover rounded-lg shadow-md border group-hover:shadow-xl transition-shadow" alt="Adjunto"></a>`).join('');
+            if (muestreo && Array.isArray(muestreo.media_url) && muestreo.media_url.length > 0) {
+                mediaHTML = muestreo.media_url.map(url => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="block group"><img src="${url}" class="h-24 w-full object-cover rounded-lg shadow-md border group-hover:shadow-xl transition-shadow" alt="Adjunto"></a>`).join('');
             }
             detailsContentHTML = `
                 <div class="p-4 bg-gray-100 space-y-3 text-sm">
                     <div>
-                        <p class="font-semibold">Observación del movimiento:</p>
-                        <p class="mt-1 p-2 bg-white rounded break-words">${movimiento?.observacion || 'Sin observación.'}</p>
+                        <p class="font-semibold">Observación del muestreo:</p>
+                        <p class="mt-1 p-2 bg-white rounded break-words">${muestreo?.observacion || 'Sin observación.'}</p>
                     </div>
                     <div>
                         <p class="font-semibold">Archivos Adjuntos:</p>
@@ -173,7 +172,7 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
             const durationMs = endDate - startDate;
             const durationHours = Math.floor(durationMs / 3600000);
             const durationMins = Math.round((durationMs % 3600000) / 60000);
-            const tratamiento = summary.tratamiento ? summary.tratamiento.charAt(0).toUpperCase() + summary.tratamiento.slice(1) : 'N/A';
+            const tratamiento = summary.tratamientos.size > 0 ? [...summary.tratamientos].join(', ') : 'N/A';
             const metodo = summary.metodo ? summary.metodo.charAt(0).toUpperCase() + summary.metodo.slice(1) : 'N/A';
 
             detailsContentHTML = `
@@ -182,7 +181,7 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
                     <div class="grid grid-cols-4 gap-4 text-sm">
                         <div><strong>Mercadería:</strong><br>${summary.mercaderia}</div>
                         <div><strong>Método:</strong><br>${metodo}</div>
-                        <div><strong>Tratamiento:</strong><br>${tratamiento}</div>
+                        <div><strong>Tratamiento(s):</strong><br>${tratamiento}</div>
                         <div><strong>Total Toneladas:</strong><br>${summary.totalToneladas.toLocaleString()} tn</div>
                         <div><strong>Total Producto:</strong><br>${summary.totalProducto.toLocaleString()} ${unidadLabel}</div>
                         <div><strong>Inicio:</strong><br>${startDate.toLocaleString('es-AR')}</div>

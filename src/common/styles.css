@@ -138,3 +138,11 @@ tr.is-open .expand-icon {
   border-top-color: #4b5563;
   animation: spin 0.8s ease-in-out infinite;
 }
+
+
+.expand-icon {
+  transition: transform 0.3s ease;
+}
+tr.is-open .expand-icon {
+  transform: rotate(180deg);
+}

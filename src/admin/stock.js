@@ -9,7 +9,24 @@ const stockList = document.getElementById('stock-list');
 const historialStockEl = document.getElementById('historial-stock');
 const formModificarStock = document.getElementById('formModificarStock');
 const tipoProductoSelect = document.getElementById('tipo_producto');
-const unidadContainer = document.getElementById('unidad_container');
+const unidadSelect = document.getElementById('unidad');
+const DENSIDAD_LIQUIDO = 1.2; // kg/L
+
+function updateUnidadOptions() {
+    const tipo = tipoProductoSelect.value;
+    if (tipo === 'pastillas') {
+        unidadSelect.innerHTML = `
+            <option value="kilos">Kilos (Kg)</option>
+            <option value="unidades">Pastillas (unidades)</option>
+        `;
+    } else { // liquido
+        unidadSelect.innerHTML = `
+            <option value="litros">Litros (L)</option>
+            <option value="cm3">Centímetros cúbicos (cm³)</option>
+        `;
+    }
+}
+
 
 async function renderStock() {
   const { data, error } = await supabase.from('stock').select('*');
@@ -26,13 +43,15 @@ async function renderStock() {
       const stockDeposito = data.filter(s => s.deposito === deposito);
       const pastillasStock = stockDeposito.find(s => s.tipo_producto === 'pastillas');
       const liquidoStock = stockDeposito.find(s => s.tipo_producto === 'liquido');
+      const liquidoLitros = (liquidoStock?.cantidad_kg || 0) / DENSIDAD_LIQUIDO;
+      const liquidoCm3 = liquidoLitros * 1000;
 
       stockList.innerHTML += `
         <div class="p-4 border rounded-lg">
             <h3 class="font-bold text-lg">${deposito}</h3>
             <div class="mt-2 space-y-1 text-sm">
                 <p><b>Pastillas:</b> ${pastillasStock?.cantidad_unidades?.toLocaleString() || 0} unidades (~${pastillasStock?.cantidad_kg?.toLocaleString() || 0} Kg)</p>
-                <p><b>Líquido:</b> ${liquidoStock?.cantidad_kg?.toLocaleString() || 0} Kg</p>
+                <p><b>Líquido:</b> ${liquidoCm3.toLocaleString()} cm³ (~${liquidoLitros.toFixed(2)} L)</p>
             </div>
         </div>
       `;
@@ -68,9 +87,14 @@ async function renderHistorialStock() {
       <tbody class="bg-white divide-y divide-gray-200">
         ${data.map(item => {
           const tipoClass = item.tipo_movimiento === 'adicion' ? 'text-green-600' : 'text-red-600';
-          const cantidadDetalle = item.tipo_producto === 'pastillas' 
-            ? `${item.cantidad_unidades_movidas?.toLocaleString()} unidades (${item.cantidad_kg_movido} Kg)` 
-            : `${item.cantidad_kg_movido} Kg`;
+          let cantidadDetalle = '';
+            if (item.tipo_producto === 'pastillas') {
+                cantidadDetalle = `${item.cantidad_unidades_movidas?.toLocaleString()} unidades (${item.cantidad_kg_movido} Kg)`;
+            } else {
+                const litros = (item.cantidad_kg_movido / DENSIDAD_LIQUIDO);
+                const cm3 = litros * 1000;
+                cantidadDetalle = `${cm3.toLocaleString()} cm³ (~${litros.toFixed(2)} L)`;
+            }
 
           return `
             <tr>
@@ -88,9 +112,7 @@ async function renderHistorialStock() {
   historialStockEl.innerHTML = table;
 }
 
-tipoProductoSelect.addEventListener('change', () => {
-    unidadContainer.style.display = tipoProductoSelect.value === 'pastillas' ? 'block' : 'none';
-});
+tipoProductoSelect.addEventListener('change', updateUnidadOptions);
 
 formModificarStock.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -112,12 +134,16 @@ formModificarStock.addEventListener('submit', async (e) => {
         if (unidad === 'kilos') {
             cantidad_kg = cantidad;
             cantidad_unidades = Math.floor(cantidad * 1000 / 3); // 3 gramos por pastilla
-        } else { // pastillas
+        } else { // unidades
             cantidad_unidades = cantidad;
             cantidad_kg = cantidad * 3 / 1000;
         }
     } else { // liquido
-        cantidad_kg = cantidad;
+        if(unidad === 'cm3'){
+            cantidad_kg = (cantidad / 1000) * DENSIDAD_LIQUIDO;
+        } else { // litros
+            cantidad_kg = cantidad * DENSIDAD_LIQUIDO;
+        }
     }
 
     const { data: stockActual, error: fetchError } = await supabase
@@ -139,7 +165,7 @@ formModificarStock.addEventListener('submit', async (e) => {
     const factor = tipo_movimiento === 'adicion' ? 1 : -1;
     
     nuevo_kg += cantidad_kg * factor;
-    if (cantidad_unidades !== null) {
+    if (tipo_producto === 'pastillas') {
         nuevas_unidades += cantidad_unidades * factor;
     }
 
@@ -155,7 +181,7 @@ formModificarStock.addEventListener('submit', async (e) => {
             deposito, 
             tipo_producto, 
             cantidad_kg: nuevo_kg, 
-            cantidad_unidades: nuevas_unidades 
+            cantidad_unidades: tipo_producto === 'pastillas' ? nuevas_unidades : null
         }, { onConflict: 'deposito, tipo_producto' });
     
     if (upsertError) {
@@ -176,7 +202,7 @@ formModificarStock.addEventListener('submit', async (e) => {
     await renderStock();
     await renderHistorialStock();
     formModificarStock.reset();
-    tipoProductoSelect.dispatchEvent(new Event('change')); // Reset UI
+    updateUnidadOptions();
     alert('Movimiento de stock registrado con éxito.');
 });
 
@@ -184,5 +210,5 @@ formModificarStock.addEventListener('submit', async (e) => {
 document.addEventListener('DOMContentLoaded', () => {
     renderStock();
     renderHistorialStock();
-    tipoProductoSelect.dispatchEvent(new Event('change'));
+    updateUnidadOptions();
 });

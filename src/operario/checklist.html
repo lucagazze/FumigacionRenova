@@ -7,6 +7,16 @@
     <link rel="stylesheet" href="../common/styles.css" />
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <style>
+      /* Estilo para asegurar que el botón sea verde */
+      #btnContinuar {
+        background-color: #53d22b !important;
+        color: white !important;
+      }
+      #btnContinuar:hover {
+        opacity: 0.9 !important;
+      }
+    </style>
 </head>
 <body class="bg-gray-50">
   <header id="header"></header>
@@ -19,7 +29,7 @@
       <div id="checklistContainer" class="space-y-3">
         </div>
       <div class="mt-8">
-        <button id="btnContinuar" class="w-full btn-secondary flex items-center justify-center gap-2">
+        <button id="btnContinuar" class="w-full btn flex items-center justify-center gap-2">
           <span>Volver a la Operación</span>
           <span class="material-icons">arrow_forward</span>
         </button>

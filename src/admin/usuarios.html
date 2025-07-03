@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fagaz - Gestión de Usuarios</title>
+  <link rel="stylesheet" href="../common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <header id="header"></header>
+  <main class="flex-1 py-8">
+    <div class="content-container max-w-4xl mx-auto">
+      <h1 class="text-3xl sm:text-4xl font-bold text-black mb-6">Gestión de Usuarios</h1>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+          <h2 class="text-xl font-semibold mb-4" id="form-title">Añadir Nuevo Usuario</h2>
+          <form id="formUsuario" class="space-y-4">
+            <input type="hidden" id="usuarioId">
+            <div>
+              <label for="nombre" class="label-text">Nombre</label>
+              <input type="text" id="nombre" class="input-field" required>
+            </div>
+            <div>
+              <label for="apellido" class="label-text">Apellido</label>
+              <input type="text" id="apellido" class="input-field" required>
+            </div>
+            <div>
+              <label for="email" class="label-text">Email</label>
+              <input type="email" id="email" class="input-field" required>
+            </div>
+            <div>
+              <label for="password" class="label-text">Contraseña</label>
+              <input type="text" id="password" class="input-field" placeholder="Nueva contraseña (opcional al editar)">
+              <p id="password-helper" class="text-xs text-gray-500 mt-1 hidden">La contraseña es obligatoria para usuarios nuevos.</p>
+            </div>
+             <div>
+              <label for="role" class="label-text">Rol</label>
+              <select id="role" class="input-field" required>
+                <option value="operario">Operario</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div class="flex gap-4">
+                <button type="submit" class="btn-primary w-full py-3 rounded-lg">Guardar</button>
+                <button type="button" id="btnCancel" class="btn-secondary w-full py-3 rounded-lg hidden">Cancelar</button>
+            </div>
+          </form>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+          <h2 class="text-xl font-semibold mb-4">Lista de Usuarios</h2>
+          <div id="listaUsuarios" class="space-y-2 max-h-96 overflow-y-auto"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script type="module" src="usuarios.js"></script>
+</body>
+</html>

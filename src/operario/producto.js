@@ -41,7 +41,7 @@ async function setupPage() {
   } else if (metodo === 'liquido') {
       tituloPagina.textContent = 'Registrar Líquido Usado';
       unidadProducto.textContent = 'cm³';
-      depositoFijoInfo.style.display = 'block'; // Mostrar también para líquido
+      depositoFijoInfo.style.display = 'block';
   }
   
   updateCalculations();
@@ -123,13 +123,12 @@ btnRegistrar.addEventListener('click', async () => {
           tipo_producto: 'pastillas',
           cantidad_unidades_movidas: cantidad,
           cantidad_kg_movido: cantidadKg,
-          descripcion: `Uso en operación por ${currentUser.name}`
+          descripcion: `Uso en operación por ${currentUser.nombre} ${currentUser.apellido}`
       }]);
 
   } else if (operacionActual.metodo_fumigacion === 'liquido') {
-      // --- INICIO: Lógica para descontar líquido ---
       const DENSIDAD_LIQUIDO = 1.2; // g/cm³ -> kg/L
-      const cantidadKg = (cantidad * DENSIDAD_LIQUIDO) / 1000; // Convertir cm³ a kg
+      const cantidadKg = (cantidad * DENSIDAD_LIQUIDO) / 1000;
 
       const { data: stockActual, error: fetchError } = await supabase
         .from('stock')
@@ -167,9 +166,8 @@ btnRegistrar.addEventListener('click', async () => {
           tipo_producto: 'liquido',
           cantidad_kg_movido: cantidadKg,
           cantidad_unidades_movidas: null,
-          descripcion: `Uso en operación por ${currentUser.name}`
+          descripcion: `Uso en operación por ${currentUser.nombre} ${currentUser.apellido}`
       }]);
-      // --- FIN: Lógica para descontar líquido ---
   }
 
   const { error: insertError } = await supabase.from('operaciones').insert([{
@@ -182,7 +180,7 @@ btnRegistrar.addEventListener('click', async () => {
     metodo_fumigacion: operacionActual.metodo_fumigacion,
     producto_usado_cantidad: cantidad,
     tipo_registro: 'producto',
-    operario_nombre: currentUser.name,
+    operario_nombre: `${currentUser.nombre} ${currentUser.apellido}`, // CORREGIDO
     tratamiento: tratamiento.value,
     modalidad: modalidad.value,
     toneladas: toneladas
@@ -191,7 +189,6 @@ btnRegistrar.addEventListener('click', async () => {
   if (insertError) {
     alert('Error al guardar el registro de aplicación.');
     console.error(insertError);
-    // Idealmente aquí se haría un rollback del stock si la inserción falla.
     return;
   }
   

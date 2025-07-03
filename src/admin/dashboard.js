@@ -5,62 +5,9 @@ import { supabase } from '../common/supabase.js';
 
 requireRole('admin');
 
-document.addEventListener('DOMContentLoaded', async () => {
-    document.getElementById('header').innerHTML = renderHeader();
-    
-    // --- Selectores del DOM ---
-    const toggleFiltrosBtn = document.getElementById('toggleFiltrosBtn');
-    const filtrosContainer = document.getElementById('filtrosContainer');
-    const operacionesContainer = document.getElementById('operacionesContainer');
-    const filtrosForm = document.getElementById('filtrosRegistro');
-    const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltros');
-    const filtroFechaInput = document.getElementById('filtroFecha');
+// --- Funciones de Renderizado ---
 
-    // --- Carga de datos inicial ---
-    operacionesContainer.innerHTML = '<div class="text-center p-8"><div class="spinner"></div><p class="mt-2 text-gray-500">Cargando registros...</p></div>';
-    const allOperations = await getOperaciones();
-    
-    // --- Renderizado de componentes ---
-    renderSilosEnCurso(allOperations);
-    renderUltimasFinalizadas(allOperations);
-    await poblarFiltros();
-    renderOperaciones(operacionesContainer, allOperations, true);
-
-    // --- Inicialización de Date Range Picker ---
-    $(filtroFechaInput).daterangepicker({
-        autoUpdateInput: false,
-        opens: 'left',
-        locale: { cancelLabel: 'Limpiar', applyLabel: 'Aplicar', fromLabel: 'Desde', toLabel: 'Hasta', format: 'DD/MM/YYYY' }
-    });
-
-    // --- Event Listeners ---
-    $(filtroFechaInput).on('apply.daterangepicker', () => aplicarFiltros(allOperations));
-    $(filtroFechaInput).on('cancel.daterangepicker', () => {
-        $(filtroFechaInput).val('');
-        aplicarFiltros(allOperations);
-    });
-
-    toggleFiltrosBtn.addEventListener('click', () => filtrosContainer.classList.toggle('hidden'));
-    filtrosForm.addEventListener('change', () => aplicarFiltros(allOperations));
-    btnLimpiarFiltros.addEventListener('click', () => { 
-        filtrosForm.reset();
-        $(filtroFechaInput).data('daterangepicker').setStartDate(moment());
-        $(filtroFechaInput).data('daterangepicker').setEndDate(moment());
-        $(filtroFechaInput).val('');
-        aplicarFiltros(allOperations); 
-    });
-
-    operacionesContainer.addEventListener('click', (e) => {
-        const headerRow = e.target.closest('tr[data-toggle-details]');
-        if (headerRow) {
-            headerRow.classList.toggle('is-open');
-            const detailsElement = document.getElementById(headerRow.dataset.toggleDetails);
-            if (detailsElement) detailsElement.classList.toggle('hidden');
-        }
-    });
-});
-
-function renderSilosEnCurso(operaciones) {
+function renderSilosEnCurso(operaciones, operationsForDashboard) {
     const silosEnCursoContainer = document.getElementById('silosEnCursoContainer');
     const opsEnCurso = operaciones.filter(op => op.estado === 'en curso');
     
@@ -69,48 +16,55 @@ function renderSilosEnCurso(operaciones) {
         return;
     }
 
-    const toneladasPorDeposito = new Map();
+    const operacionesUnicas = new Map();
+
     opsEnCurso.forEach(op => {
-        if (!op.depositos) return;
-        const key = op.depositos.id;
-        let currentData = toneladasPorDeposito.get(key) || { deposito: op.depositos, totalToneladas: 0, cliente: op.clientes };
-        if ((op.tipo_registro === 'producto' || op.tipo_registro === 'movimiento') && typeof op.toneladas === 'number') {
-            currentData.totalToneladas += op.toneladas;
+        const rootId = op.operacion_original_id || op.id;
+        if (!operacionesUnicas.has(rootId)) {
+            const initialRecord = opsEnCurso.find(o => o.id === rootId && o.tipo_registro === 'inicial');
+            if (initialRecord) {
+                 operacionesUnicas.set(rootId, { ...initialRecord, totalToneladas: 0 });
+            }
         }
-        toneladasPorDeposito.set(key, currentData);
+        
+        if (operacionesUnicas.has(rootId) && op.toneladas) {
+            const currentOp = operacionesUnicas.get(rootId);
+            currentOp.totalToneladas += op.toneladas;
+        }
     });
 
     silosEnCursoContainer.innerHTML = '';
-    toneladasPorDeposito.forEach((data) => {
-        const { deposito, totalToneladas } = data;
-        const capacidad = deposito.capacidad_toneladas || 0;
-        const porcentajeLlenado = capacidad > 0 ? (totalToneladas / capacidad) * 100 : 0;
+    operacionesUnicas.forEach((op, rootId) => {
+        const deposito = op.depositos;
+        const capacidad = deposito?.capacidad_toneladas || 0;
+        const porcentajeLlenado = capacidad > 0 ? (op.totalToneladas / capacidad) * 100 : 0;
         const fillHeight = 80 * (Math.min(porcentajeLlenado, 100) / 100);
         const yPos = 95 - fillHeight;
 
         silosEnCursoContainer.innerHTML += `
-            <div class="flex flex-col items-center gap-2 silo-wrapper" data-deposito-id="${deposito.id}" title="Click para filtrar operaciones de este depósito">
+            <div class="flex flex-col items-center gap-2 silo-wrapper" data-operacion-id="${rootId}" title="Click para filtrar esta operación">
                 <svg viewBox="0 0 100 100" class="silo-svg">
                     <path class="silo-outline" d="M 10 10 H 90 V 90 C 90 95, 80 100, 70 100 H 30 C 20 100, 10 95, 10 90 V 10 Z" />
                     <rect class="silo-fill-rect" x="15" y="${yPos}" width="70" height="${fillHeight}" rx="10"/>
                 </svg>
-                <div class="text-sm font-bold text-center">${data.cliente?.nombre || 'N/A'}</div>
-                <div class="text-xs text-gray-600 text-center">${deposito.tipo.charAt(0).toUpperCase() + deposito.tipo.slice(1)} ${deposito.nombre}</div>
-                <div class="text-xs font-semibold text-center">${totalToneladas.toLocaleString()} / ${capacidad.toLocaleString()} tn</div>
+                <div class="text-sm font-bold text-center">${op.clientes?.nombre || 'N/A'}</div>
+                <div class="text-xs text-gray-600 text-center">${deposito?.tipo?.charAt(0).toUpperCase() + deposito?.tipo?.slice(1)} ${deposito?.nombre}</div>
+                <div class="text-xs font-semibold text-center">${op.totalToneladas.toLocaleString()} / ${capacidad.toLocaleString()} tn (${porcentajeLlenado.toFixed(1)}%)</div>
             </div>`;
     });
     
-    silosEnCursoContainer.querySelectorAll('[data-deposito-id]').forEach(el => {
-        el.addEventListener('click', () => {
-            document.getElementById('filtroSiloCelda').value = el.dataset.depositoId;
-            document.getElementById('filtroEstado').value = 'en curso';
-            aplicarFiltros(operaciones);
-            const filtrosContainer = document.getElementById('filtrosContainer');
-            if (filtrosContainer.classList.contains('hidden')) {
-                document.getElementById('toggleFiltrosBtn').click();
-            }
+    silosEnCursoContainer.addEventListener('click', (e) => {
+        const siloWrapper = e.target.closest('.silo-wrapper');
+        if (siloWrapper) {
+            const operacionId = siloWrapper.dataset.operacionId;
+            const registrosDeLaOperacion = operationsForDashboard.filter(
+                record => record.id === operacionId || record.operacion_original_id === operacionId
+            );
+            document.getElementById('filtrosRegistro').reset();
+            $('#filtroFecha').val('');
+            renderOperaciones(document.getElementById('operacionesContainer'), registrosDeLaOperacion, true);
             document.getElementById('operacionesContainer').scrollIntoView({ behavior: 'smooth' });
-        });
+        }
     });
 }
 
@@ -128,9 +82,27 @@ function renderUltimasFinalizadas(operaciones) {
 
     container.innerHTML = finalizadas.map(op => {
         const depositoInfo = op.depositos ? `${op.depositos.tipo.charAt(0).toUpperCase() + op.depositos.tipo.slice(1)} ${op.depositos.nombre}` : 'N/A';
+        
+        let garantiaHtml = '';
+        if (op.con_garantia) {
+            const hoy = new Date();
+            hoy.setHours(0,0,0,0);
+            const vencimiento = new Date(op.fecha_vencimiento_garantia + 'T00:00:00');
+            if (vencimiento >= hoy) {
+                garantiaHtml = `<span title="Garantía Vigente" class="material-icons text-green-500">check_circle</span>`;
+            } else {
+                garantiaHtml = `<span title="Garantía Vencida" class="material-icons text-yellow-500">warning</span>`;
+            }
+        } else {
+            garantiaHtml = `<span title="Sin Garantía" class="material-icons text-red-500">cancel</span>`;
+        }
+
         return `
             <a href="operacion_detalle.html?id=${op.id}" class="block bg-white p-4 rounded-xl shadow-md border hover:border-blue-500 hover:shadow-lg transition-all">
-                <p class="font-bold text-gray-800">${op.clientes?.nombre || 'N/A'}</p>
+                <div class="flex justify-between items-start">
+                    <p class="font-bold text-gray-800">${op.clientes?.nombre || 'N/A'}</p>
+                    ${garantiaHtml}
+                </div>
                 <p class="text-sm text-gray-600">${depositoInfo}</p>
                 <p class="text-sm text-gray-500 mt-2">Mercadería: <strong>${op.mercaderias?.nombre || 'N/A'}</strong></p>
                 <p class="text-xs text-gray-400 mt-3">Finalizó el ${new Date(op.created_at).toLocaleDateString('es-AR')}</p>
@@ -138,7 +110,6 @@ function renderUltimasFinalizadas(operaciones) {
         `;
     }).join('');
 }
-
 
 async function poblarFiltros() {
     const { data: clientes } = await supabase.from('clientes').select('id, nombre').order('nombre');
@@ -187,3 +158,66 @@ function aplicarFiltros(operaciones) {
 
     renderOperaciones(operacionesContainer, filteredOperations, true);
 }
+
+// --- Lógica Principal ---
+
+document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('header').innerHTML = renderHeader();
+    
+    const operacionesContainer = document.getElementById('operacionesContainer');
+    operacionesContainer.innerHTML = '<div class="text-center p-8"><div class="spinner"></div><p class="mt-2 text-gray-500">Cargando registros...</p></div>';
+
+    const allOperations = await getOperaciones();
+    const operationsForDashboard = allOperations.filter(op => op.tipo_registro !== 'muestreo');
+
+    renderSilosEnCurso(allOperations, operationsForDashboard);
+    renderUltimasFinalizadas(operationsForDashboard);
+    await poblarFiltros();
+    renderOperaciones(operacionesContainer, operationsForDashboard, true);
+
+    // --- Selectores de Filtros y Botones ---
+    const toggleFiltrosBtn = document.getElementById('toggleFiltrosBtn');
+    const filtrosContainer = document.getElementById('filtrosContainer');
+    const filtrosForm = document.getElementById('filtrosRegistro');
+    const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltros');
+    const filtroFechaInput = document.getElementById('filtroFecha');
+    const btnClearSiloFilter = document.getElementById('btnClearSiloFilter'); // **NUEVO**
+
+    // --- Inicialización de Date Picker ---
+    $(filtroFechaInput).daterangepicker({
+        autoUpdateInput: false,
+        opens: 'left',
+        locale: { cancelLabel: 'Limpiar', applyLabel: 'Aplicar', fromLabel: 'Desde', toLabel: 'Hasta', format: 'DD/MM/YYYY' }
+    });
+
+    // --- Event Listeners ---
+    $(filtroFechaInput).on('apply.daterangepicker', () => aplicarFiltros(operationsForDashboard));
+    $(filtroFechaInput).on('cancel.daterangepicker', () => {
+        $(filtroFechaInput).val('');
+        aplicarFiltros(operationsForDashboard);
+    });
+
+    toggleFiltrosBtn.addEventListener('click', () => filtrosContainer.classList.toggle('hidden'));
+    filtrosForm.addEventListener('change', () => aplicarFiltros(operationsForDashboard));
+    btnLimpiarFiltros.addEventListener('click', () => { 
+        filtrosForm.reset();
+        $(filtroFechaInput).val('');
+        aplicarFiltros(operationsForDashboard); 
+    });
+
+    operacionesContainer.addEventListener('click', (e) => {
+        const headerRow = e.target.closest('tr[data-toggle-details]');
+        if (headerRow) {
+            headerRow.classList.toggle('is-open');
+            const detailsElement = document.getElementById(headerRow.dataset.toggleDetails);
+            if (detailsElement) detailsElement.classList.toggle('hidden');
+        }
+    });
+
+    // **NUEVO:** Event Listener para el botón de limpiar filtro de silo
+    btnClearSiloFilter.addEventListener('click', () => {
+        filtrosForm.reset();
+        $(filtroFechaInput).val('');
+        renderOperaciones(operacionesContainer, operationsForDashboard, true);
+    });
+});

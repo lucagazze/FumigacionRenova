@@ -1,25 +1,22 @@
 // /src/common/auth.js
-const dummyUsers = [
-  { email: 'admin@fagaz.com', password: 'admin', role: 'admin', name: 'Administrador' },
-  { email: 'briancasco@fagaz.com', password: 'operario', role: 'operario', name: 'Brian Casco' },
-  { email: 'gustavoalbornoz@fagaz.com', password: 'operario', role: 'operario', name: 'Gustavo Albornoz' },
-  { email: 'sergioruhl@fagaz.com', password: 'operario', role: 'operario', name: 'Sergio Ruhl' },
-  { email: 'josegauna@fagaz.com', password: 'operario', role: 'operario', name: 'Jose Gauna' },
-  { email: 'leandrobianchini@fagaz.com', password: 'operario', role: 'operario', name: 'Leandro Bianchini' },
-  { email: 'darioaranda@fagaz.com', password: 'operario', role: 'operario', name: 'Dario Aranda' },
-  { email: 'walterbustamante@fagaz.com', password: 'operario', role: 'operario', name: 'Walter Bustamante' },
-];
+import { supabase } from './supabase.js';
 
-export function login(email, password) {
-  return new Promise((resolve, reject) => {
-    const user = dummyUsers.find(u => u.email === email && u.password === password);
-    if (user) {
-      localStorage.setItem('user', JSON.stringify(user));
-      resolve(user);
-    } else {
-      reject('Credenciales incorrectas');
-    }
-  });
+export async function login(email, password) {
+  // En un entorno de producción, la contraseña NUNCA debe ser enviada y comparada en texto plano.
+  // Esto es solo una simulación. Se debería usar un sistema de autenticación real como Supabase Auth.
+  const { data: user, error } = await supabase
+    .from('usuarios')
+    .select('*')
+    .eq('email', email)
+    .eq('password', password) // ¡SOLO PARA FINES DEMOSTRATIVOS!
+    .single();
+  
+  if (error || !user) {
+    throw new Error('Credenciales incorrectas');
+  }
+
+  localStorage.setItem('user', JSON.stringify(user));
+  return user;
 }
 
 export function logout() {

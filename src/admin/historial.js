@@ -4,14 +4,42 @@ import { supabase } from '../common/supabase.js';
 
 requireRole('admin');
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('header').innerHTML = renderHeader();
+    
+    const filterForm = document.getElementById('filter-form');
+    
+    await populateFilters();
+    
     renderFinishedOperations();
+
+    filterForm.addEventListener('change', renderFinishedOperations);
 });
+
+async function populateFilters() {
+    const clienteSelect = document.getElementById('filter-cliente');
+    const depositoSelect = document.getElementById('filter-deposito');
+
+    const [{ data: clientes }, { data: depositos }] = await Promise.all([
+        supabase.from('clientes').select('id, nombre').order('nombre'),
+        supabase.from('depositos').select('id, nombre, tipo').order('nombre')
+    ]);
+
+    if (clientes) {
+        clientes.forEach(c => clienteSelect.innerHTML += `<option value="${c.id}">${c.nombre}</option>`);
+    }
+    if (depositos) {
+        depositos.forEach(d => depositoSelect.innerHTML += `<option value="${d.id}">${d.nombre} (${d.tipo})</option>`);
+    }
+}
 
 async function renderFinishedOperations() {
     const container = document.getElementById('historial-container');
     container.innerHTML = '<p class="text-center p-4 text-gray-500 col-span-full">Actualizando y cargando historial...</p>';
+
+    const clienteId = document.getElementById('filter-cliente').value;
+    const depositoId = document.getElementById('filter-deposito').value;
+    const sortOrder = document.getElementById('sort-order').value;
 
     // 1. Obtener todos los datos necesarios en paralelo para mayor eficiencia.
     const [
@@ -89,10 +117,9 @@ async function renderFinishedOperations() {
     // 4. Obtener los datos actualizados para mostrar en la página.
     const { data: operations, error } = await supabase
         .from('operaciones')
-        .select('id, created_at, updated_at, con_garantia, fecha_vencimiento_garantia, clientes(nombre), depositos(nombre, tipo), mercaderias(nombre)')
+        .select('id, created_at, updated_at, con_garantia, fecha_vencimiento_garantia, cliente_id, deposito_id, clientes(nombre), depositos(nombre, tipo), mercaderias(nombre)')
         .eq('estado', 'finalizada')
-        .eq('tipo_registro', 'inicial')
-        .order('updated_at', { ascending: false });
+        .eq('tipo_registro', 'inicial');
 
     if (error) {
         console.error("Error al obtener operaciones finalizadas:", error);
@@ -100,16 +127,38 @@ async function renderFinishedOperations() {
         return;
     }
 
-    if (operations.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-500 p-4 col-span-full">No hay operaciones finalizadas.</p>';
+    const finalizationDateMap = new Map();
+    for (const final of todosLosFinales) {
+        if (final.operacion_original_id) {
+            finalizationDateMap.set(final.operacion_original_id, new Date(final.created_at));
+        }
+    }
+
+    const filteredOps = operations.filter(op => {
+        if (clienteId && op.cliente_id != clienteId) return false;
+        if (depositoId && op.deposito_id != depositoId) return false;
+        return true;
+    });
+
+    const sortedOps = filteredOps.map(op => ({
+        ...op,
+        fecha_fin_real: finalizationDateMap.get(op.id) || new Date(op.updated_at)
+    })).sort((a, b) => {
+        return sortOrder === 'asc' 
+            ? a.fecha_fin_real - b.fecha_fin_real 
+            : b.fecha_fin_real - a.fecha_fin_real;
+    });
+
+    if (sortedOps.length === 0) {
+        container.innerHTML = '<p class="text-center text-gray-500 p-4 col-span-full">No hay operaciones que coincidan con los filtros.</p>';
         return;
     }
 
     // 5. Renderizar las tarjetas con la información ya actualizada.
-    container.innerHTML = operations.map(op => {
+    container.innerHTML = sortedOps.map(op => {
         const depositoInfo = op.depositos ? `${op.depositos.tipo.charAt(0).toUpperCase() + op.depositos.tipo.slice(1)} ${op.depositos.nombre}` : 'N/A';
-        const fechaInicio = op.created_at ? new Date(op.created_at).toLocaleDateString('es-AR') : 'N/A';
-        const fechaFin = op.updated_at ? new Date(op.updated_at).toLocaleDateString('es-AR') : 'N/A';
+        const fechaInicio = op.created_at ? new Date(op.created_at).toLocaleString('es-AR') : 'N/A';
+        const fechaFin = op.fecha_fin_real ? op.fecha_fin_real.toLocaleString('es-AR') : 'N/A';
 
         let garantiaHtml = '';
         if (op.con_garantia) {

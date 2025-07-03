@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fagaz - Registrar Movimiento</title>
+  <title>Fagaz - Registrar Muestreo</title>
 
   <link rel="stylesheet" href="../common/styles.css" />
 
@@ -52,14 +52,14 @@
     <main class="px-4 sm:px-8 flex flex-1 justify-center py-8">
       <div class="flex flex-col w-full max-w-2xl py-5 space-y-6">
         <div class="p-4">
-          <h2 class="text-3xl font-bold">Registrar Movimiento</h2>
-          <p class="text-gray-500 text-sm mt-1">Sube una o varias fotos/videos y añade los detalles del movimiento.</p>
+          <h2 class="text-3xl font-bold">Registrar Muestreo</h2>
+          <p class="text-gray-500 text-sm mt-1">Sube una o varias fotos/videos y añade los detalles del muestreo.</p>
         </div>
         <div class="bg-white rounded-xl shadow-lg p-6 border">
-          <form id="formMovimiento" class="space-y-4">
+          <form id="formMuestreo" class="space-y-4">
             <div>
               <label for="observacion" class="block font-semibold mb-1">Observación</label>
-              <textarea id="observacion" class="input-field min-h-[100px]" placeholder="Ej: Llenado de silo desde camiones." required></textarea>
+              <textarea id="observacion" class="input-field min-h-[100px]" placeholder="Ej: Muestreo de la parte superior del silo." required></textarea>
             </div>
             <div>
               <label for="mediaFile" class="block font-semibold mb-1">Archivos (Fotos o Videos)</label>
@@ -72,7 +72,7 @@
                     <span>Volver</span>
                 </button>
                 <button type="submit" id="btnGuardar" class="btn btn-primary w-full sm:w-auto">
-                    <span id="btnText">Guardar Movimiento</span>
+                    <span id="btnText">Guardar Muestreo</span>
                     <div id="spinner" class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin hidden"></div>
                 </button>
             </div>
@@ -81,6 +81,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="movimiento.js"></script>
+  <script type="module" src="muestreo.js"></script>
 </body>
 </html>

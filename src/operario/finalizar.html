@@ -18,7 +18,36 @@
           <p class="text-gray-500 text-sm mt-1">Revise los datos y confirme el cierre de la operación.</p>
         </div>
         <div id="resumenContainer" class="bg-white rounded-xl shadow-lg p-6 border">
+          <form id="formFinalizar" class="space-y-6">
+            <div>
+              <h3 class="text-xl font-bold mb-4">Resumen de la Operación</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div class="bg-gray-50 p-3 rounded-lg">
+                  <p class="text-gray-500">Cliente</p>
+                  <p class="font-semibold text-lg" id="cliente">Cargando...</p>
+                </div>
+                <div class="bg-gray-50 p-3 rounded-lg">
+                  <p class="text-gray-500">Depósito</p>
+                  <p class="font-semibold text-lg" id="deposito">Cargando...</p>
+                </div>
+                <div class="bg-gray-50 p-3 rounded-lg">
+                  <p class="text-gray-500">Total Trigo Movido</p>
+                  <p class="font-semibold text-lg" id="totalToneladas">0 tn</p>
+                </div>
+                <div class="bg-gray-50 p-3 rounded-lg">
+                  <p class="text-gray-500">Total Producto Aplicado</p>
+                  <p class="font-semibold text-lg" id="totalProducto">0</p>
+                </div>
+              </div>
             </div>
+            
+
+            <div class="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t">
+              <button type="button" id="btnVolver" class="btn btn-secondary w-full sm:w-auto">Cancelar</button>
+              <button type="submit" id="btnConfirmar" class="btn btn-primary w-full sm:w-auto">Confirmar y Finalizar</button>
+            </div>
+          </form>
+        </div>
       </div>
     </main>
   </div>
