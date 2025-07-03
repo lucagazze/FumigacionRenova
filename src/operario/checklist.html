@@ -1,72 +1,28 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Fagaz - Checklist</title>
-  
     <link rel="icon" href="/public/assets/img/logohead.webp" type="image/webp">
-    <link rel="shortcut icon" href="/public/assets/img/logohead.webp" type="image/webp">
-  
-    <link rel="manifest" href="../../public/manifest.json" />
     <link rel="stylesheet" href="../common/styles.css" />
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
-    <style type="text/tailwindcss">
-    :root {
-      --primary-color: #53d22c;
-      --secondary-color: #ebf2e9;
-      --text-primary: #121a0f;
-      --text-secondary: #639155;
-      --border-color: #d6e5d2;
-      --background-color: #f9fbf9;
-    }
-    body {
-      font-family: 'Manrope', sans-serif;
-    }
-    .form-select {
-      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23639155' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-      background-position: right 0.5rem center;
-      background-repeat: no-repeat;
-      background-size: 1.5em 1.5em;
-      padding-right: 2.5rem;
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      appearance: none;
-    }
-    .btn-primary {
-      @apply bg-[var(--primary-color)] text-[var(--text-primary)] hover:bg-opacity-90 transition-colors duration-200;
-    }
-    .btn-secondary {
-      @apply bg-[var(--secondary-color)] text-[var(--text-primary)] hover:bg-opacity-90 transition-colors duration-200;
-    }
-    .input-field {
-      @apply w-full rounded-lg border-[var(--border-color)] bg-[var(--background-color)] text-[var(--text-primary)] focus:ring-[var(--primary-color)] focus:border-[var(--primary-color)] h-12 px-4 text-base;
-    }
-    .label-text {
-      @apply text-sm font-medium text-[var(--text-secondary)] mb-1;
-    }
-  </style>
 </head>
 <body class="bg-[var(--background-color)] text-[var(--text-primary)]">
   <div class="relative flex min-h-screen flex-col overflow-x-hidden">
     <header id="header"></header>
-    <main class="flex-1 px-4 sm:px-6 md:px-10 lg:px-16 xl:px-20 flex justify-center py-8">
+    <main class="flex-1 px-4 sm:px-6 flex justify-center py-8">
       <div class="flex flex-col w-full max-w-2xl">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 mb-4">
+        <div class="flex items-center justify-between gap-3 p-4 mb-4">
           <h2 class="text-3xl font-bold">Checklist de Operación</h2>
-          <div class="text-sm font-medium text-black bg-gray-200 px-3 py-1 rounded-full" id="progreso">Progreso: <span class="font-bold">0/4</span></div>
+          <div id="progreso" class="text-sm font-medium bg-gray-200 px-3 py-1 rounded-full">Progreso: <span class="font-bold">0/4</span></div>
         </div>
-        <div class="space-y-4 px-4" id="checklistContainer"></div>
-        <div class="flex flex-col gap-2 p-4 mt-6">
-          <div class="w-full bg-[var(--border-color)] rounded-full h-2.5">
-            <div class="bg-[var(--primary-color)] h-2.5 rounded-full" id="progressBar" style="width: 0%"></div>
-          </div>
-          <p class="text-sm text-[var(--muted-text-color)] text-center mt-2" id="checklistMsg">Aún no se completaron todos los ítems. Por favor, finalice todas las tareas.</p>
-        </div>
-        <div class="flex px-4 py-6 mt-auto">
-          <button id="btnContinuar" class="flex w-full items-center justify-center gap-2 rounded-full h-12 px-6 bg-[var(--primary-color)] text-white text-base font-bold leading-normal tracking-wide shadow-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:ring-opacity-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-            <span>Continuar</span>
+        <div id="checklistContainer" class="space-y-4 px-4">
+            </div>
+        <div class="p-4 mt-6">
+          <button id="btnContinuar" class="flex w-full items-center justify-center gap-2 rounded-lg h-12 px-6 bg-green-500 text-white text-base font-bold shadow-md hover:bg-green-600">
+            <span>Volver a la Operación</span>
             <span class="material-icons">arrow_forward</span>
           </button>
         </div>
@@ -74,36 +30,5 @@
     </main>
   </div>
   <script type="module" src="checklist.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const hamburgerBtn = document.getElementById('hamburgerBtn');
-      const mobileMenu = document.getElementById('mobileMenu');
-      const closeMobileMenu = document.getElementById('closeMobileMenu');
-      const overlay = document.getElementById('mobileMenuOverlay');
-      const logoutMobile = document.getElementById('logoutMobile');
-      if (hamburgerBtn && mobileMenu) {
-        hamburgerBtn.onclick = () => mobileMenu.classList.remove('hidden');
-      }
-      if (closeMobileMenu && mobileMenu) {
-        closeMobileMenu.onclick = () => mobileMenu.classList.add('hidden');
-      }
-      if (overlay && mobileMenu) {
-        overlay.onclick = () => mobileMenu.classList.add('hidden');
-      }
-      // Cerrar menú al hacer click en un link
-      if (mobileMenu) {
-        mobileMenu.querySelectorAll('a').forEach(link => {
-          link.onclick = () => mobileMenu.classList.add('hidden');
-        });
-      }
-      // Logout desde el menú mobile
-      if (logoutMobile) {
-        logoutMobile.onclick = () => {
-          localStorage.removeItem('user');
-          window.location.href = '../login/login.html';
-        };
-      }
-    });
-  </script>
 </body>
 </html>

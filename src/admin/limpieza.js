@@ -5,39 +5,35 @@ import { supabase } from '../common/supabase.js';
 requireRole('admin');
 document.getElementById('header').innerHTML = renderHeader();
 
-// --- DOM Elements ---
 const formLimpieza = document.getElementById('formLimpieza');
-const areaSelect = document.getElementById('area');
+const depositoSelect = document.getElementById('depositoSelect');
 const fechaInput = document.getElementById('fecha');
 const observacionesInput = document.getElementById('observaciones');
 const historialContainer = document.getElementById('historialLimpieza');
 
-// --- Functions ---
-
-async function poblarAreas() {
-    const { data, error } = await supabase.from('areas').select('nombre, tipo').order('tipo').order('nombre');
+async function poblarDepositos() {
+    const { data, error } = await supabase.from('depositos').select('id, nombre, tipo').order('nombre');
     if (error) {
-        console.error('Error fetching areas:', error);
-        areaSelect.innerHTML = '<option value="">No se pudieron cargar las áreas</option>';
+        console.error('Error fetching depositos:', error);
+        depositoSelect.innerHTML = '<option value="">No se pudieron cargar</option>';
         return;
     }
     
-    areaSelect.innerHTML = '<option value="">Seleccionar un área</option>';
-    data.forEach(area => {
+    depositoSelect.innerHTML = '<option value="">Seleccionar un depósito</option>';
+    data.forEach(deposito => {
         const option = document.createElement('option');
-        // Store both name and type in the value attribute, separated by a pipe
-        option.value = `${area.nombre}|${area.tipo}`;
-        option.textContent = `${area.nombre} (${area.tipo})`;
-        areaSelect.appendChild(option);
+        option.value = deposito.id;
+        option.textContent = `${deposito.nombre} (${deposito.tipo})`;
+        depositoSelect.appendChild(option);
     });
 }
 
 async function renderHistorial() {
-    const { data, error } = await supabase.from('limpiezas').select('*').order('fecha_limpieza', { ascending: false });
+    const { data, error } = await supabase.from('limpiezas').select('*, depositos(nombre, tipo)').order('fecha_limpieza', { ascending: false });
     
     if (error) {
         console.error('Error fetching cleaning history:', error);
-        historialContainer.innerHTML = '<p>Error al cargar el historial.</p>';
+        historialContainer.innerHTML = '<p class="text-red-500">Error al cargar el historial.</p>';
         return;
     }
     
@@ -52,25 +48,35 @@ async function renderHistorial() {
     table.innerHTML = `
         <thead class="bg-gray-50">
             <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Área</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observaciones</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Depósito</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Limpieza</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Venc. Garantía</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Observaciones</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
             </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-            ${data.map(registro => `
+            ${data.map(registro => {
+                const vencimiento = new Date(registro.fecha_garantia_limpieza + 'T00:00:00'); // Considerar zona horaria
+                const hoy = new Date();
+                hoy.setHours(0,0,0,0);
+                const vencido = vencimiento < hoy;
+
+                return `
                 <tr>
-                    <td class="px-6 py-4 whitespace-nowrap">${new Date(registro.fecha_limpieza).toLocaleDateString('es-AR', {timeZone: 'UTC'})}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${registro.area_nombre} (${registro.area_tipo})</td>
+                    <td class="px-6 py-4">${registro.depositos?.nombre || 'N/A'} (${registro.depositos?.tipo || 'N/A'})</td>
+                    <td class="px-6 py-4">${new Date(registro.fecha_limpieza + 'T00:00:00').toLocaleDateString('es-AR')}</td>
+                    <td class="px-6 py-4 font-semibold ${vencido ? 'text-red-600' : 'text-green-600'}">
+                        ${new Date(registro.fecha_garantia_limpieza + 'T00:00:00').toLocaleDateString('es-AR')}
+                    </td>
                     <td class="px-6 py-4">${registro.observaciones || 'N/A'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
+                    <td class="px-6 py-4">
                         <button data-id="${registro.id}" class="delete-btn text-red-600 hover:text-red-900">
                             <span class="material-icons">delete</span>
                         </button>
                     </td>
                 </tr>
-            `).join('')}
+            `}).join('')}
         </tbody>
     `;
     
@@ -78,24 +84,23 @@ async function renderHistorial() {
     historialContainer.appendChild(table);
 }
 
-
-// --- Event Listeners ---
-
 formLimpieza.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const areaValue = areaSelect.value;
+    const deposito_id = depositoSelect.value;
     const fecha = fechaInput.value;
     const observaciones = observacionesInput.value;
 
-    if (!areaValue || !fecha) {
-        alert('Por favor, seleccione un área y una fecha.');
+    if (!deposito_id || !fecha) {
+        alert('Por favor, seleccione un depósito y una fecha.');
         return;
     }
 
-    const [area_nombre, area_tipo] = areaValue.split('|');
+    const fechaLimpieza = new Date(fecha);
+    fechaLimpieza.setDate(fechaLimpieza.getUTCDate() + 180);
+    const fecha_garantia_limpieza = fechaLimpieza.toISOString().split('T')[0];
 
     const { error } = await supabase.from('limpiezas').insert([
-        { area_nombre, area_tipo, fecha_limpieza: fecha, observaciones }
+        { deposito_id, fecha_limpieza: fecha, observaciones, fecha_garantia_limpieza }
     ]);
 
     if (error) {
@@ -124,9 +129,7 @@ historialContainer.addEventListener('click', async (e) => {
     }
 });
 
-
-// --- Initial Load ---
 document.addEventListener('DOMContentLoaded', () => {
-    poblarAreas();
+    poblarDepositos();
     renderHistorial();
 });

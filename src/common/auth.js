@@ -1,5 +1,4 @@
-// Módulo de autenticación (stub)
-
+// /src/common/auth.js
 const dummyUsers = [
   { email: 'admin@fagaz.com', password: 'admin', role: 'admin', name: 'Administrador' },
   { email: 'briancasco@fagaz.com', password: 'operario', role: 'operario', name: 'Brian Casco' },

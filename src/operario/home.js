@@ -2,7 +2,6 @@ import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 
-
 requireRole('operario');
 document.getElementById('header').innerHTML = renderHeader();
 
@@ -10,91 +9,97 @@ const operacionesList = document.getElementById('operacionesList');
 const btnNueva = document.getElementById('btnNueva');
 
 async function renderOperaciones() {
-  const { data: ops, error: opsError } = await supabase
+  operacionesList.innerHTML = '<p class="text-center p-4 text-gray-500">Buscando operaciones en curso...</p>';
+
+  // 1. Obtener las operaciones iniciales que están "en curso"
+  const { data: opsIniciales, error } = await supabase
     .from('operaciones')
-    .select('*')
+    .select('id, created_at, metodo_fumigacion, clientes(nombre), depositos(nombre, tipo), mercaderias(nombre)')
     .eq('estado', 'en curso')
-    .eq('tipo_registro', 'inicial');
+    .eq('tipo_registro', 'inicial')
+    .order('created_at', { ascending: false });
   
-  if(opsError) {
-    console.error("Error fetching operations", opsError);
-    operacionesList.innerHTML = '<p class="text-red-500">Error al cargar operaciones.</p>';
+  if(error) {
+    console.error("Error fetching operations", error);
+    operacionesList.innerHTML = '<p class="text-red-500 text-center p-4">Error al cargar operaciones.</p>';
     return;
   }
 
-  if (ops.length === 0) {
-    operacionesList.innerHTML = '<p class="text-center text-[var(--text-secondary)] p-4">No hay operaciones en curso.</p>';
+  if (opsIniciales.length === 0) {
+    operacionesList.innerHTML = '<p class="text-center text-gray-500 p-4">No hay operaciones en curso en este momento.</p>';
     return;
   }
   
-  for (const op of ops) {
-    const { data: historial, error } = await supabase
-      .from('operaciones')
-      .select('producto_usado_cantidad, toneladas')
-      .eq('operacion_original_id', op.id)
-      .eq('tipo_registro', 'producto');
+  // 2. Para cada operación, buscar sus registros de producto y movimiento para calcular totales
+  for (const op of opsIniciales) {
+    const { data: historial } = await supabase
+        .from('operaciones')
+        .select('toneladas, producto_usado_cantidad')
+        .eq('operacion_original_id', op.id);
     
-    if (error) {
-      console.error(`Error fetching product history for op ${op.id}:`, error);
-      op.totalProducto = 0;
-      op.totalToneladas = 0;
-    } else {
-      op.totalProducto = historial.reduce((sum, reg) => sum + (reg.producto_usado_cantidad || 0), 0);
-      op.totalToneladas = historial.reduce((sum, reg) => sum + (reg.toneladas || 0), 0);
-    }
+    op.totalProducto = historial.reduce((sum, reg) => sum + (reg.producto_usado_cantidad || 0), 0);
+    op.totalToneladas = historial.reduce((sum, reg) => sum + (reg.toneladas || 0), 0);
   }
 
-  operacionesList.innerHTML = ops.map((op) => {
-    const areaTipo = op.area_tipo === 'silo' ? 'Silo' : 'Celda';
-    const areaValor = op.silo || op.celda || '-';
-    const mercaderia = op.mercaderia ? op.mercaderia.charAt(0).toUpperCase() + op.mercaderia.slice(1) : '-';
-    
-    let productoLabel = 'Producto usado';
-    let unidadLabel = 'un.';
-    if (op.metodo_fumigacion === 'liquido') {
-        productoLabel = 'Líquido usado';
-        unidadLabel = 'cm³';
-    } else if (op.metodo_fumigacion === 'pastillas') {
-        productoLabel = 'Pastillas usadas';
-        unidadLabel = 'un.';
-    }
+  // 3. Renderizar las tarjetas con todos los datos
+  operacionesList.innerHTML = opsIniciales.map((op) => {
+    const depositoInfo = op.depositos ? `${op.depositos.tipo.charAt(0).toUpperCase() + op.depositos.tipo.slice(1)} ${op.depositos.nombre}` : 'N/A';
+    const unidadLabel = op.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';
 
-    const productoUsado = op.totalProducto > 0 ? `${op.totalProducto.toLocaleString()} ${unidadLabel}` : '0';
-    const toneladasFumigadas = op.totalToneladas > 0 ? `${op.totalToneladas.toLocaleString()} tn` : '0 tn';
-    
     return `
-      <div class="bg-white rounded-lg shadow-md p-6 border border-[var(--border-color)] mb-4 hover:shadow-lg hover:border-green-500 transition-all duration-200 cursor-pointer" data-id="${op.id}">
-        <div class="flex flex-col justify-between items-start gap-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 text-sm w-full">
-            <div class="flex items-center gap-2"><span class="material-icons text-gray-500">person</span><span class="font-semibold">Cliente:</span> <span>${op.cliente || '-'}</span></div>
-            <div class="flex items-center gap-2"><span class="material-icons text-gray-500">grass</span><span class="font-semibold">Mercadería:</span> <span>${mercaderia}</span></div>
-            <div class="flex items-center gap-2"><span class="material-icons text-gray-500">waves</span><span class="font-semibold">Método:</span> <span>${op.metodo_fumigacion || '-'}</span></div>
-            <div class="flex items-center gap-2"><span class="material-icons text-gray-500">store</span><span class="font-semibold">${areaTipo}:</span> <span>${areaValor}</span></div>
-            <div class="flex items-center gap-2"><span class="material-icons text-gray-500">calendar_today</span><span class="font-semibold">Fecha inicio:</span> <span>${new Date(op.created_at || Date.now()).toLocaleDateString('es-AR')}</span></div>
-            <div class="flex items-center gap-2"><span class="material-icons text-gray-500">science</span><span class="font-semibold">${productoLabel}:</span> <span>${productoUsado}</span></div>
-            <div class="flex items-center gap-2 lg:col-span-3"><span class="material-icons text-gray-500">scale</span><span class="font-semibold">Toneladas fumigadas:</span> <span>${toneladasFumigadas}</span></div>
-          </div>
-          <div class="w-full border-t border-gray-200 mt-2 pt-2 flex justify-center items-center text-green-600">
-             <span class="font-bold">Continuar</span>
-             <span class="material-icons ml-1">arrow_forward</span>
-          </div>
+      <div class="border rounded-lg p-6 space-y-4 shadow-sm hover:shadow-md transition-shadow">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+            <div class="flex items-center gap-2">
+                <span class="material-icons text-gray-500">person</span>
+                <div><strong>Cliente:</strong><br>${op.clientes?.nombre || 'N/A'}</div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="material-icons text-gray-500">grass</span>
+                <div><strong>Mercadería:</strong><br>${op.mercaderias?.nombre || 'N/A'}</div>
+            </div>
+             <div class="flex items-center gap-2">
+                <span class="material-icons text-gray-500">science</span>
+                <div><strong>Método:</strong><br>${op.metodo_fumigacion?.charAt(0).toUpperCase() + op.metodo_fumigacion?.slice(1)}</div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="material-icons text-gray-500">store</span>
+                <div><strong>Depósito:</strong><br>${depositoInfo}</div>
+            </div>
+             <div class="flex items-center gap-2">
+                <span class="material-icons text-gray-500">calendar_today</span>
+                <div><strong>Fecha inicio:</strong><br>${new Date(op.created_at).toLocaleDateString('es-AR')}</div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="material-icons text-gray-500">warning</span>
+                <div><strong>Producto usado:</strong><br>${op.totalProducto.toLocaleString()} ${unidadLabel}</div>
+            </div>
+             <div class="flex items-center gap-2 col-span-full sm:col-span-1 md:col-span-3">
+                <span class="material-icons text-gray-500">scale</span>
+                <div><strong>Toneladas fumigadas:</strong><br>${op.totalToneladas.toLocaleString()} tn</div>
+            </div>
+        </div>
+        <div class="flex justify-center border-t pt-4 mt-4">
+            <button class="bg-green-500 text-white font-bold py-2 px-8 rounded-lg flex items-center justify-center gap-2 continue-btn" data-id="${op.id}">
+                <span>Continuar</span>
+                <span class="material-icons">arrow_forward</span>
+            </button>
         </div>
       </div>
     `;
   }).join('');
 
-  Array.from(operacionesList.querySelectorAll('div[data-id]')).forEach(card => {
-    card.addEventListener('click', () => {
-      localStorage.setItem('operacion_actual', card.getAttribute('data-id'));
+  operacionesList.querySelectorAll('button.continue-btn').forEach(button => {
+    button.addEventListener('click', (e) => {
+      const opId = e.currentTarget.dataset.id;
+      localStorage.setItem('operacion_actual', opId);
       window.location.href = 'operacion.html';
     });
   });
 }
 
-btnNueva.onclick = () => {
-  localStorage.removeItem('operacion');
+btnNueva.addEventListener('click', () => {
   localStorage.removeItem('operacion_actual');
   window.location.href = 'index.html';
-};
+});
 
-renderOperaciones();
+document.addEventListener('DOMContentLoaded', renderOperaciones);

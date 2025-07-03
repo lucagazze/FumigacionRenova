@@ -7,236 +7,182 @@ document.getElementById('header').innerHTML = renderHeader();
 
 const stockList = document.getElementById('stock-list');
 const historialStockEl = document.getElementById('historial-stock');
-const formAñadirStock = document.getElementById('formAñadirStock');
-const formQuitarStock = document.getElementById('formQuitarStock');
+const formModificarStock = document.getElementById('formModificarStock');
+const tipoProductoSelect = document.getElementById('tipo_producto');
+const unidadContainer = document.getElementById('unidad_container');
 
-// --- Helper para mostrar/ocultar info de gramos ---
-function toggleGramosInfo(unitSelectId, infoId) {
-    const select = document.getElementById(unitSelectId);
-    const info = document.getElementById(infoId);
-    select.addEventListener('change', () => {
-        info.classList.toggle('hidden', select.value !== 'gramos');
-    });
-}
-toggleGramosInfo('unidad', 'gramosInfo');
-toggleGramosInfo('unidadQuitar', 'gramosInfoQuitar');
-
-
-async function getStock() {
+async function renderStock() {
   const { data, error } = await supabase.from('stock').select('*');
   if (error) {
     console.error('Error fetching stock:', error);
-    return {};
+    stockList.innerHTML = '<p class="text-red-500">Error al cargar stock.</p>';
+    return;
   }
-  return data.reduce((acc, item) => {
-    acc[item.deposito] = item.cantidad_gramos;
-    return acc;
-  }, {});
-}
+  
+  stockList.innerHTML = '';
+  const depositos = ['Fagaz', 'Baigorria'];
+  
+  depositos.forEach(deposito => {
+      const stockDeposito = data.filter(s => s.deposito === deposito);
+      const pastillasStock = stockDeposito.find(s => s.tipo_producto === 'pastillas');
+      const liquidoStock = stockDeposito.find(s => s.tipo_producto === 'liquido');
 
-async function getHistorialStock() {
-  const { data, error } = await supabase.from('historial_stock').select('*').order('created_at', { ascending: false });
-  if (error) {
-    console.error('Error fetching stock history:', error);
-    return [];
-  }
-  return data;
-}
-
-async function renderStock() {
-  const stock = await getStock();
-  if (stockList) {
-    stockList.innerHTML = '';
-    for (const deposito in stock) {
-      const div = document.createElement('div');
-      div.className = 'flex flex-col';
-      const gramos = stock[deposito];
-      const pastillas = Math.floor(gramos / 3);
-      div.innerHTML = `
-        <div class="flex justify-between items-center">
-          <span class="font-medium">${deposito}</span>
-        </div>
-        <div class="pl-4">
-            <p class="text-sm"><span class="font-bold text-lg">${gramos.toLocaleString()}</span> gr</p>
-            <p class="text-sm text-gray-600">(~${pastillas.toLocaleString()} pastillas)</p>
+      stockList.innerHTML += `
+        <div class="p-4 border rounded-lg">
+            <h3 class="font-bold text-lg">${deposito}</h3>
+            <div class="mt-2 space-y-1 text-sm">
+                <p><b>Pastillas:</b> ${pastillasStock?.cantidad_unidades?.toLocaleString() || 0} unidades (~${pastillasStock?.cantidad_kg?.toLocaleString() || 0} Kg)</p>
+                <p><b>Líquido:</b> ${liquidoStock?.cantidad_kg?.toLocaleString() || 0} Kg</p>
+            </div>
         </div>
       `;
-      stockList.appendChild(div);
-    }
-  }
+  });
 }
 
 async function renderHistorialStock() {
   if (!historialStockEl) return;
-  const historial = await getHistorialStock();
-
-  if (historial.length === 0) {
-    historialStockEl.innerHTML = '<p class="text-center text-[var(--text-secondary)]">No hay registros de movimientos de stock.</p>';
+  const { data, error } = await supabase.from('historial_stock').select('*').order('created_at', { ascending: false }).limit(50);
+  
+  if (error) {
+    console.error('Error fetching stock history:', error);
+    historialStockEl.innerHTML = '<p class="text-red-500">Error al cargar historial.</p>';
     return;
   }
 
-  const table = document.createElement('table');
-  table.className = 'min-w-full divide-y divide-[var(--border-color)] bg-white';
-  
-  const thead = `
-    <thead>
-      <tr>
-        <th class="px-4 py-2 text-left text-xs font-semibold text-[var(--muted-text-color)] uppercase">Fecha</th>
-        <th class="px-4 py-2 text-left text-xs font-semibold text-[var(--muted-text-color)] uppercase">Tipo</th>
-        <th class="px-4 py-2 text-left text-xs font-semibold text-[var(--muted-text-color)] uppercase">Depósito</th>
-        <th class="px-4 py-2 text-left text-xs font-semibold text-[var(--muted-text-color)] uppercase">Cantidad (Gramos)</th>
-      </tr>
-    </thead>
-  `;
+  if (historial.length === 0) {
+    historialStockEl.innerHTML = '<p class="text-center text-gray-500">No hay movimientos de stock.</p>';
+    return;
+  }
 
-  const tbody = `
-    <tbody>
-      ${historial.map(item => {
-        let tipo, tipoClass;
-        switch (item.tipo) {
-          case 'adicion': tipo = 'Adición'; tipoClass = 'text-green-600'; break;
-          case 'extraccion': tipo = 'Extracción'; tipoClass = 'text-yellow-600'; break;
-          case 'uso': tipo = 'Uso'; tipoClass = 'text-red-600'; break;
-        }
-        return `
-          <tr class="hover:bg-[var(--border-color)]">
-            <td class="px-4 py-2">${new Date(item.created_at).toLocaleString('es-AR')}</td>
-            <td class="px-4 py-2"><span class="font-bold ${tipoClass}">${tipo}</span></td>
-            <td class="px-4 py-2">${item.deposito}</td>
-            <td class="px-4 py-2">${item.cantidad_gramos.toLocaleString()} gr</td>
-          </tr>
-        `;
-      }).join('')}
-    </tbody>
-  `;
+  const table = `
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Fecha</th>
+          <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Movimiento</th>
+          <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Depósito</th>
+          <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Producto</th>
+          <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Detalle</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        ${historial.map(item => {
+          const tipoClass = item.tipo_movimiento === 'adicion' ? 'text-green-600' : 'text-red-600';
+          const cantidadDetalle = item.tipo_producto === 'pastillas' 
+            ? `${item.cantidad_unidades_movidas?.toLocaleString()} unidades (${item.cantidad_kg_movido} Kg)` 
+            : `${item.cantidad_kg_movido} Kg`;
 
-  table.innerHTML = thead + tbody;
-  historialStockEl.innerHTML = '';
-  historialStockEl.appendChild(table);
+          return `
+            <tr>
+              <td class="px-4 py-2">${new Date(item.created_at).toLocaleString('es-AR')}</td>
+              <td class="px-4 py-2 font-bold ${tipoClass}">${item.tipo_movimiento.charAt(0).toUpperCase() + item.tipo_movimiento.slice(1)}</td>
+              <td class="px-4 py-2">${item.deposito}</td>
+              <td class="px-4 py-2">${item.tipo_producto.charAt(0).toUpperCase() + item.tipo_producto.slice(1)}</td>
+              <td class="px-4 py-2">${cantidadDetalle}</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>`;
+
+  historialStockEl.innerHTML = table;
 }
 
-if (formAñadirStock) {
-  formAñadirStock.addEventListener('submit', async (e) => {
+tipoProductoSelect.addEventListener('change', () => {
+    unidadContainer.style.display = tipoProductoSelect.value === 'pastillas' ? 'block' : 'none';
+});
+
+formModificarStock.addEventListener('submit', async (e) => {
     e.preventDefault();
     const deposito = document.getElementById('deposito').value;
-    const cantidad = parseInt(document.getElementById('cantidad').value, 10);
+    const tipo_producto = document.getElementById('tipo_producto').value;
     const unidad = document.getElementById('unidad').value;
+    const cantidad = parseFloat(document.getElementById('cantidad').value);
+    const tipo_movimiento = document.getElementById('tipo_movimiento').value;
 
-    if (!deposito || !(cantidad > 0)) {
-        alert('Por favor, complete todos los campos correctamente.');
+    if (!deposito || !tipo_producto || !cantidad || cantidad <= 0) {
+        alert('Complete todos los campos correctamente.');
         return;
     }
     
-    let cantidadEnGramos = 0;
-    if (unidad === 'pastillas') {
-        cantidadEnGramos = cantidad * 3;
-    } else { // gramos
-        if (cantidad % 3 !== 0) {
-            alert('La cantidad de gramos debe ser un múltiplo de 3.');
-            return;
+    let cantidad_kg = 0;
+    let cantidad_unidades = null;
+
+    if (tipo_producto === 'pastillas') {
+        if (unidad === 'kilos') {
+            cantidad_kg = cantidad;
+            cantidad_unidades = Math.floor(cantidad * 1000 / 3); // 3 gramos por pastilla
+        } else { // pastillas
+            cantidad_unidades = cantidad;
+            cantidad_kg = cantidad * 3 / 1000;
         }
-        cantidadEnGramos = cantidad;
+    } else { // liquido
+        cantidad_kg = cantidad;
     }
 
-    const { data: stockData, error: stockError } = await supabase
-      .from('stock').select('id, cantidad_gramos').eq('deposito', deposito).single();
+    const { data: stockActual, error: fetchError } = await supabase
+      .from('stock')
+      .select('id, cantidad_kg, cantidad_unidades')
+      .eq('deposito', deposito)
+      .eq('tipo_producto', tipo_producto)
+      .single();
 
-    if (stockError && stockError.code !== 'PGRST116') {
-      console.error('Error fetching stock:', stockError);
-      alert('Error al obtener el stock.');
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      alert('Error al obtener el stock actual.');
+      console.error(fetchError);
       return;
     }
-
-    const nuevaCantidad = (stockData?.cantidad_gramos || 0) + cantidadEnGramos;
     
+    let nuevo_kg = stockActual?.cantidad_kg || 0;
+    let nuevas_unidades = stockActual?.cantidad_unidades || 0;
+
+    const factor = tipo_movimiento === 'adicion' ? 1 : -1;
+    
+    nuevo_kg += cantidad_kg * factor;
+    if (cantidad_unidades !== null) {
+        nuevas_unidades += cantidad_unidades * factor;
+    }
+
+    if (nuevo_kg < 0 || nuevas_unidades < 0) {
+        alert('No hay suficiente stock para quitar esa cantidad.');
+        return;
+    }
+
     const { error: upsertError } = await supabase
-      .from('stock').upsert({ id: stockData?.id, deposito, cantidad_gramos: nuevaCantidad }, { onConflict: 'deposito' });
-
+        .from('stock')
+        .upsert({ 
+            id: stockActual?.id, 
+            deposito, 
+            tipo_producto, 
+            cantidad_kg: nuevo_kg, 
+            cantidad_unidades: nuevas_unidades 
+        }, { onConflict: 'deposito, tipo_producto' });
+    
     if (upsertError) {
-      console.error('Error upserting stock:', upsertError);
-      alert('Error al actualizar el stock.');
-      return;
+        alert('Error al actualizar el stock.');
+        console.error(upsertError);
+        return;
     }
 
-    const { error: historyError } = await supabase
-      .from('historial_stock').insert([{ tipo: 'adicion', deposito, cantidad_gramos: cantidadEnGramos }]);
-
-    if (historyError) {
-      console.error('Error inserting stock history:', historyError);
-      alert('Error al registrar el historial de stock.');
-      return;
-    }
+    await supabase.from('historial_stock').insert([{
+        tipo_movimiento,
+        deposito,
+        tipo_producto,
+        cantidad_kg_movido: cantidad_kg,
+        cantidad_unidades_movidas: cantidad_unidades,
+        descripcion: `Movimiento manual desde admin.`
+    }]);
 
     await renderStock();
     await renderHistorialStock();
-    formAñadirStock.reset();
-    alert(`${cantidad} ${unidad} añadidas al stock de ${deposito}.`);
-  });
-}
+    formModificarStock.reset();
+    tipoProductoSelect.dispatchEvent(new Event('change')); // Reset UI
+    alert('Movimiento de stock registrado con éxito.');
+});
 
-if (formQuitarStock) {
-  formQuitarStock.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const deposito = document.getElementById('depositoQuitar').value;
-    const cantidad = parseInt(document.getElementById('cantidadQuitar').value, 10);
-    const unidad = document.getElementById('unidadQuitar').value;
 
-    if (!deposito || !(cantidad > 0)) {
-      alert('Por favor, complete todos los campos correctamente.');
-      return;
-    }
-
-    let cantidadEnGramos = 0;
-    if (unidad === 'pastillas') {
-        cantidadEnGramos = cantidad * 3;
-    } else { // gramos
-        if (cantidad % 3 !== 0) {
-            alert('La cantidad de gramos debe ser un múltiplo de 3.');
-            return;
-        }
-        cantidadEnGramos = cantidad;
-    }
-
-    const { data: stockData, error: stockError } = await supabase
-      .from('stock').select('id, cantidad_gramos').eq('deposito', deposito).single();
-
-    if (stockError) {
-      console.error('Error fetching stock:', stockError);
-      alert('Error al obtener el stock.');
-      return;
-    }
-
-    if (stockData.cantidad_gramos < cantidadEnGramos) {
-      alert('No hay suficiente stock para quitar esa cantidad.');
-      return;
-    }
-
-    const nuevaCantidad = stockData.cantidad_gramos - cantidadEnGramos;
-
-    const { error: updateError } = await supabase
-      .from('stock').update({ cantidad_gramos: nuevaCantidad }).eq('id', stockData.id);
-
-    if (updateError) {
-      console.error('Error updating stock:', updateError);
-      alert('Error al actualizar el stock.');
-      return;
-    }
-
-    const { error: historyError } = await supabase
-      .from('historial_stock').insert([{ tipo: 'extraccion', deposito, cantidad_gramos: cantidadEnGramos }]);
-
-    if (historyError) {
-      console.error('Error inserting stock history:', historyError);
-      alert('Error al registrar el historial de stock.');
-      return;
-    }
-
-    await renderStock();
-    await renderHistorialStock();
-    formQuitarStock.reset();
-    alert(`${cantidad} ${unidad} quitadas del stock de ${deposito}.`);
-  });
-}
-
-renderStock();
-renderHistorialStock();
+document.addEventListener('DOMContentLoaded', () => {
+    renderStock();
+    renderHistorialStock();
+    tipoProductoSelect.dispatchEvent(new Event('change'));
+});

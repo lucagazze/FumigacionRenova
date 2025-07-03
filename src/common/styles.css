@@ -1,49 +1,70 @@
-/* Estilos globales y variables CSS para Fagaz */
 :root {
   --primary-color: #53d22c;
   --secondary-color: #ebf2e9;
   --text-primary: #121a0f;
   --text-secondary: #639155;
   --border-color: #d6e5d2;
-  --background-color: #f9fbf9;
+  --background-color: #f0f4f0;
 }
-
 body {
   font-family: 'Manrope', 'Noto Sans', sans-serif;
-  background: var(--background-color);
+  background-color: var(--background-color);
   color: var(--text-primary);
 }
 
-/* NUEVO: Contenedor de operaciones con scroll horizontal */
-.operations-table-container {
+/* Contenedor principal para centrar todo el contenido de la página */
+.content-container {
   width: 100%;
-  max-width: 80vw; /* Ocupa máximo el 80% del ancho de la pantalla */
-  overflow-x: auto; /* Permite el desplazamiento horizontal si el contenido no entra */
+  max-width: 80rem; /* 1280px */
   margin-left: auto;
   margin-right: auto;
+  padding: 0 1rem; /* 16px de padding a los costados */
 }
 
-/* Silo-fill visualization styles */
-.silo-container {
-    position: relative;
-    width: 100px; /* Ancho del silo */
-    height: 150px; /* Alto del silo */
-    cursor: pointer;
+
+/* --- ESTILO DE TABLA ACTUALIZADO --- */
+/* Se eliminó el max-width y los márgenes para que ocupe el 100% de su contenedor padre */
+.operations-table-container {
+  width: 100%;
+  overflow-x: auto; /* Mantiene el scroll horizontal en pantallas muy chicas */
 }
 
-.silo-bg {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+
+/* --- Estilo para la flecha desplegable --- */
+.expand-icon {
+  transition: transform 0.3s ease;
+}
+tr.is-open .expand-icon {
+  transform: rotate(180deg);
 }
 
-.silo-fill {
-    position: absolute;
-    bottom: 12%; /* Ajusta esto para que coincida con la base del interior del silo en tu imagen */
-    left: 12%; /* Ajusta para que coincida con el borde izquierdo del interior */
-    width: 76%; /* Ajusta para que coincida con el ancho del interior */
-    background-color: #facc15; /* Color del grano (amarillo) */
-    transition: height 0.5s ease-in-out;
-    border-radius: 0 0 30px 30px; /* Redondear base del relleno */
-    opacity: 0.7;
+/* Estilos de SVG de Silo (sin cambios) */
+.silo-wrapper {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  width: 100px;
+}
+.silo-wrapper:hover {
+  transform: scale(1.05);
+}
+.silo-svg {
+  width: 100%;
+  height: auto;
+}
+.silo-outline {
+  fill: #E5E7EB;
+  stroke: #9CA3AF;
+  stroke-width: 2;
+}
+.silo-fill-rect {
+  fill: #facc15;
+  transition: all 0.5s ease-in-out;
+}
+
+/* Clases de utilidad (sin cambios) */
+.input-field {
+  @apply w-full rounded-lg border-gray-300 bg-white text-gray-800 focus:ring-green-500 focus:border-green-500 h-12 px-4 text-base;
+}
+.btn-primary {
+  @apply bg-green-500 text-white hover:bg-green-600 transition-colors duration-200;
 }

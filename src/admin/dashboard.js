@@ -6,132 +6,121 @@ import { supabase } from '../common/supabase.js';
 requireRole('admin');
 document.getElementById('header').innerHTML = renderHeader();
 
-// --- Elementos DOM ---
 const toggleFiltrosBtn = document.getElementById('toggleFiltrosBtn');
 const filtrosContainer = document.getElementById('filtrosContainer');
 const operacionesContainer = document.getElementById('operacionesContainer');
 const silosEnCursoContainer = document.getElementById('silosEnCursoContainer');
+const filtrosForm = document.getElementById('filtrosRegistro');
+const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltros');
 
-// --- Visualización de Silos ---
 async function renderSilosEnCurso() {
-    // 1. Obtener operaciones en curso
-    const { data: opsEnCurso, error: opsError } = await supabase
+    const { data: opsEnCurso, error } = await supabase
         .from('operaciones')
         .select(`
-            id,
-            toneladas,
-            deposito_id,
-            operacion_original_id,
-            tipo_registro,
+            toneladas, tipo_registro,
             depositos (id, nombre, tipo, capacidad_toneladas, clientes (nombre))
         `)
         .eq('estado', 'en curso');
 
-    if (opsError) {
-        console.error("Error fetching ongoing operations:", opsError);
-        silosEnCursoContainer.innerHTML = '<p>Error al cargar silos.</p>';
+    if (error) {
+        silosEnCursoContainer.innerHTML = '<p class="col-span-full text-red-500">Error al cargar los depósitos.</p>';
         return;
     }
 
     if (opsEnCurso.length === 0) {
-        silosEnCursoContainer.innerHTML = '<p class="col-span-full text-center text-gray-500">No hay operaciones en curso actualmente.</p>';
+        silosEnCursoContainer.innerHTML = '<p class="col-span-full text-center text-gray-500">No hay operaciones en curso.</p>';
         return;
     }
 
-    // 2. Agrupar toneladas por depósito
     const toneladasPorDeposito = new Map();
-    for (const op of opsEnCurso) {
-        if (!op.depositos) continue;
-        
+    opsEnCurso.forEach(op => {
+        if (!op.depositos) return;
         const key = op.depositos.id;
-        let currentData = toneladasPorDeposito.get(key);
-        if (!currentData) {
-            currentData = {
-                deposito: op.depositos,
-                totalToneladas: 0
-            };
-        }
-        
-        // Sumar solo si es un registro de producto o movimiento
-        if ((op.tipo_registro === 'producto' || op.tipo_registro === 'movimiento') && op.toneladas) {
+        let currentData = toneladasPorDeposito.get(key) || { deposito: op.depositos, totalToneladas: 0 };
+        if ((op.tipo_registro === 'producto' || op.tipo_registro === 'movimiento') && typeof op.toneladas === 'number') {
             currentData.totalToneladas += op.toneladas;
         }
-        
         toneladasPorDeposito.set(key, currentData);
-    }
-    
-    // 3. Renderizar cada silo
+    });
+
     silosEnCursoContainer.innerHTML = '';
-    for (const [id, data] of toneladasPorDeposito.entries()) {
+    toneladasPorDeposito.forEach((data, id) => {
         const { deposito, totalToneladas } = data;
         const capacidad = deposito.capacidad_toneladas || 0;
         const porcentajeLlenado = capacidad > 0 ? (totalToneladas / capacidad) * 100 : 0;
+        
+        const fillHeight = 80 * (Math.min(porcentajeLlenado, 100) / 100);
+        const yPos = 95 - fillHeight;
 
         const siloHTML = `
-            <div class="flex flex-col items-center gap-2" data-deposito-id="${deposito.id}">
-                <div class="silo-container" title="Click para ver detalles">
-                    <img src="/public/assets/img/silo.png" alt="Silo" class="silo-bg" />
-                    <div class="silo-fill" style="height: ${Math.min(porcentajeLlenado, 100)}%;"></div>
-                </div>
-                <div class="text-sm font-bold">${deposito.clientes?.nombre || 'N/A'}</div>
-                <div class="text-xs text-gray-600">${deposito.tipo.charAt(0).toUpperCase() + deposito.tipo.slice(1)} ${deposito.nombre}</div>
-                <div class="text-xs font-semibold">${totalToneladas.toLocaleString()} / ${capacidad.toLocaleString()} tn</div>
+            <div class="flex flex-col items-center gap-2 silo-wrapper" data-deposito-id="${deposito.id}" title="Click para filtrar operaciones de este depósito">
+                <svg viewBox="0 0 100 100" class="silo-svg">
+                    <path class="silo-outline" d="M 10 10 H 90 V 90 C 90 95, 80 100, 70 100 H 30 C 20 100, 10 95, 10 90 V 10 Z" />
+                    <rect class="silo-fill-rect" x="15" y="${yPos}" width="70" height="${fillHeight}" rx="10"/>
+                </svg>
+                <div class="text-sm font-bold text-center">${deposito.clientes?.nombre || 'N/A'}</div>
+                <div class="text-xs text-gray-600 text-center">${deposito.tipo.charAt(0).toUpperCase() + deposito.tipo.slice(1)} ${deposito.nombre}</div>
+                <div class="text-xs font-semibold text-center">${totalToneladas.toLocaleString()} / ${capacidad.toLocaleString()} tn</div>
             </div>
         `;
         silosEnCursoContainer.innerHTML += siloHTML;
-    }
+    });
     
-    // 4. Añadir event listeners
     silosEnCursoContainer.querySelectorAll('[data-deposito-id]').forEach(el => {
         el.addEventListener('click', () => {
             const depositoId = el.dataset.depositoId;
-            // Redirige al registro de operaciones, filtrando por este depósito
-            // (La lógica de filtrado se aplicará en dashboard.js al cargar)
-            localStorage.setItem('filtro_deposito_id', depositoId);
-            document.getElementById('filtroDeposito').value = depositoId; // Asume que el filtro usa el ID
-            document.getElementById('filtroDeposito').dispatchEvent(new Event('change'));
-            document.querySelector('#operacionesContainer').scrollIntoView({ behavior: 'smooth' });
+            const filtroDepositoSelect = document.getElementById('filtroDeposito');
+            if (filtroDepositoSelect) {
+                filtroDepositoSelect.value = depositoId;
+                aplicarFiltros();
+                filtrosContainer.classList.remove('hidden');
+                document.querySelector('#operacionesContainer').scrollIntoView({ behavior: 'smooth' });
+            }
         });
     });
 }
 
-
-// --- Lógica de Filtros (similar a la anterior, adaptada a nuevos nombres) ---
-
-async function aplicarFiltros() {
-    // ... (la lógica de aplicar filtros es similar, solo cambiar 'area' a 'deposito')
-    // Se incluye la versión actualizada para claridad.
-    let operaciones = await getOperaciones(); // Esta función debería traer los datos relacionados
-    const cliente = document.getElementById('filtroCliente')?.value;
-    const mercaderia = document.getElementById('filtroMercaderia')?.value;
-    const estado = document.getElementById('filtroEstado')?.value;
-    const tipo = document.getElementById('filtroTipo')?.value;
-    const fechaDesde = document.getElementById('filtroFechaDesde')?.value;
-    const fechaHasta = document.getElementById('filtroFechaHasta')?.value;
-    const deposito = document.getElementById('filtroDeposito')?.value;
-    const modalidad = document.getElementById('filtroModalidad')?.value;
+async function poblarFiltros() {
+    // **CORRECCIÓN**: Se destructura la respuesta de supabase en 'depositos'
+    const { data: depositos, error } = await supabase.from('depositos').select('id, nombre, tipo, clientes(nombre)').order('nombre');
+    if (error) { console.error("Error fetching depositos for filter:", error); return; }
     
-    if (cliente) operaciones = operaciones.filter(op => op.clientes?.nombre.toLowerCase().includes(cliente.toLowerCase()));
-    if (mercaderia) operaciones = operaciones.filter(op => op.mercaderias?.nombre === mercaderia);
-    if (estado) operaciones = operaciones.filter(op => op.estado === estado);
-    if (tipo) operaciones = operaciones.filter(op => op.tipo_registro === tipo);
-    if (fechaDesde) operaciones = operaciones.filter(op => new Date(op.created_at) >= new Date(fechaDesde));
-    if (fechaHasta) operaciones = operaciones.filter(op => new Date(op.created_at) <= new Date(fechaHasta));
-    if (deposito) operaciones = operaciones.filter(op => op.deposito_id === deposito);
-    if (modalidad) operaciones = operaciones.filter(op => op.modalidad === modalidad);
-
-    renderOperaciones(operacionesContainer, operaciones, true);
+    const filtroDeposito = document.getElementById('filtroDeposito');
+    filtroDeposito.innerHTML = '<option value="">Todos los Depósitos</option>';
+    // **CORRECCIÓN**: Se itera sobre 'depositos', no sobre 'data'
+    depositos.forEach(d => filtroDeposito.innerHTML += `<option value="${d.id}">${d.nombre} (${d.tipo}) - ${d.clientes.nombre}</option>`);
 }
 
+async function aplicarFiltros() {
+  let operaciones = await getOperaciones();
+  
+  const depositoId = document.getElementById('filtroDeposito')?.value;
+  const estado = document.getElementById('filtroEstado')?.value;
 
-// --- Carga inicial y Eventos ---
-document.addEventListener('DOMContentLoaded', () => {
-    // poblarFiltros(); // Función para poblar todos los filtros
-    renderSilosEnCurso();
-    aplicarFiltros();
+  if (depositoId) {
+    operaciones = operaciones.filter(op => op.deposito_id === depositoId);
+  }
+  if (estado) {
+    operaciones = operaciones.filter(op => op.estado === estado);
+  }
+  
+  renderOperaciones(operacionesContainer, operaciones, true);
+}
 
-    // Limpiar filtro de silo si se recarga la página
-    localStorage.removeItem('filtro_deposito_id');
+toggleFiltrosBtn.addEventListener('click', () => {
+    filtrosContainer.classList.toggle('hidden');
 });
 
-// ... resto de los event listeners para filtros
+filtrosForm.addEventListener('input', aplicarFiltros);
+filtrosForm.addEventListener('change', aplicarFiltros);
+
+btnLimpiarFiltros.addEventListener('click', () => {
+    filtrosForm.reset();
+    aplicarFiltros();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    poblarFiltros();
+    renderSilosEnCurso();
+    aplicarFiltros();
+});

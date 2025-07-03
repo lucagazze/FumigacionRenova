@@ -1,4 +1,4 @@
-// Router simple para navegación SPA-like y control de acceso
+// /src/common/router.js
 export function goTo(url) {
   window.location.href = url;
 }
@@ -6,7 +6,7 @@ export function goTo(url) {
 export function requireRole(role) {
   const user = JSON.parse(localStorage.getItem('user'));
   if (!user || user.role !== role) {
-    window.location.href = '../login/login.html';
+    window.location.href = '/src/login/login.html';
   }
 }
 

@@ -5,43 +5,20 @@ import { supabase } from '../common/supabase.js';
 requireRole('operario');
 document.getElementById('header').innerHTML = renderHeader();
 
-// --- Event Listeners de Navegación ---
-document.getElementById('btnChecklist').addEventListener('click', () => {
-  window.location.href = 'checklist.html';
-});
+const btnChecklist = document.getElementById('btnChecklist');
+const btnProducto = document.getElementById('btnProducto');
+const btnMovimiento = document.getElementById('btnMovimiento');
+const btnEnviar = document.getElementById('btnEnviar');
+const btnVolver = document.getElementById('btnVolver');
+const finalizarMsg = document.getElementById('finalizarMsg');
 
-document.getElementById('btnProducto').addEventListener('click', () => {
-  window.location.href = 'producto.html';
-});
-
-// NUEVO: Listener para el botón de movimiento
-document.getElementById('btnMovimiento').addEventListener('click', () => {
-  window.location.href = 'movimiento.html';
-});
-
-document.getElementById('btnEnviar').addEventListener('click', () => {
-  window.location.href = 'finalizar.html';
-});
-
-document.getElementById('btnVolver').addEventListener('click', () => {
-  window.location.href = 'home.html';
-});
-
-
-// --- Lógica de la página (adaptada) ---
 async function getOperacionActual() {
     const id = localStorage.getItem('operacion_actual');
     if (!id) return null;
     
     const { data, error } = await supabase
         .from('operaciones')
-        .select(`
-            *,
-            clientes(nombre),
-            depositos(nombre, tipo),
-            mercaderias(nombre),
-            checklist_items(*)
-        `)
+        .select(`*, clientes(nombre), depositos(nombre, tipo), mercaderias(nombre), checklist_items(*)`)
         .eq('id', id)
         .single();
 
@@ -60,33 +37,37 @@ async function renderOperacion() {
         return;
     }
 
-    // ... (código para rellenar cliente, fecha, mercadería, etc. es similar)
     document.getElementById('cliente').textContent = op.clientes?.nombre || '---';
-    const depositoInfo = op.depositos ? `${op.depositos.tipo} ${op.depositos.nombre}` : '---';
+    const depositoInfo = op.depositos ? `${op.depositos.tipo.charAt(0).toUpperCase() + op.depositos.tipo.slice(1)} ${op.depositos.nombre}` : '---';
     document.getElementById('ubicacion').textContent = depositoInfo;
-    document.getElementById('fecha').textContent = new Date(op.created_at || Date.now()).toLocaleString('es-AR');
+    document.getElementById('fecha').textContent = new Date(op.created_at).toLocaleString('es-AR');
     document.getElementById('mercaderia').textContent = op.mercaderias?.nombre || '---';
 
-    // Progreso checklist
     const checklist = op.checklist_items || [];
     const completados = checklist.filter(i => i.completado).length;
     document.getElementById('progreso').textContent = `${completados}/4`;
-    document.getElementById('progressBar').value = completados * 25;
+    document.getElementById('progressBar').value = (completados / 4) * 100;
 
-    // Habilitar botón de producto si el checklist está completo
-    document.getElementById('btnProducto').disabled = completados < 4;
+    const checklistCompleto = completados === 4;
+    btnProducto.disabled = !checklistCompleto;
 
-    // Verificar si ya se registró producto para habilitar finalización
-    const { data: productosRegistrados, error } = await supabase
+    const { data: productosRegistrados } = await supabase
       .from('operaciones')
-      .select('id')
+      .select('id', { count: 'exact' })
       .eq('operacion_original_id', op.id)
       .eq('tipo_registro', 'producto');
     
-    const productoRegistrado = productosRegistrados && productosRegistrados.length > 0;
-
-    // Habilitar botón de finalizar si checklist está OK y hay producto
-    document.getElementById('btnEnviar').disabled = !(completados === 4 && productoRegistrado);
+    const productoRegistrado = productosRegistrados.length > 0;
+    
+    const puedeFinalizar = checklistCompleto && productoRegistrado;
+    btnEnviar.disabled = !puedeFinalizar;
+    finalizarMsg.style.display = puedeFinalizar ? 'none' : 'block';
 }
 
-renderOperacion();
+btnChecklist.addEventListener('click', () => { window.location.href = 'checklist.html'; });
+btnProducto.addEventListener('click', () => { window.location.href = 'producto.html'; });
+btnMovimiento.addEventListener('click', () => { window.location.href = 'movimiento.html'; });
+btnEnviar.addEventListener('click', () => { window.location.href = 'finalizar.html'; });
+btnVolver.addEventListener('click', () => { window.location.href = 'home.html'; });
+
+document.addEventListener('DOMContentLoaded', renderOperacion);
