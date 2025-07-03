@@ -40,7 +40,7 @@ async function aplicarFiltros() {
   let operaciones = await getOperaciones();
   const cliente = document.getElementById('filtroCliente')?.value;
   const mercaderia = document.getElementById('filtroMercaderia')?.value;
-  const metodo = document.getElementById('filtroMetodo')?.value; // Cambiado de 'filtroEstado'
+  const estado = document.getElementById('filtroEstado')?.value;
   const tipo = document.getElementById('filtroTipo')?.value;
   const fechaDesde = document.getElementById('filtroFechaDesde')?.value;
   const fechaHasta = document.getElementById('filtroFechaHasta')?.value;
@@ -49,13 +49,13 @@ async function aplicarFiltros() {
   const area = document.getElementById('filtroArea')?.value;
 
   if (cliente) {
-    operaciones = operaciones.filter(op => op.cliente && op.cliente.toLowerCase().includes(cliente.toLowerCase()));
+    operaciones = operaciones.filter(op => op.cliente.toLowerCase().includes(cliente.toLowerCase()));
   }
   if (mercaderia) {
     operaciones = operaciones.filter(op => op.mercaderia === mercaderia);
   }
-  if (metodo) { // Cambiado de 'estado'
-    operaciones = operaciones.filter(op => op.metodo_fumigacion === metodo);
+  if (estado) {
+    operaciones = operaciones.filter(op => op.estado === estado);
   }
   if (tipo) {
     operaciones = operaciones.filter(op => (op.tipo_registro || 'inicial') === tipo);

@@ -40,7 +40,7 @@ export function renderHeader() {
     <header class="flex items-center justify-between border-b border-[var(--border-color)] px-6 md:px-10 py-4 bg-white shadow-sm relative">
       <div class="flex items-center gap-3">
         <a href="/src/login/login.html">
-            <img src="/public/assets/img/logotipo (1).png" alt="Fagaz Logo" class="h-12">
+            <img src="/public/assets/img/logotipo.png" alt="Fagaz Logo" class="h-12">
         </a>
         <h1 class="text-xl font-bold">Gestión Fumigación</h1>
       </div>

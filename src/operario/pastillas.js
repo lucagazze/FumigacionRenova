@@ -2,6 +2,7 @@ import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 
+
 requireRole('operario');
 document.getElementById('header').innerHTML = renderHeader();
 
