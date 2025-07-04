@@ -38,11 +38,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     const opBaseData = allRecords.find(r => r.id === originalId) || allRecords[0];
-    renderizarPagina(container, opBaseData, allRecords);
+
+    // Obtener la última limpieza del depósito
+    const { data: limpiezaData, error: limpiezaError } = await supabase
+        .from('limpiezas')
+        .select('fecha_limpieza, fecha_garantia_limpieza')
+        .eq('deposito_id', opBaseData.deposito_id)
+        .order('fecha_limpieza', { ascending: false })
+        .limit(1)
+        .single();
+    
+    renderizarPagina(container, opBaseData, allRecords, limpiezaData);
 });
 
 // --- RENDERIZADO DE LA PÁGINA ---
-function renderizarPagina(container, opBase, allRecords) {
+function renderizarPagina(container, opBase, allRecords, limpieza) {
     let totalProducto = 0;
     let totalToneladas = 0;
     allRecords.forEach(r => {
@@ -62,6 +72,53 @@ function renderizarPagina(container, opBase, allRecords) {
            </div>` 
         : '';
 
+    // Lógica para la vigencia de la limpieza
+    let limpiezaHtml = '<div><strong>Vigencia Limpieza:</strong><br><span class="text-gray-500">Sin registros</span></div>';
+    if (limpieza) {
+        const fechaGarantia = new Date(limpieza.fecha_garantia_limpieza + 'T00:00:00');
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const estaVigente = fechaGarantia >= hoy;
+        const colorClass = estaVigente ? 'text-green-600' : 'text-red-600';
+        limpiezaHtml = `
+            <div>
+                <strong>Vigencia Limpieza:</strong><br>
+                <span class="font-semibold ${colorClass}">
+                    ${fechaGarantia.toLocaleDateString('es-AR')}
+                </span>
+            </div>`;
+    }
+
+    // Lógica para el plazo de la garantía de fumigación
+    let plazoHtml = '<div><strong>Plazo Garantía:</strong><br><span class="text-gray-500">-</span></div>';
+    if (opBase.estado === 'en curso') {
+        const fechaInicio = new Date(opBase.created_at);
+        const fechaLimite = new Date(fechaInicio);
+        fechaLimite.setDate(fechaLimite.getDate() + 5);
+        
+        const hoy = new Date();
+        const diffTime = fechaLimite.getTime() - hoy.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays > 0) {
+            plazoHtml = `
+                <div>
+                    <strong>Plazo Garantía:</strong><br>
+                    <span class="font-semibold text-orange-500">
+                        ${diffDays} día(s) restante(s)
+                    </span>
+                </div>`;
+        } else {
+            plazoHtml = `
+                <div>
+                    <strong>Plazo Garantía:</strong><br>
+                    <span class="font-semibold text-red-600">
+                        Vencido
+                    </span>
+                </div>`;
+        }
+    }
+
     // Contenido HTML principal
     container.innerHTML = `
         <div class="flex flex-wrap justify-between items-center gap-4">
@@ -80,6 +137,8 @@ function renderizarPagina(container, opBase, allRecords) {
             <div><strong>Estado:</strong><br><span class="font-bold ${opBase.estado === 'finalizada' ? 'text-red-600' : 'text-green-600'}">${opBase.estado}</span></div>
             <div class="font-semibold"><strong>Total Toneladas:</strong><br>${totalToneladas.toLocaleString()} tn</div>
             <div class="font-semibold"><strong>Total Producto:</strong><br>${totalProducto.toLocaleString()} ${unidadLabel}</div>
+            ${limpiezaHtml}
+            ${plazoHtml}
         </div>
 
         ${observacionFinal}
