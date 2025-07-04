@@ -89,8 +89,8 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
             </div>`;
     }
 
-    // Lógica para el plazo de la garantía de fumigación
-    let plazoHtml = '<div><strong>Plazo Garantía:</strong><br><span class="text-gray-500">-</span></div>';
+    // Lógica para el plazo de la garantía de fumigación (solo para operaciones en curso)
+    let plazoHtml = '';
     if (opBase.estado === 'en curso') {
         const fechaInicio = new Date(opBase.created_at);
         const fechaLimite = new Date(fechaInicio);
@@ -119,6 +119,40 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
         }
     }
 
+    // Lógica para el estado final de la garantía (solo para operaciones finalizadas)
+    let garantiaHtml = '';
+    if (opBase.estado === 'finalizada' && registroFinal) {
+        const fechaInicio = new Date(opBase.created_at);
+        const fechaFin = new Date(registroFinal.created_at);
+        
+        const duracionDias = (fechaFin - fechaInicio) / (1000 * 60 * 60 * 24);
+        const cumplePlazo = duracionDias <= 5;
+
+        let cumpleLimpieza = false;
+        if (limpieza && limpieza.fecha_garantia_limpieza) {
+            const fechaVencLimpieza = new Date(limpieza.fecha_garantia_limpieza + 'T00:00:00');
+            if (fechaFin <= fechaVencLimpieza) {
+                cumpleLimpieza = true;
+            }
+        }
+
+        if (cumplePlazo && cumpleLimpieza) {
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            const fechaVencimientoGarantia = new Date(fechaFin);
+            fechaVencimientoGarantia.setDate(fechaVencimientoGarantia.getDate() + 40);
+            
+            if (fechaVencimientoGarantia >= hoy) {
+                garantiaHtml = `<div><strong>Garantía:</strong><br><span class="font-semibold text-green-600 flex items-center gap-1"><span class="material-icons text-base">check_circle</span>Vigente</span></div>`;
+            } else {
+                garantiaHtml = `<div><strong>Garantía:</strong><br><span class="font-semibold text-yellow-600 flex items-center gap-1"><span class="material-icons text-base">warning</span>Vencida</span></div>`;
+            }
+        } else {
+            garantiaHtml = `<div><strong>Garantía:</strong><br><span class="font-semibold text-red-600 flex items-center gap-1"><span class="material-icons text-base">cancel</span>No Incluida</span></div>`;
+        }
+    }
+
+
     // Contenido HTML principal
     container.innerHTML = `
         <div class="flex flex-wrap justify-between items-center gap-4">
@@ -139,6 +173,7 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
             <div class="font-semibold"><strong>Total Producto:</strong><br>${totalProducto.toLocaleString()} ${unidadLabel}</div>
             ${limpiezaHtml}
             ${plazoHtml}
+            ${garantiaHtml}
         </div>
 
         ${observacionFinal}
