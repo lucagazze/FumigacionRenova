@@ -5,6 +5,8 @@ import { supabase } from '../common/supabase.js';
 requireRole('operario');
 document.getElementById('header').innerHTML = renderHeader();
 
+// --- CONSTANTES Y SELECTORES (COMPLETOS) ---
+const DENSIDAD_LIQUIDO = 1.2;
 const tituloPagina = document.getElementById('tituloPagina');
 const unidadProducto = document.getElementById('unidadProducto');
 const depositoFijoInfo = document.getElementById('depositoFijoInfo');
@@ -27,34 +29,26 @@ const companeroList = document.getElementById('companero-list');
 const selectedCompanerosEl = document.getElementById('selected-companeros');
 
 let operacionActual = {};
-let cantidadSinFormato = 0;
+let cantidadProductoCalculada = 0;
+
+// --- LÓGICA DE LA PÁGINA ---
 
 async function poblarCompaneros(clienteId) {
+    companeroList.innerHTML = '';
     if (!clienteId) return;
     const currentUser = getUser();
 
-    // 1. Obtener los IDs de los operarios asignados al cliente de la operación.
-    const { data: relaciones, error: relError } = await supabase
+    const { data: operariosRel, error: relError } = await supabase
         .from('operario_clientes')
         .select('operario_id')
         .eq('cliente_id', clienteId);
 
-    if (relError) {
-        console.error("Error fetching companion relations:", relError);
-        return;
-    }
+    if (relError || !operariosRel) return;
     
-    const operarioIds = relaciones.map(r => r.operario_id);
+    const operarioIds = operariosRel.map(r => r.operario_id);
+    const { data, error } = await supabase.from('usuarios').select('id, nombre, apellido').in('id', operarioIds);
+    if (error) return;
 
-    // 2. Obtener los datos de esos operarios.
-    const { data, error } = await supabase
-        .from('usuarios')
-        .select('id, nombre, apellido')
-        .in('id', operarioIds);
-
-    if (error) { console.error(error); return; }
-
-    companeroList.innerHTML = ''; // Limpiar lista anterior
     data.forEach(c => {
         if (c.id !== currentUser.id) {
             companeroList.innerHTML += `
@@ -67,32 +61,30 @@ async function poblarCompaneros(clienteId) {
     });
 }
 
-
 async function setupPage() {
-  const opId = localStorage.getItem('operacion_actual');
-  if (!opId) { window.location.href = 'home.html'; return; }
+    const opId = localStorage.getItem('operacion_actual');
+    if (!opId) { window.location.href = 'home.html'; return; }
 
-  const { data, error } = await supabase.from('operaciones').select('*').eq('id', opId).single();
-  if (error) { console.error(error); window.location.href = 'home.html'; return; }
-  
-  operacionActual = data;
-  const metodo = operacionActual.metodo_fumigacion;
-  const depositoOrigen = operacionActual.deposito_origen_stock || 'Fagaz'; // Fallback por si no está definido
+    const { data, error } = await supabase.from('operaciones').select('*, clientes(id, nombre)').eq('id', opId).single();
+    if (error) { console.error(error); window.location.href = 'home.html'; return; }
+    
+    operacionActual = data;
+    const metodo = operacionActual.metodo_fumigacion;
+    const depositoOrigen = operacionActual.deposito_origen_stock || 'Fagaz';
 
-  if (metodo === 'pastillas') {
-      tituloPagina.textContent = 'Registrar Pastillas Usadas';
-      unidadProducto.textContent = 'pastillas';
-  } else if (metodo === 'liquido') {
-      tituloPagina.textContent = 'Registrar Líquido Usado';
-      unidadProducto.textContent = 'L'; // Cambiado a Litros
-  }
-  
-  depositoFijoInfo.querySelector('b').textContent = depositoOrigen;
-  depositoFijoInfo.style.display = 'block';
-  
-  // Poblar compañeros usando el cliente_id de la operación actual
-  poblarCompaneros(operacionActual.cliente_id);
-  updateCalculations();
+    if (metodo === 'pastillas') {
+        tituloPagina.textContent = 'Registrar Pastillas Usadas';
+        unidadProducto.textContent = 'pastillas';
+    } else if (metodo === 'liquido') {
+        tituloPagina.textContent = 'Registrar Líquido Usado';
+        unidadProducto.textContent = 'cm³';
+    }
+    
+    depositoFijoInfo.querySelector('b').textContent = depositoOrigen;
+    depositoFijoInfo.style.display = 'block';
+    
+    await poblarCompaneros(operacionActual.cliente_id);
+    updateCalculations();
 }
 
 function updateCalculations() {
@@ -112,18 +104,15 @@ function updateCalculations() {
         unidadLabel = 'pastillas';
         if (tratamiento.value === 'preventivo') { dosis = '2 pastillas/tn'; cantidad = toneladas * 2; }
         else if (tratamiento.value === 'curativo') { dosis = '3 pastillas/tn'; cantidad = toneladas * 3; }
+        cantidadProductoCalculada = Math.round(cantidad);
     } else if (metodo === 'liquido') {
-        unidadLabel = 'L';
-        if (tratamiento.value === 'preventivo') { dosis = '12 cm³/tn'; cantidad = (toneladas * 12) / 1000; }
-        else if (tratamiento.value === 'curativo') { dosis = '20 cm³/tn'; cantidad = (toneladas * 20) / 1000; }
+        unidadLabel = 'cm³';
+        if (tratamiento.value === 'preventivo') { dosis = '12 cm³/tn'; cantidad = toneladas * 12; }
+        else if (tratamiento.value === 'curativo') { dosis = '20 cm³/tn'; cantidad = toneladas * 20; }
+        cantidadProductoCalculada = cantidad;
     }
     
-    cantidadSinFormato = cantidad; // Guardar el valor sin formato
-    if (metodo === 'pastillas') {
-        resultadoProducto.textContent = cantidad > 0 ? Math.round(cantidad).toLocaleString('es-AR') : '-';
-    } else {
-        resultadoProducto.textContent = cantidad > 0 ? cantidad.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
-    }
+    resultadoProducto.textContent = cantidadProductoCalculada > 0 ? cantidadProductoCalculada.toLocaleString('es-AR', { maximumFractionDigits: 2 }) : '-';
     resumenModalidad.textContent = modalidad.options[modalidad.selectedIndex]?.text || '-';
     resumenToneladas.textContent = `${toneladas.toLocaleString()} tn`;
     resumenTratamiento.textContent = tratamiento.options[tratamiento.selectedIndex]?.text || '-';
@@ -131,9 +120,13 @@ function updateCalculations() {
     resumenTotal.textContent = `${resultadoProducto.textContent} ${unidadLabel}`;
 }
 
+// --- EVENT LISTENERS (COMPLETOS) ---
+
+document.addEventListener('DOMContentLoaded', setupPage);
+
 modalidad.addEventListener('change', () => {
-    toneladasContainer.style.display = modalidad.value === 'trasilado' ? 'block' : 'none';
-    camionesContainer.style.display = modalidad.value === 'descarga' ? 'block' : 'none';
+    toneladasContainer.classList.toggle('hidden', modalidad.value !== 'trasilado');
+    camionesContainer.classList.toggle('hidden', modalidad.value !== 'descarga');
     updateCalculations();
 });
 
@@ -149,133 +142,103 @@ companeroList.addEventListener('change', () => {
 });
 
 btnRegistrar.addEventListener('click', async () => {
-  const currentUser = getUser();
-  if (!currentUser) { alert("Error de autenticación."); return; }
-  
-  let toneladas = 0;
-  if (modalidad.value === 'trasilado') toneladas = Number(toneladasInput.value);
-  else if (modalidad.value === 'descarga') toneladas = (Number(camionesInput.value) || 0) * 28;
+    btnRegistrar.disabled = true;
+    const currentUser = getUser();
+    if (!currentUser) {
+        alert("Error de autenticación.");
+        btnRegistrar.disabled = false;
+        return;
+    }
 
-  const metodo = operacionActual.metodo_fumigacion;
-  let cantidadAUsar = cantidadSinFormato;
+    const toneladas = (modalidad.value === 'trasilado') 
+        ? Number(toneladasInput.value) 
+        : (Number(camionesInput.value) || 0) * 28;
 
-  if (metodo === 'pastillas') {
-    cantidadAUsar = Math.round(cantidadSinFormato);
-  } else if (metodo === 'liquido') {
-    // En líquidos, la cantidad está en litros, la pasamos a cm³ para la BD
-    cantidadAUsar = cantidadSinFormato * 1000;
-  }
+    if (!modalidad.value || !tratamiento.value || cantidadProductoCalculada <= 0) {
+        alert('Complete todos los campos y asegúrese de que la cantidad sea válida.');
+        btnRegistrar.disabled = false;
+        return;
+    }
 
-  if (!modalidad.value || !tratamiento.value || cantidadAUsar <= 0) {
-    alert('Complete todos los campos y asegúrese de que la cantidad sea válida.');
-    return;
-  }
-  
-  const depositoOrigen = operacionActual.deposito_origen_stock || "Fagaz";
-  
-  if (operacionActual.metodo_fumigacion === 'pastillas') {
-      const cantidadKg = (cantidadAUsar * 3) / 1000;
-      
-      const { data: stockData, error } = await supabase.rpc('descontar_stock_pastillas', {
-          deposito_nombre: depositoOrigen,
-          unidades_a_descontar: cantidadAUsar,
-          kg_a_descontar: cantidadKg
-      });
-      
-      if (error || (stockData && stockData.error)) {
-          alert(`Error al descontar stock: ${error?.message || stockData.error}`);
-          return;
-      }
+    try {
+        const depositoOrigen = operacionActual.deposito_origen_stock || "Fagaz";
+        const tipoProducto = operacionActual.metodo_fumigacion;
 
-      await supabase.from('historial_stock').insert([{
-          tipo_movimiento: 'uso',
-          deposito: depositoOrigen,
-          tipo_producto: 'pastillas',
-          cantidad_unidades_movidas: cantidadAUsar,
-          cantidad_kg_movido: cantidadKg,
-          descripcion: `Uso en operación por ${currentUser.nombre} ${currentUser.apellido}`
-      }]);
+        // 1. Verificar y descontar stock
+        const { data: stock, error: fetchError } = await supabase
+            .from('stock')
+            .select('*')
+            .eq('deposito', depositoOrigen)
+            .eq('tipo_producto', tipoProducto)
+            .single();
 
-  } else if (operacionActual.metodo_fumigacion === 'liquido') {
-      const DENSIDAD_LIQUIDO = 1.2; // g/cm³ -> kg/L
-      const cantidadKg = (cantidadAUsar * DENSIDAD_LIQUIDO) / 1000;
+        if (fetchError) throw new Error(`No se pudo encontrar stock para ${tipoProducto} en ${depositoOrigen}.`);
 
-      const { data: stockActual, error: fetchError } = await supabase
-        .from('stock')
-        .select('id, cantidad_kg')
-        .eq('deposito', depositoOrigen)
-        .eq('tipo_producto', 'liquido')
-        .single();
-
-      if (fetchError) {
-          alert('Error al obtener el stock de líquido.');
-          console.error(fetchError);
-          return;
-      }
-      
-      if (stockActual.cantidad_kg < cantidadKg) {
-          alert(`No hay suficiente stock de líquido en ${depositoOrigen}. Stock actual: ${stockActual.cantidad_kg.toFixed(2)} Kg. Necesario: ${cantidadKg.toFixed(2)} Kg.`);
-          return;
-      }
-
-      const nuevoStockKg = stockActual.cantidad_kg - cantidadKg;
-      const { error: updateError } = await supabase
-        .from('stock')
-        .update({ cantidad_kg: nuevoStockKg })
-        .eq('id', stockActual.id);
+        let nuevo_kg = parseFloat(stock.cantidad_kg);
+        let nuevas_unidades = stock.cantidad_unidades ? parseInt(stock.cantidad_unidades) : 0;
+        let cantidad_kg_movido = 0;
+        let cantidad_unidades_movidas = null;
         
-      if (updateError) {
-          alert('Error al actualizar el stock de líquido.');
-          console.error(updateError);
-          return;
-      }
+        if (tipoProducto === 'pastillas') {
+            cantidad_unidades_movidas = cantidadProductoCalculada;
+            cantidad_kg_movido = (cantidad_unidades_movidas * 3) / 1000;
+            if (nuevas_unidades < cantidad_unidades_movidas) throw new Error("Stock insuficiente de pastillas.");
+            nuevas_unidades -= cantidad_unidades_movidas;
+            nuevo_kg -= cantidad_kg_movido;
+        } else {
+            cantidad_kg_movido = (cantidadProductoCalculada * DENSIDAD_LIQUIDO) / 1000;
+            if (nuevo_kg < cantidad_kg_movido) throw new Error("Stock insuficiente de líquido.");
+            nuevo_kg -= cantidad_kg_movido;
+        }
 
-      await supabase.from('historial_stock').insert([{
-          tipo_movimiento: 'uso',
-          deposito: depositoOrigen,
-          tipo_producto: 'liquido',
-          cantidad_kg_movido: cantidadKg,
-          cantidad_unidades_movidas: null,
-          descripcion: `Uso en operación por ${currentUser.nombre} ${currentUser.apellido}`
-      }]);
-  }
+        const { error: updateError } = await supabase.from('stock').update({
+            cantidad_kg: nuevo_kg,
+            cantidad_unidades: nuevas_unidades
+        }).eq('id', stock.id);
+        if (updateError) throw updateError;
+        
+        const companerosSeleccionados = Array.from(document.querySelectorAll('[name="companero"]:checked')).map(cb => cb.value);
+        let operario_nombre = `${currentUser.nombre} ${currentUser.apellido}`;
+        if (conCompaneroCheckbox.checked && companerosSeleccionados.length > 0) {
+            operario_nombre += ` y ${companerosSeleccionados.join(', ')}`;
+        }
 
-  const { data: newOperationData, error: insertError } = await supabase.from('operaciones').insert([{
-    operacion_original_id: operacionActual.id,
-    cliente_id: operacionActual.cliente_id,
-    deposito_id: operacionActual.deposito_id,
-    mercaderia_id: operacionActual.mercaderia_id,
-    estado: 'en curso',
-    deposito_origen_stock: depositoOrigen,
-    metodo_fumigacion: operacionActual.metodo_fumigacion,
-    producto_usado_cantidad: cantidadAUsar,
-    tipo_registro: 'producto',
-    operario_nombre: conCompaneroCheckbox.checked ? `${currentUser.nombre} ${currentUser.apellido} y ${Array.from(document.querySelectorAll('[name="companero"]:checked')).map(cb => cb.value).join(', ')}` : `${currentUser.nombre} ${currentUser.apellido}`,
-    tratamiento: tratamiento.value,
-    modalidad: modalidad.value,
-    toneladas: toneladas
-  }]).select();
+        // 2. Insertar el registro de la operación
+        const { data: newOpData, error: insertOpError } = await supabase.from('operaciones').insert({
+            operacion_original_id: operacionActual.id,
+            cliente_id: operacionActual.cliente_id,
+            deposito_id: operacionActual.deposito_id,
+            mercaderia_id: operacionActual.mercaderia_id,
+            estado: 'en curso',
+            deposito_origen_stock: depositoOrigen,
+            metodo_fumigacion: tipoProducto,
+            producto_usado_cantidad: cantidadProductoCalculada,
+            tipo_registro: 'producto',
+            operario_nombre: operario_nombre,
+            tratamiento: tratamiento.value,
+            modalidad: modalidad.value,
+            toneladas: toneladas
+        }).select('id').single();
+        if (insertOpError) throw insertOpError;
 
-  if (insertError || !newOperationData || newOperationData.length === 0) {
-    alert('Error al guardar el registro de aplicación.');
-    console.error(insertError);
-    return;
-  }
+        // 3. Insertar en el historial
+        await supabase.from('historial_stock').insert({
+            tipo_movimiento: 'uso',
+            deposito: depositoOrigen,
+            tipo_producto: tipoProducto,
+            cantidad_kg_movido: cantidad_kg_movido,
+            cantidad_unidades_movidas: cantidad_unidades_movidas,
+            descripcion: `Uso en operación por ${operario_nombre}`,
+            operacion_id: newOpData.id
+        });
 
-  const newOperationId = newOperationData[0].id;
+        alert(`Registro de aplicación guardado y stock descontado correctamente.`);
+        window.location.href = 'operacion.html';
 
-  const { error: historialUpdateError } = await supabase
-    .from('historial_stock')
-    .update({ operacion_id: newOperationId })
-    .order('created_at', { ascending: false })
-    .limit(1);
-
-  if (historialUpdateError) {
-      console.warn("No se pudo vincular el historial de stock a la operación:", historialUpdateError.message);
-  }
-  
-  alert(`Registro de aplicación guardado y stock descontado correctamente.`);
-  window.location.href = 'operacion.html';
+    } catch (error) {
+        alert('ERROR: ' + error.message);
+        console.error("Error al registrar aplicación:", error);
+    } finally {
+        btnRegistrar.disabled = false;
+    }
 });
-
-document.addEventListener('DOMContentLoaded', setupPage);
