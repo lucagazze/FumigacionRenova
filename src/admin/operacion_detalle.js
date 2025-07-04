@@ -54,6 +54,14 @@ function renderizarPagina(container, opBase, allRecords) {
     const tratamientosUnicos = [...new Set(allRecords.map(r => r.tratamiento).filter(Boolean))];
     const tratamiento = tratamientosUnicos.length > 0 ? tratamientosUnicos.join(', ') : 'N/A';
     
+    const registroFinal = allRecords.find(r => r.tipo_registro === 'finalizacion');
+    const observacionFinal = registroFinal?.observacion_finalizacion 
+        ? `<div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <h4 class="font-bold text-yellow-800">Observación de Finalización:</h4>
+              <p class="text-yellow-700 mt-1">${registroFinal.observacion_finalizacion}</p>
+           </div>` 
+        : '';
+
     // Contenido HTML principal
     container.innerHTML = `
         <div class="flex flex-wrap justify-between items-center gap-4">
@@ -73,6 +81,8 @@ function renderizarPagina(container, opBase, allRecords) {
             <div class="font-semibold"><strong>Total Toneladas:</strong><br>${totalToneladas.toLocaleString()} tn</div>
             <div class="font-semibold"><strong>Total Producto:</strong><br>${totalProducto.toLocaleString()} ${unidadLabel}</div>
         </div>
+
+        ${observacionFinal}
 
         <div class="border-t pt-6 mt-6">
             <h3 class="text-xl font-bold text-gray-800 mb-4">Línea de Tiempo de la Operación</h3>

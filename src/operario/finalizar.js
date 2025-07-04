@@ -51,6 +51,8 @@ form.addEventListener('submit', async (e) => {
 
     const user = getUser();
     if (!user) { alert("Error de autenticación."); return; }
+    
+    const observacion = document.getElementById('observacion_finalizacion').value;
 
     const finalizacionData = {
         operacion_original_id: operacionOriginal.id,
@@ -62,6 +64,7 @@ form.addEventListener('submit', async (e) => {
         operario_nombre: `${user.nombre} ${user.apellido}`,
         con_garantia: false,
         fecha_vencimiento_garantia: null,
+        observacion_finalizacion: observacion
     };
 
     const { data, error } = await supabase.from('operaciones').insert(finalizacionData).select().single();
