@@ -114,7 +114,7 @@ function renderizarPagina(container, opBase, allRecords) {
                     }
 
                     return `<div class="flex items-center justify-between text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm ${extraClasses}" ${dataAttributes}>
-                                <div><b>${new Date(registro.created_at).toLocaleString('es-AR')}:</b> ${detalle}</div>
+                                <div><b>${new Date(registro.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}:</b> ${detalle}</div>
                                 <div class="flex-shrink-0 ml-4">${actionButtons}</div>
                             </div>`;
                 }).join('')}
