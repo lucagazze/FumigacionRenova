@@ -3,198 +3,223 @@ import { requireRole } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 
 requireRole('admin');
-document.getElementById('header').innerHTML = renderHeader();
 
-const formLimpieza = document.getElementById('formLimpieza');
-const depositoSelect = document.getElementById('depositoSelect');
-const fechaInput = document.getElementById('fecha');
-const observacionesInput = document.getElementById('observaciones');
-const historialContainer = document.getElementById('historialLimpieza');
+document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('header').innerHTML = renderHeader();
 
-async function poblarDepositos() {
-    const { data, error } = await supabase.from('depositos').select('id, nombre, tipo').order('nombre');
-    if (error) {
-        console.error('Error fetching depositos:', error);
-        depositoSelect.innerHTML = '<option value="">No se pudieron cargar</option>';
-        return;
-    }
+    // --- Elementos del DOM ---
+    const formLimpieza = document.getElementById('formLimpieza');
+    const depositoSelect = document.getElementById('depositoSelect');
+    const historialContainer = document.getElementById('historialLimpieza');
     
-    depositoSelect.innerHTML = '<option value="">Seleccionar un depósito</option>';
-    data.forEach(deposito => {
-        const option = document.createElement('option');
-        option.value = deposito.id;
-        option.textContent = `${deposito.nombre} (${deposito.tipo})`;
-        depositoSelect.appendChild(option);
+    // --- Elementos de Filtros ---
+    const filtrosForm = document.getElementById('filtrosForm');
+    const filtroClienteSelect = document.getElementById('filtroCliente');
+    const filtroDepositoSelect = document.getElementById('filtroDeposito');
+    const filtroFechaInput = document.getElementById('filtroFecha');
+    const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltros');
+
+    let allLimpiezas = []; // Almacenar todos los registros para filtrar en el cliente
+
+    // --- Inicialización del Date Range Picker ---
+    $(filtroFechaInput).daterangepicker({
+        autoUpdateInput: false,
+        opens: 'left',
+        locale: {
+            cancelLabel: 'Limpiar',
+            applyLabel: 'Aplicar',
+            fromLabel: 'Desde',
+            toLabel: 'Hasta',
+            format: 'DD/MM/YYYY'
+        }
     });
-}
 
-async function renderHistorial() {
-    const { data, error } = await supabase.from('limpiezas').select('*, depositos(nombre, tipo)').order('fecha_limpieza', { ascending: false });
-    
-    if (error) {
-        console.error('Error fetching cleaning history:', error);
-        historialContainer.innerHTML = '<p class="text-red-500">Error al cargar el historial.</p>';
-        return;
-    }
-    
-    if (data.length === 0) {
-        historialContainer.innerHTML = '<p class="text-center text-gray-500">No hay registros de limpieza.</p>';
-        return;
-    }
+    $(filtroFechaInput).on('apply.daterangepicker', function(ev, picker) {
+        $(this).val(picker.startDate.format('DD/MM/YYYY') + ' - ' + picker.endDate.format('DD/MM/YYYY'));
+        renderHistorial(aplicarFiltros());
+    });
 
-    const table = document.createElement('table');
-    table.className = 'min-w-full divide-y divide-gray-200';
-    
-    table.innerHTML = `
-        <thead class="bg-gray-50">
-            <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Depósito</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Limpieza</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Venc. Garantía</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Observaciones</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
-            </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-            ${data.map(registro => {
-                const vencimiento = new Date(registro.fecha_garantia_limpieza + 'T00:00:00'); // Considerar zona horaria
-                const hoy = new Date();
-                hoy.setHours(0,0,0,0);
-                const vencido = vencimiento < hoy;
+    $(filtroFechaInput).on('cancel.daterangepicker', function(ev, picker) {
+        $(this).val('');
+        renderHistorial(aplicarFiltros());
+    });
 
-                return `
-                <tr>
-                    <td class="px-6 py-4">${registro.depositos?.nombre || 'N/A'} (${registro.depositos?.tipo || 'N/A'})</td>
-                    <td class="px-6 py-4">${new Date(registro.fecha_limpieza + 'T00:00:00').toLocaleDateString('es-AR')}</td>
-                    <td class="px-6 py-4 font-semibold ${vencido ? 'text-red-600' : 'text-green-600'}">
-                        ${new Date(registro.fecha_garantia_limpieza + 'T00:00:00').toLocaleDateString('es-AR')}
-                    </td>
-                    <td class="px-6 py-4">${registro.observaciones || 'N/A'}</td>
-                    <td class="px-6 py-4">
-                        <button data-id="${registro.id}" class="delete-btn text-red-600 hover:text-red-900">
-                            <span class="material-icons">delete</span>
-                        </button>
-                    </td>
-                </tr>
-            `}).join('')}
-        </tbody>
-    `;
-    
-    historialContainer.innerHTML = '';
-    historialContainer.appendChild(table);
-}
-
-async function actualizarGarantiasPorLimpieza(deposito_id) {
-    // 1. Encontrar todas las operaciones finalizadas para ese depósito
-    const { data: opsFinalizadas, error: opsError } = await supabase
-        .from('operaciones')
-        .select('id, operacion_original_id, created_at, deposito_id')
-        .eq('deposito_id', deposito_id)
-        .eq('estado', 'finalizada')
-        .eq('tipo_registro', 'inicial');
-
-    if (opsError) {
-        console.error("Error buscando operaciones para actualizar garantía:", opsError);
-        return;
-    }
-    if (!opsFinalizadas || opsFinalizadas.length === 0) {
-        return; // No hay nada que hacer
-    }
-
-    // 2. Obtener la última fecha de garantía de limpieza para el depósito
-    const { data: limpieza, error: limpiezaError } = await supabase.from('limpiezas')
-        .select('fecha_garantia_limpieza')
-        .eq('deposito_id', deposito_id)
-        .order('fecha_limpieza', { ascending: false })
-        .limit(1).single();
-    
-    if (limpiezaError || !limpieza) return;
-
-    // 3. Iterar sobre cada operación y reevaluar
-    for (const op of opsFinalizadas) {
-        const opId = op.operacion_original_id || op.id;
-
-        const { data: allRecords } = await supabase.from('operaciones')
-            .select('created_at, tipo_registro')
-            .or(`id.eq.${opId},operacion_original_id.eq.${opId}`)
-            .order('created_at', { ascending: true });
-
-        const registroFinal = allRecords.find(r => r.tipo_registro === 'finalizacion');
-        if (!registroFinal) continue;
-
-        const finalizacionTime = new Date(registroFinal.created_at);
-        const fechaInicio = new Date(allRecords[0].created_at);
-
-        const duracionDias = (finalizacionTime - fechaInicio) / (1000 * 60 * 60 * 24);
-        const cumplePlazo = duracionDias <= 5;
+    // --- Funciones de Carga y Renderizado ---
+    async function poblarDepositos(selectElement, clienteId = null) {
+        let query = supabase.from('depositos').select('id, nombre, tipo, clientes(nombre)').order('nombre');
+        if (clienteId) {
+            query = query.eq('cliente_id', clienteId);
+        }
+        const { data, error } = await query;
+        if (error) { console.error('Error cargando depósitos:', error); return; }
         
-        const fechaVencLimpieza = new Date(limpieza.fecha_garantia_limpieza + 'T00:00:00');
-        const cumpleLimpieza = finalizacionTime <= fechaVencLimpieza;
+        const currentVal = selectElement.value;
+        selectElement.innerHTML = `<option value="">${clienteId ? 'Todos los depósitos' : 'Seleccionar Depósito...'}</option>`;
+        data.forEach(d => {
+            selectElement.innerHTML += `<option value="${d.id}">${d.nombre} (${d.tipo}) - ${d.clientes.nombre}</option>`;
+        });
+        selectElement.value = currentVal;
+    }
 
-        let con_garantia = false;
-        let fecha_vencimiento_garantia = null;
-        if (cumplePlazo && cumpleLimpieza) {
-            con_garantia = true;
-            let vencimiento = new Date(finalizacionTime);
-            vencimiento.setDate(vencimiento.getDate() + 40);
-            fecha_vencimiento_garantia = vencimiento.toISOString().split('T')[0];
+    async function poblarFiltroClientes() {
+        const { data, error } = await supabase.from('clientes').select('id, nombre').order('nombre');
+        if (error) { console.error('Error cargando clientes:', error); return; }
+        filtroClienteSelect.innerHTML = '<option value="">Todos los Clientes</option>';
+        data.forEach(c => {
+            filtroClienteSelect.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
+        });
+    }
+
+    async function cargarHistorial() {
+        const { data, error } = await supabase
+            .from('limpiezas')
+            .select('*, depositos(id, nombre, tipo, clientes(id, nombre))')
+            .order('fecha_limpieza', { ascending: false });
+        
+        if (error) {
+            console.error('Error al cargar el historial:', error);
+            historialContainer.innerHTML = '<p class="text-red-500">No se pudo cargar el historial.</p>';
+            return;
+        }
+        allLimpiezas = data;
+        renderHistorial(allLimpiezas);
+    }
+
+    function renderHistorial(limpiezas) {
+        if (limpiezas.length === 0) {
+            historialContainer.innerHTML = '<p class="text-center text-gray-500 py-4">No hay registros que coincidan con los filtros.</p>';
+            return;
         }
 
-        // 4. Actualizar la operación en la BD
-        await supabase.from('operaciones')
-            .update({ con_garantia, fecha_vencimiento_garantia })
-            .or(`id.eq.${opId},operacion_original_id.eq.${opId}`);
+        const tableHTML = `
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Depósito</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Limpieza</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vto. Garantía</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Observaciones</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    ${limpiezas.map(l => {
+                        const deposito = l.depositos;
+                        const hoy = new Date();
+                        hoy.setHours(0, 0, 0, 0);
+                        const vtoGarantia = l.fecha_garantia_limpieza ? new Date(l.fecha_garantia_limpieza + 'T00:00:00') : null;
+                        let garantiaClass = '';
+                        if (vtoGarantia) {
+                            garantiaClass = vtoGarantia < hoy ? 'text-red-500 font-bold' : 'text-green-600';
+                        }
+                        return `
+                            <tr>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-medium text-gray-900">${deposito?.nombre || 'N/A'} (${deposito?.tipo || 'N/A'})</div>
+                                    <div class="text-sm text-gray-500">${deposito?.clientes?.nombre || 'Cliente no encontrado'}</div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-700">${new Date(l.fecha_limpieza + 'T00:00:00').toLocaleDateString('es-AR')}</td>
+                                <td class="px-6 py-4 text-sm ${garantiaClass}">${vtoGarantia ? vtoGarantia.toLocaleDateString('es-AR') : 'N/A'}</td>
+                                <td class="px-6 py-4 text-sm text-gray-600 max-w-xs break-words">${l.observaciones || '-'}</td>
+                                <td class="px-6 py-4 text-right">
+                                    <button data-id="${l.id}" class="delete-btn text-red-500 hover:text-red-700 p-1"><span class="material-icons">delete</span></button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        `;
+        historialContainer.innerHTML = tableHTML;
     }
-}
 
+    function aplicarFiltros() {
+        const clienteId = filtroClienteSelect.value;
+        const depositoId = filtroDepositoSelect.value;
+        const dateRange = $(filtroFechaInput).data('daterangepicker');
+        const fechaDesde = dateRange.startDate.isValid() ? dateRange.startDate.toDate() : null;
+        const fechaHasta = dateRange.endDate.isValid() ? dateRange.endDate.toDate() : null;
 
-formLimpieza.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const deposito_id = depositoSelect.value;
-    const fecha = fechaInput.value;
-    const observaciones = observacionesInput.value;
-
-    if (!deposito_id || !fecha) {
-        alert('Por favor, seleccione un depósito y una fecha.');
-        return;
+        return allLimpiezas.filter(limpieza => {
+            const matchCliente = !clienteId || (limpieza.depositos && limpieza.depositos.clientes && limpieza.depositos.clientes.id === clienteId);
+            const matchDeposito = !depositoId || limpieza.deposito_id === depositoId;
+            
+            let matchFecha = true;
+            if (fechaDesde && fechaHasta) {
+                const fechaLimpieza = new Date(limpieza.fecha_limpieza + 'T00:00:00');
+                fechaDesde.setHours(0,0,0,0);
+                fechaHasta.setHours(23,59,59,999);
+                matchFecha = fechaLimpieza >= fechaDesde && fechaLimpieza <= fechaHasta;
+            }
+            
+            return matchCliente && matchDeposito && matchFecha;
+        });
     }
 
-    const fechaLimpieza = new Date(fecha);
-    fechaLimpieza.setDate(fechaLimpieza.getUTCDate() + 180);
-    const fecha_garantia_limpieza = fechaLimpieza.toISOString().split('T')[0];
+    // --- Event Listeners ---
+    formLimpieza.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const deposito_id = depositoSelect.value;
+        const fecha_limpieza = document.getElementById('fecha').value;
+        const observaciones = document.getElementById('observaciones').value;
+        const fechaGarantia = new Date(fecha_limpieza);
+        fechaGarantia.setMonth(fechaGarantia.getMonth() + 3);
 
-    const { error } = await supabase.from('limpiezas').insert([
-        { deposito_id, fecha_limpieza: fecha, observaciones, fecha_garantia_limpieza }
-    ]);
+        const { error } = await supabase.from('limpiezas').insert({
+            deposito_id,
+            fecha_limpieza,
+            fecha_garantia_limpieza: fechaGarantia.toISOString().split('T')[0],
+            observaciones
+        });
 
-    if (error) {
-        console.error('Error inserting cleaning record:', error);
-        alert('Hubo un error al guardar el registro.');
-    } else {
-        alert('Registro de limpieza guardado con éxito. Se actualizarán las garantías de las operaciones afectadas.');
-        formLimpieza.reset();
-        await renderHistorial();
-        await actualizarGarantiasPorLimpieza(deposito_id);
-    }
-});
+        if (error) {
+            alert('Error al guardar el registro: ' + error.message);
+        } else {
+            alert('Registro guardado con éxito.');
+            formLimpieza.reset();
+            await cargarHistorial();
+            renderHistorial(aplicarFiltros()); // Re-render con filtros actuales
+        }
+    });
 
-historialContainer.addEventListener('click', async (e) => {
-    const deleteButton = e.target.closest('.delete-btn');
-    if (deleteButton) {
-        const id = deleteButton.dataset.id;
-        if (confirm('¿Está seguro de que desea eliminar este registro de limpieza?')) {
-            const { error } = await supabase.from('limpiezas').delete().eq('id', id);
-            if (error) {
-                alert('Error al eliminar el registro.');
-                console.error('Delete error:', error);
-            } else {
-                renderHistorial();
+    historialContainer.addEventListener('click', async (e) => {
+        const deleteButton = e.target.closest('.delete-btn');
+        if (deleteButton) {
+            const id = deleteButton.dataset.id;
+            if (confirm('¿Está seguro de que desea eliminar este registro de limpieza?')) {
+                const { error } = await supabase.from('limpiezas').delete().eq('id', id);
+                if (error) {
+                    alert('Error al eliminar: ' + error.message);
+                } else {
+                    await cargarHistorial();
+                    renderHistorial(aplicarFiltros());
+                }
             }
         }
-    }
-});
+    });
 
-document.addEventListener('DOMContentLoaded', () => {
-    poblarDepositos();
-    renderHistorial();
+    // --- Listeners de Filtros ---
+    filtroClienteSelect.addEventListener('change', () => {
+        poblarDepositos(filtroDepositoSelect, filtroClienteSelect.value);
+        renderHistorial(aplicarFiltros());
+    });
+
+    filtroDepositoSelect.addEventListener('change', () => {
+        renderHistorial(aplicarFiltros());
+    });
+
+    btnLimpiarFiltros.addEventListener('click', () => {
+        filtrosForm.reset();
+        poblarDepositos(filtroDepositoSelect); // Repoblar con todos los depósitos
+        $(filtroFechaInput).val('');
+        $(filtroFechaInput).data('daterangepicker').setStartDate(moment());
+        $(filtroFechaInput).data('daterangepicker').setEndDate(moment());
+        renderHistorial(allLimpiezas);
+    });
+
+    // --- Carga Inicial ---
+    await poblarDepositos(depositoSelect);
+    await poblarFiltroClientes();
+    await poblarDepositos(filtroDepositoSelect);
+    await cargarHistorial();
 });

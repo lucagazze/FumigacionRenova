@@ -17,10 +17,27 @@ const companeroList = document.getElementById('companero-list');
 
 let filesToUpload = [];
 
-async function poblarCompaneros() {
-    const { data, error } = await supabase.from('usuarios').select('id, nombre, apellido').eq('role', 'operario');
-    if (error) { console.error(error); return; }
+async function poblarCompaneros(clienteId) {
+    if (!clienteId) return;
     const currentUser = getUser();
+    
+    // 1. Encontrar todos los operarios para ese cliente
+    const { data: operariosRel, error: relError } = await supabase
+        .from('operario_clientes')
+        .select('operario_id')
+        .eq('cliente_id', clienteId);
+
+    if (relError || !operariosRel || operariosRel.length === 0) {
+        console.error(relError || "No operators for this client");
+        return;
+    }
+    
+    const operarioIds = operariosRel.map(r => r.operario_id);
+
+    // 2. Obtener los datos de esos operarios
+    const { data, error } = await supabase.from('usuarios').select('id, nombre, apellido').in('id', operarioIds);
+    if (error) { console.error(error); return; }
+    
     data.forEach(c => {
         if (c.id !== currentUser.id) {
             companeroList.innerHTML += `
@@ -149,4 +166,11 @@ conCompaneroCheckbox.addEventListener('change', () => {
     companeroContainer.style.display = conCompaneroCheckbox.checked ? 'block' : 'none';
 });
 
-document.addEventListener('DOMContentLoaded', poblarCompaneros);
+document.addEventListener('DOMContentLoaded', async () => {
+    const opId = localStorage.getItem('operacion_actual');
+    if (!opId) return;
+    const { data: op } = await supabase.from('operaciones').select('cliente_id').eq('id', opId).single();
+    if (op) {
+        poblarCompaneros(op.cliente_id);
+    }
+});

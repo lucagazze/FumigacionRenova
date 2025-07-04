@@ -32,7 +32,7 @@ function renderMuestreosTabla(muestreos) {
         const mainRow = `
             <tr class="main-row border-b hover:bg-gray-50 cursor-pointer" data-toggle-details="details-${op.id}">
                 <td class="px-4 py-4 whitespace-nowrap">${new Date(op.created_at).toLocaleString('es-AR')}</td>
-                <td class="px-4 py-4 whitespace-nowrap">${op.operario_nombre || 'N/A'}</td>
+                <td class="px-4 py-4">${op.operario_nombre || 'N/A'}</td>
                 <td class="px-4 py-4 whitespace-nowrap">${op.clientes?.nombre || 'N/A'}</td>
                 <td class="px-4 py-4 whitespace-nowrap">${op.depositos?.nombre || 'N/A'} (${op.depositos?.tipo || 'N/A'})</td>
                 <td class="px-4 py-4">${muestreo.observacion || 'Sin observación'}</td>

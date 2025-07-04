@@ -2,8 +2,6 @@
 import { supabase } from './supabase.js';
 
 export async function login(email, password) {
-  // En un entorno de producción, la contraseña NUNCA debe ser enviada y comparada en texto plano.
-  // Esto es solo una simulación. Se debería usar un sistema de autenticación real como Supabase Auth.
   const { data: user, error } = await supabase
     .from('usuarios')
     .select('*')
@@ -13,6 +11,21 @@ export async function login(email, password) {
   
   if (error || !user) {
     throw new Error('Credenciales incorrectas');
+  }
+
+  // Si el usuario es un operario, buscamos sus clientes asignados
+  if (user.role === 'operario') {
+    const { data: cliente_ids, error: clienteError } = await supabase
+      .from('operario_clientes')
+      .select('cliente_id')
+      .eq('operario_id', user.id);
+
+    if (clienteError) {
+      console.error("Error fetching operator's clients", clienteError);
+      user.cliente_ids = []; // Asignar un array vacío si hay un error
+    } else {
+      user.cliente_ids = cliente_ids.map(item => item.cliente_id);
+    }
   }
 
   localStorage.setItem('user', JSON.stringify(user));

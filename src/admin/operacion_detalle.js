@@ -137,7 +137,7 @@ function renderizarPagina(container, op, allRecords) {
                             break;
                         case 'finalizacion': detalle = `Operación finalizada por <b>${registro.operario_nombre}</b>.`; break;
                     }
-                    return `<div class="flex items-center justify-between text-sm p-3 bg-gray-50 border-l-4 border-gray-300 rounded-r-lg ${extraClasses}" ${dataAttributes}><div><b>${new Date(registro.created_at).toLocaleString('es-AR')}:</b> ${detalle}</div>${actionButton}</div>`;
+                    return `<div class="flex items-center justify-between text-sm p-3 bg-gray-50 border-l-4 border-gray-300 rounded-r-lg ${extraClasses}" ${dataAttributes}><div><b>${new Date(registro.created_at).toLocaleString('es-AR')}:</b> ${detalle}</div><div class="flex-shrink-0">${actionButton}</div></div>`;
                 }).join('')}
             </div>
         </div>`;
@@ -154,21 +154,29 @@ function renderizarPagina(container, op, allRecords) {
                         </div>
                         ${item.imagen_url ? `<a href="${item.imagen_url}" target="_blank" class="text-blue-600 hover:underline flex items-center gap-1 text-sm"><span class="material-icons text-base">image</span> Ver Foto</a>` : ''}
                     </div>
-                `).join('')}
+                }).join('')}
             </div>
         </div>`;
     
     container.innerHTML = resumenHTML + historialHTML + checklistHTML;
 
-    // Event listener para los clics en la línea de tiempo
     container.addEventListener('click', async (e) => {
-        const muestreoTarget = e.target.closest('[data-muestreo-id]');
         const deleteTarget = e.target.closest('.btn-delete-registro');
         const editTarget = e.target.closest('.btn-edit-registro');
+        const muestreoTarget = e.target.closest('[data-muestreo-id]');
 
-        if (muestreoTarget) {
+        if (deleteTarget) {
+            const registroId = deleteTarget.dataset.registroId;
+            eliminarRegistro(registroId, allRecords);
+        } else if (editTarget) {
+            const registroId = editTarget.dataset.registroId;
+            const registro = allRecords.find(r => r.id === registroId);
+            if (registro) {
+                renderEditModal(registro);
+            }
+        } else if (muestreoTarget) {
             const muestreoId = muestreoTarget.dataset.muestreoId;
-            const { data: muestreoData, error } = await supabase
+            const { data: muestreoData } = await supabase
                 .from('muestreos')
                 .select('*')
                 .eq('id', muestreoId)
@@ -178,15 +186,6 @@ function renderizarPagina(container, op, allRecords) {
                 renderMuestreoModal(muestreoData);
             } else {
                 alert('No se encontraron detalles para este muestreo.');
-            }
-        } else if (deleteTarget) {
-            const registroId = deleteTarget.dataset.registroId;
-            eliminarRegistro(registroId, allRecords);
-        } else if (editTarget) {
-            const registroId = editTarget.dataset.registroId;
-            const registro = allRecords.find(r => r.id === registroId);
-            if (registro) {
-                renderEditModal(registro);
             }
         }
     });
@@ -244,6 +243,10 @@ async function renderEditModal(registro) {
     const isInicial = registro.tipo_registro === 'inicial';
     const metodo = registro.metodo_fumigacion;
 
+    const registroDate = new Date(registro.created_at);
+    const localDate = new Date(registroDate.getTime() - (registroDate.getTimezoneOffset() * 60000));
+    const formattedDate = localDate.toISOString().slice(0, 16);
+
     const modalHTML = `
         <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 relative">
@@ -253,7 +256,7 @@ async function renderEditModal(registro) {
                     <input type="hidden" id="edit-registro-id" value="${registro.id}">
                     <div>
                         <label for="edit-fecha" class="block font-semibold mb-1">Fecha y Hora</label>
-                        <input type="datetime-local" id="edit-fecha" class="input-field" value="${new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}">
+                        <input type="datetime-local" id="edit-fecha" class="input-field" value="${formattedDate}">
                     </div>
                     ${isProducto ? `
                     <div>
@@ -276,8 +279,7 @@ async function renderEditModal(registro) {
                     <div>
                         <label class="label-text block font-medium">Operarios</label>
                         <div id="edit-operario-list" class="mt-2 space-y-2 border rounded-lg p-3 max-h-40 overflow-y-auto">
-                            <!-- Los operarios se cargarán aquí -->
-                        </div>
+                            </div>
                     </div>
                     ` : ''}
                     <div class="flex justify-end gap-4 pt-4">
@@ -382,7 +384,7 @@ async function renderEditModal(registro) {
 }
 
 async function eliminarRegistro(registroId, allRecords) {
-    if (!confirm('¿Está seguro de que desea eliminar este registro? Esta acción es PERMANENTE, el stock será restaurado y el movimiento será eliminado del historial.')) return;
+    if (!confirm('¿Está seguro de que desea eliminar este registro? Esta acción es PERMANENTE y no se puede deshacer.')) return;
 
     const registroOperacion = allRecords.find(r => r.id === registroId);
     if (!registroOperacion) {
@@ -390,58 +392,49 @@ async function eliminarRegistro(registroId, allRecords) {
         return;
     }
 
-    if (registroOperacion.tipo_registro === 'producto' && registroOperacion.producto_usado_cantidad > 0) {
-        try {
-            const { data: historial, error: historialError } = await supabase
+    try {
+        if (registroOperacion.tipo_registro === 'producto' && registroOperacion.producto_usado_cantidad > 0) {
+            const { data: historial } = await supabase
                 .from('historial_stock')
-                .select('*')
+                .select('id, deposito, tipo_producto, cantidad_kg_movido, cantidad_unidades_movidas')
                 .eq('operacion_id', registroId)
-                .single(); // Usamos single() porque ahora la relación debe existir.
-
-            if (historialError) {
-                throw new Error(`No se encontró un registro de historial de stock para esta operación. Error: ${historialError.message}`);
-            }
-
-            const { data: stock, error: stockError } = await supabase
-                .from('stock')
-                .select('*')
-                .eq('deposito', historial.deposito)
-                .eq('tipo_producto', historial.tipo_producto)
                 .single();
+            if(!historial) throw new Error("No se encontró el registro de historial de stock asociado.");
 
-            if (stockError) {
-                throw new Error(`No se pudo encontrar el stock del depósito ${historial.deposito}.`);
-            }
+            const { data: stock } = await supabase.from('stock').select('*').eq('deposito', historial.deposito).eq('tipo_producto', historial.tipo_producto).single();
+            if(!stock) throw new Error(`No se encontró stock para ${historial.tipo_producto} en ${historial.deposito}`);
 
-            const { error: restoreError } = await supabase.from('stock').update({
+            await supabase.from('stock').update({
                 cantidad_kg: (stock.cantidad_kg || 0) + (historial.cantidad_kg_movido || 0),
                 cantidad_unidades: (stock.cantidad_unidades || 0) + (historial.cantidad_unidades_movidas || 0)
             }).eq('id', stock.id);
-
-            if (restoreError) {
-                throw new Error(`Error al restaurar el stock: ${restoreError.message}`);
-            }
-
-            const { error: historyDeleteError } = await supabase.from('historial_stock').delete().eq('id', historial.id);
-            if (historyDeleteError) {
-                throw new Error(`El stock fue restaurado, pero no se pudo eliminar el registro del historial: ${historyDeleteError.message}`);
-            }
-
-        } catch (error) {
-            alert(`Ocurrió un error en el proceso de restauración: ${error.message}. No se eliminará el registro de la operación para evitar inconsistencias.`);
-            return;
+            await supabase.from('historial_stock').delete().eq('id', historial.id);
         }
-    }
 
-    const { error: deleteError } = await supabase.from('operaciones').delete().eq('id', registroId);
-    if (deleteError) {
-        alert(`Error al eliminar el registro de operación: ${deleteError.message}. ATENCIÓN: El stock y el historial pueden haber sido actualizados. Revise manualmente.`);
-        return;
-    }
+        if (registroOperacion.tipo_registro === 'muestreo') {
+            const { data: muestreoData, error: muestreoError } = await supabase.from('muestreos').select('id, media_url').eq('operacion_id', registroId).single();
+            if (muestreoError && muestreoError.code !== 'PGRST116') throw muestreoError;
 
-    alert('Registro eliminado. El stock y el historial han sido actualizados correctamente.');
-    location.reload();
+            if (muestreoData) {
+                if (muestreoData.media_url && muestreoData.media_url.length > 0) {
+                    const filesToDelete = muestreoData.media_url.map(url => url.substring(url.lastIndexOf('muestreos-media/')));
+                    await supabase.storage.from('muestreos-media').remove(filesToDelete);
+                }
+                await supabase.from('muestreos').delete().eq('id', muestreoData.id);
+            }
+        }
+
+        const { error: deleteError } = await supabase.from('operaciones').delete().eq('id', registroId);
+        if (deleteError) throw deleteError;
+
+        alert('Registro eliminado con éxito.');
+        location.reload();
+
+    } catch (error) {
+        alert(`Ocurrió un error en el proceso de eliminación: ${error.message}`);
+    }
 }
+
 
 async function updateStock(registro, difference) {
     const stockDeposito = registro.deposito_origen_stock;
@@ -467,7 +460,6 @@ async function updateStock(registro, difference) {
     let unidades_diff = 0;
 
     if (registro.metodo_fumigacion === 'liquido') {
-        // Assuming 'difference' is in cm³, convert to kg
         kg_diff = (difference / 1000) * DENSIDAD_LIQUIDO;
     } else { // pastillas
         unidades_diff = difference;
@@ -490,7 +482,6 @@ async function updateStock(registro, difference) {
         throw new Error('Stock update failed');
     }
 
-    // Create a corresponding record in the history
     await supabase.from('historial_stock').insert({
         tipo_movimiento: 'extraccion',
         deposito: stockDeposito,
@@ -498,7 +489,7 @@ async function updateStock(registro, difference) {
         cantidad_kg_movido: kg_diff,
         cantidad_unidades_movidas: unidades_diff,
         descripcion: `Uso en operación`,
-        operacion_id: registro.id // Link history to this specific operation record
+        operacion_id: registro.id
     });
 }
 
@@ -507,7 +498,6 @@ async function eliminarOperacion(operacionId) {
         return;
     }
 
-    // Primero, obtener todos los registros asociados a la operación.
     const { data: registros, error: fetchError } = await supabase
         .from('operaciones')
         .select('*')
@@ -518,15 +508,13 @@ async function eliminarOperacion(operacionId) {
         return;
     }
 
-    // Filtrar los registros de uso de producto para restaurar el stock.
     const registrosDeProducto = registros.filter(r => r.tipo_registro === 'producto' && r.producto_usado_cantidad > 0);
 
-    // Restaurar el stock por cada registro de producto.
     for (const registro of registrosDeProducto) {
         const stockDeposito = registro.deposito_origen_stock;
         if (!stockDeposito) {
             console.warn(`No se pudo determinar el depósito de origen para el registro ID: ${registro.id}. No se restaurará stock para este registro.`);
-            continue; // Continuar con el siguiente registro
+            continue; 
         }
 
         const { data: stock, error: stockError } = await supabase
@@ -538,7 +526,6 @@ async function eliminarOperacion(operacionId) {
 
         if (stockError) {
             alert(`Error al obtener el stock para restaurar (Registro ID: ${registro.id}): ${stockError.message}`);
-            // Decidir si detener todo el proceso o continuar. Por ahora, continuamos.
             continue;
         }
 
@@ -548,7 +535,7 @@ async function eliminarOperacion(operacionId) {
 
         if (registro.metodo_fumigacion === 'liquido') {
             kg_a_restaurar = (registro.producto_usado_cantidad / 1000) * DENSIDAD_LIQUIDO;
-        } else { // pastillas
+        } else {
             unidades_a_restaurar = registro.producto_usado_cantidad;
             kg_a_restaurar = unidades_a_restaurar * 3 / 1000;
         }
@@ -563,11 +550,10 @@ async function eliminarOperacion(operacionId) {
 
         if (restoreError) {
             alert(`Error al restaurar el stock para el registro ID: ${registro.id}. Error: ${restoreError.message}. La operación de borrado se ha cancelado para evitar inconsistencias.`);
-            return; // Detener la eliminación si la restauración de stock falla.
+            return;
         }
     }
 
-    // Si la restauración de stock fue exitosa (o no fue necesaria), eliminar la operación.
     const { error: deleteError } = await supabase
         .from('operaciones')
         .delete()

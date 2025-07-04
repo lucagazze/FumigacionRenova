@@ -112,7 +112,7 @@ async function renderHistorialStock() {
                     const depositoInfo = item.operaciones?.depositos;
                     const depositoUso = depositoInfo ? `${depositoInfo.nombre} (${depositoInfo.tipo})` : 'Operación';
                     
-                    const origenDestino = item.tipo_movimiento === 'extraccion' 
+                    const origenDestino = item.tipo_movimiento === 'extraccion' && item.operacion_id 
                         ? `Uso en ${depositoUso}`
                         : `Inventario ${item.deposito}`;
 
@@ -316,7 +316,7 @@ function renderEditStockModal(registro) {
         }
 
         let new_kg_movido, new_unidades_movidas;
-        let old_kg_movido = originalRecord.cantidad_kg_movido;
+        const old_kg_movido = originalRecord.cantidad_kg_movido;
         
         if (isPastillas) {
             new_unidades_movidas = Math.round(newAmountInput);
@@ -328,19 +328,17 @@ function renderEditStockModal(registro) {
 
         const kg_difference = new_kg_movido - old_kg_movido;
 
-        // Actualizar el stock principal
         await updateStockFromEdit(originalRecord, kg_difference);
         
-        // Actualizar el registro del historial
+        const newDescription = `Compensación por edición manual. (ID original: ${id.substring(0,8)})`;
         const { error: updateError } = await supabase.from('historial_stock').update({
             cantidad_kg_movido: new_kg_movido,
             cantidad_unidades_movidas: new_unidades_movidas,
-            descripcion: `(Editado) ${originalRecord.descripcion}`
+            descripcion: newDescription
         }).eq('id', id);
 
         if (updateError) {
             alert('Error al actualizar el registro de historial: ' + updateError.message);
-            // Considerar revertir el cambio en stock si esto falla
         } else {
             alert('Registro y stock actualizados correctamente.');
             closeModal();
@@ -359,8 +357,7 @@ async function updateStockFromEdit(originalRecord, kg_difference) {
         .single();
 
     if (stockFetchError) {
-        alert('Error fatal: No se pudo encontrar el stock para ajustar. ' + stockFetchError.message);
-        throw new Error('Failed to fetch stock for update');
+        throw new Error('Error fatal: No se pudo encontrar el stock para ajustar. ' + stockFetchError.message);
     }
 
     const factor = originalRecord.tipo_movimiento === 'adicion' ? 1 : -1;
@@ -368,13 +365,11 @@ async function updateStockFromEdit(originalRecord, kg_difference) {
     
     let new_stock_unidades = stock.cantidad_unidades;
     if (originalRecord.tipo_producto === 'pastillas') {
-        // Recalcular unidades basado en el nuevo peso total para evitar errores de redondeo acumulados.
         new_stock_unidades = Math.round(new_stock_kg * 1000 / 3);
     }
 
     if (new_stock_kg < 0) {
-        alert('Error: La edición resulta en stock negativo.');
-        throw new Error('Stock cannot be negative');
+        throw new Error('La edición resulta en stock negativo.');
     }
 
     const { error: updateError } = await supabase.from('stock').update({
@@ -383,8 +378,7 @@ async function updateStockFromEdit(originalRecord, kg_difference) {
     }).eq('id', stock.id);
 
     if (updateError) {
-        alert('Error al actualizar el inventario principal: ' + updateError.message);
-        throw new Error('Failed to update stock');
+        throw new Error('Error al actualizar el inventario principal: ' + updateError.message);
     }
 }
 
@@ -396,14 +390,12 @@ async function eliminarRegistroStock(id) {
     }
 
     try {
-        // La cantidad a revertir es la totalidad del movimiento original.
         const kg_a_revertir = registro.cantidad_kg_movido;
-        // Pasamos el negativo para revertir la operación.
         await updateStockFromEdit(registro, -kg_a_revertir);
 
         const { error: deleteError } = await supabase.from('historial_stock').delete().eq('id', id);
         if (deleteError) {
-            alert('Error al eliminar el registro del historial: ' + deleteError.message + '. El stock ha sido revertido, pero el registro persiste. Contacte a soporte.');
+            throw new Error('Error al eliminar el registro del historial: ' + deleteError.message + '. El stock ha sido revertido, pero el registro persiste. Contacte a soporte.');
         } else {
             alert('Registro eliminado y stock revertido correctamente.');
             renderStock();

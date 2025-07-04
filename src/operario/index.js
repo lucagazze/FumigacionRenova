@@ -7,8 +7,7 @@ requireRole('operario');
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('header').innerHTML = renderHeader();
     
-    // --- Selectores del DOM ---
-    const form = document.getElementById('formNuevaOperacion'); // ID CORREGIDO
+    const form = document.getElementById('formNuevaOperacion');
     const clienteSelect = document.getElementById('cliente');
     const depositoSelect = document.getElementById('deposito');
     const mercaderiaSelect = document.getElementById('mercaderia');
@@ -16,14 +15,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     const companeroContainer = document.getElementById('companeroContainer');
     const companeroList = document.getElementById('companero-list');
     const selectedCompanerosEl = document.getElementById('selected-companeros');
+    const user = getUser();
 
-    // --- Funciones de Carga de Datos ---
-    async function poblarCompaneros() {
-        const { data, error } = await supabase.from('usuarios').select('id, nombre, apellido').eq('role', 'operario');
+    async function poblarCompaneros(clienteId) {
+        companeroList.innerHTML = '';
+        if (!clienteId) return;
+
+        // 1. Encontrar todos los operarios para ese cliente
+        const { data: operariosRel, error: relError } = await supabase
+            .from('operario_clientes')
+            .select('operario_id')
+            .eq('cliente_id', clienteId);
+
+        if (relError || !operariosRel || operariosRel.length === 0) {
+            console.error(relError || "No operators for this client");
+            return;
+        }
+        
+        const operarioIds = operariosRel.map(r => r.operario_id);
+
+        // 2. Obtener los datos de esos operarios
+        const { data, error } = await supabase.from('usuarios').select('id, nombre, apellido').in('id', operarioIds);
         if (error) { console.error(error); return; }
-        const currentUser = getUser();
+
         data.forEach(c => {
-            if (c.id !== currentUser.id) {
+            if (c.id !== user.id) {
                 companeroList.innerHTML += `
                     <label class="flex items-center gap-3 p-2 rounded-md hover:bg-gray-50">
                         <input type="checkbox" name="companero" value="${c.nombre} ${c.apellido}" class="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500">
@@ -34,9 +50,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    async function poblarClientes() {
-        const { data, error } = await supabase.from('clientes').select('id, nombre').order('nombre');
+    async function poblarClientesAsignados() {
+        if (!user.cliente_ids || user.cliente_ids.length === 0) {
+            clienteSelect.innerHTML = '<option value="">No tiene clientes asignados</option>';
+            clienteSelect.disabled = true;
+            return;
+        }
+        const { data, error } = await supabase.from('clientes').select('id, nombre').in('id', user.cliente_ids).order('nombre');
         if (error) { console.error(error); return; }
+        
+        clienteSelect.innerHTML = '<option value="">Seleccionar Cliente...</option>';
         data.forEach(c => clienteSelect.innerHTML += `<option value="${c.id}">${c.nombre}</option>`);
     }
 
@@ -68,9 +91,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         depositoSelect.disabled = false;
     }
 
-    // --- Event Listeners ---
     clienteSelect.addEventListener('change', () => {
-        poblarDepositos(clienteSelect.value);
+        const clienteId = clienteSelect.value;
+        poblarDepositos(clienteId);
+        poblarCompaneros(clienteId);
+        conCompaneroCheckbox.checked = false;
+        companeroContainer.classList.add('hidden');
     });
 
     conCompaneroCheckbox.addEventListener('change', () => {
@@ -85,7 +111,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
       
-        const user = getUser();
         const cliente_id = clienteSelect.value;
         const deposito_id = depositoSelect.value;
         const mercaderia_id = mercaderiaSelect.value;
@@ -130,8 +155,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = 'operacion.html';
     });
 
-    // --- Carga Inicial ---
-    poblarClientes();
+    poblarClientesAsignados();
     poblarMercaderias();
-    poblarCompaneros();
 });

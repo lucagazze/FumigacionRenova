@@ -29,10 +29,32 @@ const selectedCompanerosEl = document.getElementById('selected-companeros');
 let operacionActual = {};
 let cantidadSinFormato = 0;
 
-async function poblarCompaneros() {
-    const { data, error } = await supabase.from('usuarios').select('id, nombre, apellido').eq('role', 'operario');
-    if (error) { console.error(error); return; }
+async function poblarCompaneros(clienteId) {
+    if (!clienteId) return;
     const currentUser = getUser();
+
+    // 1. Obtener los IDs de los operarios asignados al cliente de la operación.
+    const { data: relaciones, error: relError } = await supabase
+        .from('operario_clientes')
+        .select('operario_id')
+        .eq('cliente_id', clienteId);
+
+    if (relError) {
+        console.error("Error fetching companion relations:", relError);
+        return;
+    }
+    
+    const operarioIds = relaciones.map(r => r.operario_id);
+
+    // 2. Obtener los datos de esos operarios.
+    const { data, error } = await supabase
+        .from('usuarios')
+        .select('id, nombre, apellido')
+        .in('id', operarioIds);
+
+    if (error) { console.error(error); return; }
+
+    companeroList.innerHTML = ''; // Limpiar lista anterior
     data.forEach(c => {
         if (c.id !== currentUser.id) {
             companeroList.innerHTML += `
@@ -44,6 +66,7 @@ async function poblarCompaneros() {
         }
     });
 }
+
 
 async function setupPage() {
   const opId = localStorage.getItem('operacion_actual');
@@ -67,7 +90,8 @@ async function setupPage() {
   depositoFijoInfo.querySelector('b').textContent = depositoOrigen;
   depositoFijoInfo.style.display = 'block';
   
-  poblarCompaneros();
+  // Poblar compañeros usando el cliente_id de la operación actual
+  poblarCompaneros(operacionActual.cliente_id);
   updateCalculations();
 }
 
@@ -235,13 +259,11 @@ btnRegistrar.addEventListener('click', async () => {
   if (insertError || !newOperationData || newOperationData.length === 0) {
     alert('Error al guardar el registro de aplicación.');
     console.error(insertError);
-    // Aquí deberías considerar revertir el descuento de stock si la inserción de la operación falla.
     return;
   }
 
   const newOperationId = newOperationData[0].id;
 
-  // Ahora que tenemos el ID de la operación, lo usamos para actualizar el historial de stock.
   const { error: historialUpdateError } = await supabase
     .from('historial_stock')
     .update({ operacion_id: newOperationId })
@@ -250,7 +272,6 @@ btnRegistrar.addEventListener('click', async () => {
 
   if (historialUpdateError) {
       console.warn("No se pudo vincular el historial de stock a la operación:", historialUpdateError.message);
-      // No es un error fatal, pero es bueno saberlo.
   }
   
   alert(`Registro de aplicación guardado y stock descontado correctamente.`);

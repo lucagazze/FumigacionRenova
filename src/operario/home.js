@@ -1,5 +1,5 @@
 import { renderHeader } from '../common/header.js';
-import { requireRole } from '../common/router.js';
+import { requireRole, getUser } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 
 requireRole('operario');
@@ -9,15 +9,22 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('header').innerHTML = renderHeader();
     const operacionesList = document.getElementById('operacionesList');
     const btnNueva = document.getElementById('btnNueva');
+    const user = getUser();
 
     async function renderOperaciones() {
         operacionesList.innerHTML = '<p class="text-center p-4 text-gray-500 col-span-full">Buscando operaciones en curso...</p>';
+
+        if (!user.cliente_ids || user.cliente_ids.length === 0) {
+            operacionesList.innerHTML = '<p class="text-center text-gray-500 p-4 col-span-full">No tiene clientes asignados. Contacte a un administrador.</p>';
+            return;
+        }
 
         const { data: opsIniciales, error } = await supabase
             .from('operaciones')
             .select('id, created_at, metodo_fumigacion, clientes(nombre), depositos(nombre, tipo), mercaderias(nombre)')
             .eq('estado', 'en curso')
             .eq('tipo_registro', 'inicial')
+            .in('cliente_id', user.cliente_ids)
             .order('created_at', { ascending: false });
         
         if(error) {
@@ -27,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (opsIniciales.length === 0) {
-            operacionesList.innerHTML = '<p class="text-center text-gray-500 p-4 col-span-full">No hay operaciones en curso en este momento.</p>';
+            operacionesList.innerHTML = '<p class="text-center text-gray-500 p-4 col-span-full">No hay operaciones en curso para sus clientes asignados.</p>';
             return;
         }
         
@@ -48,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const unidadLabel = op.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';
             const productoTotal = op.totalProducto ? op.totalProducto.toLocaleString() : '0';
 
-            // Se agrega la clase 'operation-card' y el data-id al contenedor principal
             return `
             <div class="operation-card bg-white rounded-xl shadow-lg border border-gray-200 p-6 flex flex-col justify-between transition hover:shadow-xl hover:border-gray-300 cursor-pointer" data-id="${op.id}">
                 <div class="flex-grow">
@@ -78,7 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     }
 
-    // Se agrega un único event listener al contenedor de la lista
     operacionesList.addEventListener('click', (e) => {
         const card = e.target.closest('.operation-card');
         if (card) {
