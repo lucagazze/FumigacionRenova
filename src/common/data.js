@@ -87,8 +87,14 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
             default: tipoText = 'N/A'; tipoClass = 'bg-gray-100 text-gray-800';
         }
 
+        // Formato de fecha explícito (am/pm)
+        const fechaFormateada = new Date(op.created_at).toLocaleString('es-AR', {
+            day: 'numeric', month: 'numeric', year: 'numeric', 
+            hour: '2-digit', minute: '2-digit', hour12: true 
+        });
+
         const mainRowCells = [
-            `<td class="px-4 py-4 whitespace-nowrap text-sm">${new Date(op.created_at).toLocaleString('es-AR')}</td>`,
+            `<td class="px-4 py-4 whitespace-nowrap text-sm">${fechaFormateada}</td>`,
             `<td class="px-4 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${tipoClass}">${tipoText}</span></td>`,
             `<td class="px-4 py-4 whitespace-nowrap text-sm">${op.clientes?.nombre || '-'}</td>`,
             `<td class="px-4 py-4 whitespace-nowrap text-sm">${op.operario_nombre?.replace(' y ', '<br>y ').replace(/, /g, '<br>')}</td>`,
@@ -179,6 +185,8 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
             const durationMins = Math.round((durationMs % 3600000) / 60000);
             const tratamiento = summary.tratamientos.size > 0 ? [...summary.tratamientos].join(', ') : 'N/A';
             const metodo = summary.metodo ? summary.metodo.charAt(0).toUpperCase() + summary.metodo.slice(1) : 'N/A';
+            const fechaInicioFormateada = startDate.toLocaleString('es-AR', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+            const fechaFinFormateada = endDate.toLocaleString('es-AR', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
 
             detailsContentHTML = `
                 <div class="p-4 bg-gray-100">
@@ -189,8 +197,8 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
                         <div><strong>Tratamiento(s):</strong><br>${tratamiento}</div>
                         <div><strong>Total Toneladas:</strong><br>${summary.totalToneladas.toLocaleString()} tn</div>
                         <div><strong>Total Producto:</strong><br>${summary.totalProducto.toLocaleString()} ${unidadLabel}</div>
-                        <div><strong>Inicio:</strong><br>${startDate.toLocaleString('es-AR')}</div>
-                        <div><strong>Fin:</strong><br>${endDate.toLocaleString('es-AR')}</div>
+                        <div><strong>Inicio:</strong><br>${fechaInicioFormateada}</div>
+                        <div><strong>Fin:</strong><br>${fechaFinFormateada}</div>
                         <div><strong>Duración:</strong><br>~ ${durationHours}h ${durationMins}m</div>
                     </div>
                 </div>
