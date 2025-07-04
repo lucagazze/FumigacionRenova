@@ -68,6 +68,40 @@ function renderSilosEnCurso(operaciones, operationsForDashboard) {
     });
 }
 
+async function renderUltimasFinalizadas() {
+    const container = document.getElementById('ultimasFinalizadasContainer');
+    container.innerHTML = '<p class="text-center text-gray-500 col-span-full">Cargando...</p>';
+
+    const { data: ops, error } = await supabase
+        .from('operaciones')
+        .select(`*, clientes(nombre), depositos(nombre, tipo)`)
+        .eq('estado', 'finalizada')
+        .eq('tipo_registro', 'inicial')
+        .order('created_at', { ascending: false })
+        .limit(4);
+
+    if (error || !ops || ops.length === 0) {
+        container.innerHTML = '<p class="col-span-full text-center text-gray-500">No hay operaciones finalizadas recientemente.</p>';
+        return;
+    }
+
+    container.innerHTML = ops.map(op => {
+        const depositoInfo = op.depositos ? `${op.depositos.tipo.charAt(0).toUpperCase() + op.depositos.tipo.slice(1)} ${op.depositos.nombre}` : 'N/A';
+        return `
+            <a href="operacion_detalle.html?id=${op.id}" class="block bg-white rounded-xl shadow border p-4 transition hover:shadow-md hover:border-blue-300">
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="font-bold text-md text-gray-800">${op.clientes?.nombre || 'N/A'}</h4>
+                    <span class="text-xs font-semibold px-2 py-1 rounded-full bg-red-100 text-red-800">Finalizada</span>
+                </div>
+                <div class="text-sm text-gray-600">
+                    <p><strong>Depósito:</strong> ${depositoInfo}</p>
+                    <p><strong>Fecha:</strong> ${new Date(op.created_at).toLocaleDateString('es-AR')}</p>
+                </div>
+            </a>
+        `;
+    }).join('');
+}
+
 
 async function poblarFiltros() {
     const { data: clientes } = await supabase.from('clientes').select('id, nombre').order('nombre');
@@ -129,6 +163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const operationsForDashboard = allOperations.filter(op => op.tipo_registro !== 'muestreo');
 
     renderSilosEnCurso(allOperations, operationsForDashboard);
+    renderUltimasFinalizadas(); // <--- LLAMADA A LA NUEVA FUNCIÓN
     await poblarFiltros();
     renderOperaciones(operacionesContainer, operationsForDashboard, true);
 
