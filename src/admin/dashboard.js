@@ -131,7 +131,6 @@ function aplicarFiltros(operaciones) {
     const siloCeldaId = document.getElementById('filtroSiloCelda').value;
     
     const dateRange = $('#filtroFecha').data('daterangepicker');
-    // **AQUÍ ESTÁ LA CORRECCIÓN**
     const hasDateValue = $('#filtroFecha').val() !== '';
     const fechaDesde = hasDateValue && dateRange.startDate && dateRange.startDate.isValid() ? dateRange.startDate.toDate() : null;
     const fechaHasta = hasDateValue && dateRange.endDate && dateRange.endDate.isValid() ? dateRange.endDate.toDate() : null;
@@ -185,7 +184,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // --- Event Listeners ---
-    $(filtroFechaInput).on('apply.daterangepicker', () => aplicarFiltros(operationsForDashboard));
+    $(filtroFechaInput).on('apply.daterangepicker', function(ev, picker) {
+        $(this).val(picker.startDate.format('DD/MM/YYYY') + ' - ' + picker.endDate.format('DD/MM/YYYY'));
+        aplicarFiltros(operationsForDashboard);
+    });
+    
     $(filtroFechaInput).on('cancel.daterangepicker', () => {
         $(filtroFechaInput).val('');
         aplicarFiltros(operationsForDashboard);
