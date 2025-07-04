@@ -21,8 +21,29 @@ const resumenToneladas = document.getElementById('resumenToneladas');
 const resumenTratamiento = document.getElementById('resumenTratamiento');
 const resumenDosis = document.getElementById('resumenDosis');
 const resumenTotal = document.getElementById('resumenTotal');
+const conCompaneroCheckbox = document.getElementById('conCompanero');
+const companeroContainer = document.getElementById('companeroContainer');
+const companeroList = document.getElementById('companero-list');
+const selectedCompanerosEl = document.getElementById('selected-companeros');
 
 let operacionActual = {};
+let cantidadSinFormato = 0;
+
+async function poblarCompaneros() {
+    const { data, error } = await supabase.from('usuarios').select('id, nombre, apellido').eq('role', 'operario');
+    if (error) { console.error(error); return; }
+    const currentUser = getUser();
+    data.forEach(c => {
+        if (c.id !== currentUser.id) {
+            companeroList.innerHTML += `
+                <label class="flex items-center gap-3 p-2 rounded-md hover:bg-gray-50">
+                    <input type="checkbox" name="companero" value="${c.nombre} ${c.apellido}" class="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500">
+                    <span>${c.nombre} ${c.apellido}</span>
+                </label>
+            `;
+        }
+    });
+}
 
 async function setupPage() {
   const opId = localStorage.getItem('operacion_actual');
@@ -46,6 +67,7 @@ async function setupPage() {
   depositoFijoInfo.querySelector('b').textContent = depositoOrigen;
   depositoFijoInfo.style.display = 'block';
   
+  poblarCompaneros();
   updateCalculations();
 }
 
@@ -72,7 +94,12 @@ function updateCalculations() {
         else if (tratamiento.value === 'curativo') { dosis = '20 cm³/tn'; cantidad = (toneladas * 20) / 1000; }
     }
     
-    resultadoProducto.textContent = cantidad > 0 ? cantidad.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
+    cantidadSinFormato = cantidad; // Guardar el valor sin formato
+    if (metodo === 'pastillas') {
+        resultadoProducto.textContent = cantidad > 0 ? Math.round(cantidad).toLocaleString('es-AR') : '-';
+    } else {
+        resultadoProducto.textContent = cantidad > 0 ? cantidad.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
+    }
     resumenModalidad.textContent = modalidad.options[modalidad.selectedIndex]?.text || '-';
     resumenToneladas.textContent = `${toneladas.toLocaleString()} tn`;
     resumenTratamiento.textContent = tratamiento.options[tratamiento.selectedIndex]?.text || '-';
@@ -88,6 +115,15 @@ modalidad.addEventListener('change', () => {
 
 [toneladasInput, camionesInput, tratamiento].forEach(el => el.addEventListener('input', updateCalculations));
 
+conCompaneroCheckbox.addEventListener('change', () => {
+    companeroContainer.classList.toggle('hidden', !conCompaneroCheckbox.checked);
+});
+
+companeroList.addEventListener('change', () => {
+    const selected = Array.from(document.querySelectorAll('[name="companero"]:checked')).map(cb => cb.value);
+    selectedCompanerosEl.textContent = selected.length > 0 ? selected.join(', ') : 'Ninguno';
+});
+
 btnRegistrar.addEventListener('click', async () => {
   const currentUser = getUser();
   if (!currentUser) { alert("Error de autenticación."); return; }
@@ -96,17 +132,17 @@ btnRegistrar.addEventListener('click', async () => {
   if (modalidad.value === 'trasilado') toneladas = Number(toneladasInput.value);
   else if (modalidad.value === 'descarga') toneladas = (Number(camionesInput.value) || 0) * 28;
 
-  let cantidadCm3;
   const metodo = operacionActual.metodo_fumigacion;
+  let cantidadAUsar = cantidadSinFormato;
 
-  if (metodo === 'liquido') {
-      const cantidadLitros = parseFloat(resultadoProducto.textContent.replace('.', '').replace(',', '.')) || 0;
-      cantidadCm3 = cantidadLitros * 1000;
-  } else {
-      cantidadCm3 = parseFloat(resultadoProducto.textContent.replace(/,/g, '')) || 0;
+  if (metodo === 'pastillas') {
+    cantidadAUsar = Math.round(cantidadSinFormato);
+  } else if (metodo === 'liquido') {
+    // En líquidos, la cantidad está en litros, la pasamos a cm³ para la BD
+    cantidadAUsar = cantidadSinFormato * 1000;
   }
 
-  if (!modalidad.value || !tratamiento.value || cantidadCm3 <= 0) {
+  if (!modalidad.value || !tratamiento.value || cantidadAUsar <= 0) {
     alert('Complete todos los campos y asegúrese de que la cantidad sea válida.');
     return;
   }
@@ -114,11 +150,11 @@ btnRegistrar.addEventListener('click', async () => {
   const depositoOrigen = operacionActual.deposito_origen_stock || "Fagaz";
   
   if (operacionActual.metodo_fumigacion === 'pastillas') {
-      const cantidadKg = (cantidadCm3 * 3) / 1000;
+      const cantidadKg = (cantidadAUsar * 3) / 1000;
       
       const { data: stockData, error } = await supabase.rpc('descontar_stock_pastillas', {
           deposito_nombre: depositoOrigen,
-          unidades_a_descontar: cantidadCm3,
+          unidades_a_descontar: cantidadAUsar,
           kg_a_descontar: cantidadKg
       });
       
@@ -131,14 +167,14 @@ btnRegistrar.addEventListener('click', async () => {
           tipo_movimiento: 'uso',
           deposito: depositoOrigen,
           tipo_producto: 'pastillas',
-          cantidad_unidades_movidas: cantidadCm3,
+          cantidad_unidades_movidas: cantidadAUsar,
           cantidad_kg_movido: cantidadKg,
           descripcion: `Uso en operación por ${currentUser.nombre} ${currentUser.apellido}`
       }]);
 
   } else if (operacionActual.metodo_fumigacion === 'liquido') {
       const DENSIDAD_LIQUIDO = 1.2; // g/cm³ -> kg/L
-      const cantidadKg = (cantidadCm3 * DENSIDAD_LIQUIDO) / 1000;
+      const cantidadKg = (cantidadAUsar * DENSIDAD_LIQUIDO) / 1000;
 
       const { data: stockActual, error: fetchError } = await supabase
         .from('stock')
@@ -180,7 +216,7 @@ btnRegistrar.addEventListener('click', async () => {
       }]);
   }
 
-  const { error: insertError } = await supabase.from('operaciones').insert([{
+  const { data: newOperationData, error: insertError } = await supabase.from('operaciones').insert([{
     operacion_original_id: operacionActual.id,
     cliente_id: operacionActual.cliente_id,
     deposito_id: operacionActual.deposito_id,
@@ -188,18 +224,33 @@ btnRegistrar.addEventListener('click', async () => {
     estado: 'en curso',
     deposito_origen_stock: depositoOrigen,
     metodo_fumigacion: operacionActual.metodo_fumigacion,
-    producto_usado_cantidad: cantidadCm3,
+    producto_usado_cantidad: cantidadAUsar,
     tipo_registro: 'producto',
-    operario_nombre: `${currentUser.nombre} ${currentUser.apellido}`, // CORREGIDO
+    operario_nombre: conCompaneroCheckbox.checked ? `${currentUser.nombre} ${currentUser.apellido} y ${Array.from(document.querySelectorAll('[name="companero"]:checked')).map(cb => cb.value).join(', ')}` : `${currentUser.nombre} ${currentUser.apellido}`,
     tratamiento: tratamiento.value,
     modalidad: modalidad.value,
     toneladas: toneladas
-  }]);
+  }]).select();
 
-  if (insertError) {
+  if (insertError || !newOperationData || newOperationData.length === 0) {
     alert('Error al guardar el registro de aplicación.');
     console.error(insertError);
+    // Aquí deberías considerar revertir el descuento de stock si la inserción de la operación falla.
     return;
+  }
+
+  const newOperationId = newOperationData[0].id;
+
+  // Ahora que tenemos el ID de la operación, lo usamos para actualizar el historial de stock.
+  const { error: historialUpdateError } = await supabase
+    .from('historial_stock')
+    .update({ operacion_id: newOperationId })
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (historialUpdateError) {
+      console.warn("No se pudo vincular el historial de stock a la operación:", historialUpdateError.message);
+      // No es un error fatal, pero es bueno saberlo.
   }
   
   alert(`Registro de aplicación guardado y stock descontado correctamente.`);

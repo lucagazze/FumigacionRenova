@@ -11,8 +11,27 @@ const previewContainer = document.getElementById('preview');
 const btnGuardar = document.getElementById('btnGuardar');
 const btnText = document.getElementById('btnText');
 const spinner = document.getElementById('spinner');
+const conCompaneroCheckbox = document.getElementById('conCompanero');
+const companeroContainer = document.getElementById('companeroContainer');
+const companeroList = document.getElementById('companero-list');
 
 let filesToUpload = [];
+
+async function poblarCompaneros() {
+    const { data, error } = await supabase.from('usuarios').select('id, nombre, apellido').eq('role', 'operario');
+    if (error) { console.error(error); return; }
+    const currentUser = getUser();
+    data.forEach(c => {
+        if (c.id !== currentUser.id) {
+            companeroList.innerHTML += `
+                <label class="flex items-center gap-3 p-2 rounded-md hover:bg-gray-50">
+                    <input type="checkbox" name="companero" value="${c.nombre} ${c.apellido}" class="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500">
+                    <span>${c.nombre} ${c.apellido}</span>
+                </label>
+            `;
+        }
+    });
+}
 
 function renderPreviews() {
     previewContainer.innerHTML = '';
@@ -60,8 +79,9 @@ form.addEventListener('submit', async (e) => {
     const operacionId = localStorage.getItem('operacion_actual');
     const user = getUser();
     const observacion = document.getElementById('observacion').value;
+    const companeros = Array.from(document.querySelectorAll('[name="companero"]:checked')).map(cb => cb.value);
 
-    if (!operacionId || !user || filesToUpload.length === 0 || !observacion) {
+    if (!operacionId || !user || !observacion) {
         alert('Faltan datos. Asegúrese de tener una operación activa, seleccionado al menos un archivo y escrito una observación.');
         return;
     }
@@ -81,7 +101,7 @@ form.addEventListener('submit', async (e) => {
             mercaderia_id: opData.mercaderia_id,
             estado: 'en curso',
             tipo_registro: 'muestreo',
-            operario_nombre: `${user.nombre} ${user.apellido}`, // CORREGIDO
+            operario_nombre: conCompaneroCheckbox.checked ? `${user.nombre} ${user.apellido} y ${companeros.join(', ')}` : `${user.nombre} ${user.apellido}`,
         }).select().single();
         
         if (insertOpError) throw insertOpError;
@@ -124,3 +144,9 @@ form.addEventListener('submit', async (e) => {
 document.getElementById('btnVolver').addEventListener('click', () => {
     window.location.href = 'operacion.html';
 });
+
+conCompaneroCheckbox.addEventListener('change', () => {
+    companeroContainer.style.display = conCompaneroCheckbox.checked ? 'block' : 'none';
+});
+
+document.addEventListener('DOMContentLoaded', poblarCompaneros);

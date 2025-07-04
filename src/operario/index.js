@@ -12,8 +12,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     const clienteSelect = document.getElementById('cliente');
     const depositoSelect = document.getElementById('deposito');
     const mercaderiaSelect = document.getElementById('mercaderia');
+    const conCompaneroCheckbox = document.getElementById('conCompanero');
+    const companeroContainer = document.getElementById('companeroContainer');
+    const companeroList = document.getElementById('companero-list');
+    const selectedCompanerosEl = document.getElementById('selected-companeros');
 
     // --- Funciones de Carga de Datos ---
+    async function poblarCompaneros() {
+        const { data, error } = await supabase.from('usuarios').select('id, nombre, apellido').eq('role', 'operario');
+        if (error) { console.error(error); return; }
+        const currentUser = getUser();
+        data.forEach(c => {
+            if (c.id !== currentUser.id) {
+                companeroList.innerHTML += `
+                    <label class="flex items-center gap-3 p-2 rounded-md hover:bg-gray-50">
+                        <input type="checkbox" name="companero" value="${c.nombre} ${c.apellido}" class="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500">
+                        <span>${c.nombre} ${c.apellido}</span>
+                    </label>
+                `;
+            }
+        });
+    }
+
     async function poblarClientes() {
         const { data, error } = await supabase.from('clientes').select('id, nombre').order('nombre');
         if (error) { console.error(error); return; }
@@ -53,6 +73,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         poblarDepositos(clienteSelect.value);
     });
 
+    conCompaneroCheckbox.addEventListener('change', () => {
+        companeroContainer.classList.toggle('hidden', !conCompaneroCheckbox.checked);
+    });
+
+    companeroList.addEventListener('change', () => {
+        const selected = Array.from(document.querySelectorAll('[name="companero"]:checked')).map(cb => cb.value);
+        selectedCompanerosEl.textContent = selected.length > 0 ? selected.join(', ') : 'Ninguno';
+    });
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
       
@@ -61,10 +90,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const deposito_id = depositoSelect.value;
         const mercaderia_id = mercaderiaSelect.value;
         const metodo_fumigacion = document.getElementById('metodo_fumigacion').value;
+        const companeros = Array.from(document.querySelectorAll('[name="companero"]:checked')).map(cb => cb.value);
 
         if (!user || !cliente_id || !deposito_id || !mercaderia_id || !metodo_fumigacion) {
             alert('Por favor, complete todos los campos.');
             return;
+        }
+        
+        let operario_nombre = `${user.nombre} ${user.apellido}`;
+        if (conCompaneroCheckbox.checked && companeros.length > 0) {
+            operario_nombre += ` y ${companeros.join(', ')}`;
         }
       
         const { data: opData, error: opError } = await supabase
@@ -74,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 deposito_id,
                 mercaderia_id,
                 metodo_fumigacion,
-                operario_nombre: `${user.nombre} ${user.apellido}`,
+                operario_nombre,
                 estado: 'en curso',
                 tipo_registro: 'inicial',
             }])
@@ -98,4 +133,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Carga Inicial ---
     poblarClientes();
     poblarMercaderias();
+    poblarCompaneros();
 });

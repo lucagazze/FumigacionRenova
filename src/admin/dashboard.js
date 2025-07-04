@@ -68,48 +68,6 @@ function renderSilosEnCurso(operaciones, operationsForDashboard) {
     });
 }
 
-function renderUltimasFinalizadas(operaciones) {
-    const container = document.getElementById('ultimasFinalizadasContainer');
-    const finalizadas = operaciones
-        .filter(op => op.tipo_registro === 'finalizacion')
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-        .slice(0, 4);
-
-    if (finalizadas.length === 0) {
-        container.innerHTML = '<p class="col-span-full text-center text-gray-500">No hay operaciones finalizadas recientemente.</p>';
-        return;
-    }
-
-    container.innerHTML = finalizadas.map(op => {
-        const depositoInfo = op.depositos ? `${op.depositos.tipo.charAt(0).toUpperCase() + op.depositos.tipo.slice(1)} ${op.depositos.nombre}` : 'N/A';
-        
-        let garantiaHtml = '';
-        if (op.con_garantia) {
-            const hoy = new Date();
-            hoy.setHours(0,0,0,0);
-            const vencimiento = new Date(op.fecha_vencimiento_garantia + 'T00:00:00');
-            if (vencimiento >= hoy) {
-                garantiaHtml = `<span title="Garantía Vigente" class="material-icons text-green-500">check_circle</span>`;
-            } else {
-                garantiaHtml = `<span title="Garantía Vencida" class="material-icons text-yellow-500">warning</span>`;
-            }
-        } else {
-            garantiaHtml = `<span title="Sin Garantía" class="material-icons text-red-500">cancel</span>`;
-        }
-
-        return `
-            <a href="operacion_detalle.html?id=${op.id}" class="block bg-white p-4 rounded-xl shadow-md border hover:border-blue-500 hover:shadow-lg transition-all">
-                <div class="flex justify-between items-start">
-                    <p class="font-bold text-gray-800">${op.clientes?.nombre || 'N/A'}</p>
-                    ${garantiaHtml}
-                </div>
-                <p class="text-sm text-gray-600">${depositoInfo}</p>
-                <p class="text-sm text-gray-500 mt-2">Mercadería: <strong>${op.mercaderias?.nombre || 'N/A'}</strong></p>
-                <p class="text-xs text-gray-400 mt-3">Finalizó el ${new Date(op.created_at).toLocaleDateString('es-AR')}</p>
-            </a>
-        `;
-    }).join('');
-}
 
 async function poblarFiltros() {
     const { data: clientes } = await supabase.from('clientes').select('id, nombre').order('nombre');
@@ -171,7 +129,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const operationsForDashboard = allOperations.filter(op => op.tipo_registro !== 'muestreo');
 
     renderSilosEnCurso(allOperations, operationsForDashboard);
-    renderUltimasFinalizadas(operationsForDashboard);
     await poblarFiltros();
     renderOperaciones(operacionesContainer, operationsForDashboard, true);
 

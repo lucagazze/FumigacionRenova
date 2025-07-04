@@ -91,7 +91,7 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
             `<td class="px-4 py-4 whitespace-nowrap text-sm">${new Date(op.created_at).toLocaleString('es-AR')}</td>`,
             `<td class="px-4 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${tipoClass}">${tipoText}</span></td>`,
             `<td class="px-4 py-4 whitespace-nowrap text-sm">${op.clientes?.nombre || '-'}</td>`,
-            `<td class="px-4 py-4 whitespace-nowrap text-sm">${op.operario_nombre || '-'}</td>`,
+            `<td class="px-4 py-4 whitespace-nowrap text-sm">${op.operario_nombre?.replace(' y ', '<br>y ').replace(/, /g, '<br>')}</td>`,
             `<td class="px-4 py-4 whitespace-nowrap text-sm">${op.depositos?.nombre || '-'} (${op.depositos?.tipo || '-'})</td>`,
             `<td class="px-4 py-4 whitespace-nowrap font-semibold ${op.estado === 'finalizada' ? 'text-red-600' : 'text-green-600'}">${op.estado}</td>`
         ];

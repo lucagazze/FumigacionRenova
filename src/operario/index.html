@@ -41,6 +41,21 @@
               <option value="liquido">Líquido</option>
             </select>
           </div>
+          <div>
+            <label class="flex items-center gap-3">
+                <input type="checkbox" id="conCompanero" class="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500">
+                <span class="font-semibold">Registrar con compañero(s)</span>
+            </label>
+          </div>
+          <div id="companeroContainer" class="hidden">
+              <label class="label-text block font-medium">Seleccionar Compañeros</label>
+              <div id="companero-list" class="mt-2 space-y-2 border rounded-lg p-3 max-h-40 overflow-y-auto">
+                  <!-- Los compañeros se cargarán aquí -->
+              </div>
+              <div class="mt-2">
+                <p class="text-sm font-medium">Seleccionados: <span id="selected-companeros" class="font-normal text-gray-600">Ninguno</span></p>
+              </div>
+          </div>
           <div class="pt-4 flex justify-end">
             <button class="btn-primary flex items-center justify-center rounded-lg h-12 px-8 text-base font-bold w-full" type="submit">
               Iniciar Operación

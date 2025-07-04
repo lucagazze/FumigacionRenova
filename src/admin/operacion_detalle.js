@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function renderizarPagina(container, op, allRecords) {
+    const deletableTypes = ['producto', 'muestreo'];
     let totalProducto = 0;
     let totalToneladas = 0;
     
@@ -110,11 +111,16 @@ function renderizarPagina(container, op, allRecords) {
                     let extraClasses = '';
                     let dataAttributes = '';
                     let actionButton = '';
-                    const deletableTypes = ['producto', 'muestreo'];
+                    const editableTypes = ['producto', 'muestreo', 'inicial'];
+
+                    if (editableTypes.includes(registro.tipo_registro)) {
+                         actionButton = `<button class="btn-edit-registro" data-registro-id="${registro.id}" title="Editar este registro"><span class="material-icons text-blue-500 hover:text-blue-700">edit</span></button>`;
+                    }
 
                     if (deletableTypes.includes(registro.tipo_registro)) {
-                        actionButton = `<button class="btn-delete-registro" data-registro-id="${registro.id}" title="Eliminar este registro"><span class="material-icons text-red-500 hover:text-red-700">delete_forever</span></button>`;
+                        actionButton += ` <button class="btn-delete-registro" data-registro-id="${registro.id}" title="Eliminar este registro"><span class="material-icons text-red-500 hover:text-red-700">delete_forever</span></button>`;
                     }
+
 
                     switch(registro.tipo_registro) {
                         case 'inicial': detalle = `Operación iniciada por <b>${registro.operario_nombre}</b>.`; break;
@@ -158,6 +164,7 @@ function renderizarPagina(container, op, allRecords) {
     container.addEventListener('click', async (e) => {
         const muestreoTarget = e.target.closest('[data-muestreo-id]');
         const deleteTarget = e.target.closest('.btn-delete-registro');
+        const editTarget = e.target.closest('.btn-edit-registro');
 
         if (muestreoTarget) {
             const muestreoId = muestreoTarget.dataset.muestreoId;
@@ -175,6 +182,12 @@ function renderizarPagina(container, op, allRecords) {
         } else if (deleteTarget) {
             const registroId = deleteTarget.dataset.registroId;
             eliminarRegistro(registroId, allRecords);
+        } else if (editTarget) {
+            const registroId = editTarget.dataset.registroId;
+            const registro = allRecords.find(r => r.id === registroId);
+            if (registro) {
+                renderEditModal(registro);
+            }
         }
     });
 }
@@ -226,21 +239,294 @@ function renderMuestreoModal(muestreo) {
     });
 }
 
-async function eliminarRegistro(registroId, allRecords) {
-    if (!confirm('¿Está seguro de que desea eliminar este registro? Esta acción es PERMANENTE y el stock asociado será restaurado.')) return;
+async function renderEditModal(registro) {
+    const isProducto = registro.tipo_registro === 'producto';
+    const isInicial = registro.tipo_registro === 'inicial';
+    const metodo = registro.metodo_fumigacion;
 
-    const registro = allRecords.find(r => r.id === registroId);
-    if (!registro) {
-        alert('No se pudo encontrar el registro a eliminar.');
+    const modalHTML = `
+        <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 relative">
+                <button id="close-edit-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800"><span class="material-icons">close</span></button>
+                <h4 class="text-2xl font-bold mb-4">Editar Registro</h4>
+                <form id="edit-form" class="space-y-4">
+                    <input type="hidden" id="edit-registro-id" value="${registro.id}">
+                    <div>
+                        <label for="edit-fecha" class="block font-semibold mb-1">Fecha y Hora</label>
+                        <input type="datetime-local" id="edit-fecha" class="input-field" value="${new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}">
+                    </div>
+                    ${isProducto ? `
+                    <div>
+                        <label for="edit-tratamiento" class="block font-semibold mb-1">Tipo de Tratamiento</label>
+                        <select id="edit-tratamiento" class="input-field">
+                            <option value="preventivo" ${registro.tratamiento === 'preventivo' ? 'selected' : ''}>Preventivo</option>
+                            <option value="curativo" ${registro.tratamiento === 'curativo' ? 'selected' : ''}>Curativo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="edit-toneladas" class="block font-semibold mb-1">Toneladas</label>
+                        <input type="number" id="edit-toneladas" class="input-field" value="${registro.toneladas || ''}">
+                    </div>
+                    <div>
+                        <label class="block font-semibold mb-1">Producto a Usar</label>
+                        <p id="edit-producto-calculado" class="text-lg font-bold text-green-600"></p>
+                    </div>
+                    ` : ''}
+                    ${isInicial || isProducto ? `
+                    <div>
+                        <label class="label-text block font-medium">Operarios</label>
+                        <div id="edit-operario-list" class="mt-2 space-y-2 border rounded-lg p-3 max-h-40 overflow-y-auto">
+                            <!-- Los operarios se cargarán aquí -->
+                        </div>
+                    </div>
+                    ` : ''}
+                    <div class="flex justify-end gap-4 pt-4">
+                        <button type="button" id="cancel-edit" class="btn btn-secondary">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const closeModal = () => document.getElementById('edit-modal').remove();
+    document.getElementById('close-edit-modal').addEventListener('click', closeModal);
+    document.getElementById('cancel-edit').addEventListener('click', closeModal);
+    document.getElementById('edit-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'edit-modal') closeModal();
+    });
+
+    if (isInicial || isProducto) {
+        const operarioList = document.getElementById('edit-operario-list');
+        const { data: operarios } = await supabase.from('usuarios').select('id, nombre, apellido').eq('role', 'operario');
+        if (operarios) {
+            const currentOperarios = registro.operario_nombre.split(' y ').flatMap(o => o.split(', '));
+            operarios.forEach(o => {
+                const fullName = `${o.nombre} ${o.apellido}`;
+                const isChecked = currentOperarios.includes(fullName);
+                operarioList.innerHTML += `
+                    <label class="flex items-center gap-3 p-2 rounded-md hover:bg-gray-50">
+                        <input type="checkbox" name="operario" value="${fullName}" class="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500" ${isChecked ? 'checked' : ''}>
+                        <span>${fullName}</span>
+                    </label>
+                `;
+            });
+        }
+    }
+
+    if (isProducto) {
+        const tratamientoEl = document.getElementById('edit-tratamiento');
+        const toneladasEl = document.getElementById('edit-toneladas');
+        const productoCalculadoEl = document.getElementById('edit-producto-calculado');
+
+        const updateCalculo = () => {
+            const toneladas = parseFloat(toneladasEl.value) || 0;
+            const tratamiento = tratamientoEl.value;
+            let cantidad = 0;
+            let unidadLabel = '';
+
+            if (metodo === 'pastillas') {
+                unidadLabel = 'un.';
+                if (tratamiento === 'preventivo') cantidad = toneladas * 2;
+                else if (tratamiento === 'curativo') cantidad = toneladas * 3;
+            } else { // liquido
+                unidadLabel = 'L';
+                if (tratamiento === 'preventivo') cantidad = (toneladas * 12) / 1000;
+                else if (tratamiento === 'curativo') cantidad = (toneladas * 20) / 1000;
+            }
+            productoCalculadoEl.textContent = `${cantidad.toLocaleString('es-AR', { maximumFractionDigits: 2 })} ${unidadLabel}`;
+            productoCalculadoEl.dataset.raw = metodo === 'liquido' ? cantidad * 1000 : cantidad;
+        };
+
+        tratamientoEl.addEventListener('change', updateCalculo);
+        toneladasEl.addEventListener('input', updateCalculo);
+        updateCalculo();
+    }
+
+    document.getElementById('edit-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-registro-id').value;
+        const created_at = new Date(document.getElementById('edit-fecha').value).toISOString();
+        
+        let updates = { created_at };
+        let stockDifference = 0;
+
+        if (isProducto) {
+            const originalAmount = registro.producto_usado_cantidad;
+            const newAmount = parseFloat(document.getElementById('edit-producto-calculado').dataset.raw);
+            stockDifference = newAmount - originalAmount;
+
+            updates.tratamiento = document.getElementById('edit-tratamiento').value;
+            updates.toneladas = parseFloat(document.getElementById('edit-toneladas').value);
+            updates.producto_usado_cantidad = newAmount;
+        }
+        if (isInicial || isProducto) {
+            const selectedOperarios = Array.from(document.querySelectorAll('[name="operario"]:checked')).map(cb => cb.value);
+            updates.operario_nombre = selectedOperarios.join(' y ');
+        }
+
+        const { error } = await supabase.from('operaciones').update(updates).eq('id', id);
+
+        if (error) {
+            alert('Error al actualizar el registro: ' + error.message);
+        } else {
+            if (isProducto && stockDifference !== 0) {
+                await updateStock(registro, stockDifference);
+            }
+            alert('Registro actualizado correctamente.');
+            closeModal();
+            location.reload();
+        }
+    });
+}
+
+async function eliminarRegistro(registroId, allRecords) {
+    if (!confirm('¿Está seguro de que desea eliminar este registro? Esta acción es PERMANENTE, el stock será restaurado y el movimiento será eliminado del historial.')) return;
+
+    const registroOperacion = allRecords.find(r => r.id === registroId);
+    if (!registroOperacion) {
+        alert('Error: No se pudo encontrar el registro de operación a eliminar.');
         return;
     }
 
-    // Restaurar el stock si es un registro de producto
-    if (registro.tipo_registro === 'producto' && registro.producto_usado_cantidad > 0) {
+    if (registroOperacion.tipo_registro === 'producto' && registroOperacion.producto_usado_cantidad > 0) {
+        try {
+            const { data: historial, error: historialError } = await supabase
+                .from('historial_stock')
+                .select('*')
+                .eq('operacion_id', registroId)
+                .single(); // Usamos single() porque ahora la relación debe existir.
+
+            if (historialError) {
+                throw new Error(`No se encontró un registro de historial de stock para esta operación. Error: ${historialError.message}`);
+            }
+
+            const { data: stock, error: stockError } = await supabase
+                .from('stock')
+                .select('*')
+                .eq('deposito', historial.deposito)
+                .eq('tipo_producto', historial.tipo_producto)
+                .single();
+
+            if (stockError) {
+                throw new Error(`No se pudo encontrar el stock del depósito ${historial.deposito}.`);
+            }
+
+            const { error: restoreError } = await supabase.from('stock').update({
+                cantidad_kg: (stock.cantidad_kg || 0) + (historial.cantidad_kg_movido || 0),
+                cantidad_unidades: (stock.cantidad_unidades || 0) + (historial.cantidad_unidades_movidas || 0)
+            }).eq('id', stock.id);
+
+            if (restoreError) {
+                throw new Error(`Error al restaurar el stock: ${restoreError.message}`);
+            }
+
+            const { error: historyDeleteError } = await supabase.from('historial_stock').delete().eq('id', historial.id);
+            if (historyDeleteError) {
+                throw new Error(`El stock fue restaurado, pero no se pudo eliminar el registro del historial: ${historyDeleteError.message}`);
+            }
+
+        } catch (error) {
+            alert(`Ocurrió un error en el proceso de restauración: ${error.message}. No se eliminará el registro de la operación para evitar inconsistencias.`);
+            return;
+        }
+    }
+
+    const { error: deleteError } = await supabase.from('operaciones').delete().eq('id', registroId);
+    if (deleteError) {
+        alert(`Error al eliminar el registro de operación: ${deleteError.message}. ATENCIÓN: El stock y el historial pueden haber sido actualizados. Revise manualmente.`);
+        return;
+    }
+
+    alert('Registro eliminado. El stock y el historial han sido actualizados correctamente.');
+    location.reload();
+}
+
+async function updateStock(registro, difference) {
+    const stockDeposito = registro.deposito_origen_stock;
+    if (!stockDeposito) {
+        alert('Error: No se pudo determinar el depósito de origen del stock para este registro.');
+        return;
+    }
+
+    const { data: stock, error: stockError } = await supabase
+        .from('stock')
+        .select('*')
+        .eq('deposito', stockDeposito)
+        .eq('tipo_producto', registro.metodo_fumigacion)
+        .single();
+
+    if (stockError) {
+        alert('Error al obtener el stock para actualizar: ' + stockError.message);
+        return;
+    }
+
+    const DENSIDAD_LIQUIDO = 1.2;
+    let kg_diff = 0;
+    let unidades_diff = 0;
+
+    if (registro.metodo_fumigacion === 'liquido') {
+        // Assuming 'difference' is in cm³, convert to kg
+        kg_diff = (difference / 1000) * DENSIDAD_LIQUIDO;
+    } else { // pastillas
+        unidades_diff = difference;
+        kg_diff = (unidades_diff * 3) / 1000;
+    }
+
+    const new_kg = (stock.cantidad_kg || 0) - kg_diff;
+    const new_unidades = (stock.cantidad_unidades || 0) - unidades_diff;
+
+    const { error: updateError } = await supabase
+        .from('stock')
+        .update({
+            cantidad_kg: new_kg,
+            cantidad_unidades: new_unidades
+        })
+        .eq('id', stock.id);
+
+    if (updateError) {
+        alert('Error al actualizar el stock: ' + updateError.message);
+        throw new Error('Stock update failed');
+    }
+
+    // Create a corresponding record in the history
+    await supabase.from('historial_stock').insert({
+        tipo_movimiento: 'extraccion',
+        deposito: stockDeposito,
+        tipo_producto: registro.metodo_fumigacion,
+        cantidad_kg_movido: kg_diff,
+        cantidad_unidades_movidas: unidades_diff,
+        descripcion: `Uso en operación`,
+        operacion_id: registro.id // Link history to this specific operation record
+    });
+}
+
+async function eliminarOperacion(operacionId) {
+    if (!confirm('¿ESTÁ SEGURO? Esta acción eliminará la operación y TODOS sus registros asociados de forma PERMANENTE. El stock utilizado será restaurado.')) {
+        return;
+    }
+
+    // Primero, obtener todos los registros asociados a la operación.
+    const { data: registros, error: fetchError } = await supabase
+        .from('operaciones')
+        .select('*')
+        .or(`id.eq.${operacionId},operacion_original_id.eq.${operacionId}`);
+
+    if (fetchError) {
+        alert('Error al obtener los registros de la operación: ' + fetchError.message);
+        return;
+    }
+
+    // Filtrar los registros de uso de producto para restaurar el stock.
+    const registrosDeProducto = registros.filter(r => r.tipo_registro === 'producto' && r.producto_usado_cantidad > 0);
+
+    // Restaurar el stock por cada registro de producto.
+    for (const registro of registrosDeProducto) {
         const stockDeposito = registro.deposito_origen_stock;
         if (!stockDeposito) {
-             alert('Error: No se pudo determinar el depósito de origen del stock para este registro.');
-             return;
+            console.warn(`No se pudo determinar el depósito de origen para el registro ID: ${registro.id}. No se restaurará stock para este registro.`);
+            continue; // Continuar con el siguiente registro
         }
 
         const { data: stock, error: stockError } = await supabase
@@ -251,8 +537,9 @@ async function eliminarRegistro(registroId, allRecords) {
             .single();
 
         if (stockError) {
-            alert('Error al obtener el stock para restaurar: ' + stockError.message);
-            return;
+            alert(`Error al obtener el stock para restaurar (Registro ID: ${registro.id}): ${stockError.message}`);
+            // Decidir si detener todo el proceso o continuar. Por ahora, continuamos.
+            continue;
         }
 
         const DENSIDAD_LIQUIDO = 1.2;
@@ -275,31 +562,21 @@ async function eliminarRegistro(registroId, allRecords) {
             .eq('id', stock.id);
 
         if (restoreError) {
-            alert('Error al restaurar el stock: ' + restoreError.message);
-            return;
+            alert(`Error al restaurar el stock para el registro ID: ${registro.id}. Error: ${restoreError.message}. La operación de borrado se ha cancelado para evitar inconsistencias.`);
+            return; // Detener la eliminación si la restauración de stock falla.
         }
     }
 
-    // Eliminar permanentemente el registro
-    const { error: deleteError } = await supabase.from('operaciones').delete().eq('id', registroId);
+    // Si la restauración de stock fue exitosa (o no fue necesaria), eliminar la operación.
+    const { error: deleteError } = await supabase
+        .from('operaciones')
+        .delete()
+        .or(`id.eq.${operacionId},operacion_original_id.eq.${operacionId}`);
+
     if (deleteError) {
-        alert('Error al eliminar el registro: ' + deleteError.message);
-        alert('ATENCIÓN: El registro no se pudo eliminar, pero el stock puede haber sido restaurado. Por favor, verifique el stock manualmente.');
-        return;
-    }
-
-    alert('Registro eliminado y stock restaurado.');
-    location.reload();
-}
-
-async function eliminarOperacion(operacionId) {
-    if (confirm('¿ESTÁ SEGURO? Esta acción eliminará la operación y TODOS sus registros asociados de forma PERMANENTE.')) {
-        const { error } = await supabase.from('operaciones').delete().or(`id.eq.${operacionId},operacion_original_id.eq.${operacionId}`);
-        if (error) {
-            alert('Error al eliminar la operación: ' + error.message);
-        } else {
-            alert('Operación eliminada correctamente.');
-            window.location.href = 'dashboard.html';
-        }
+        alert('Error al eliminar la operación: ' + deleteError.message + '. ATENCIÓN: El stock ya ha sido restaurado. Contacte a soporte.');
+    } else {
+        alert('Operación eliminada correctamente y todo el stock asociado ha sido restaurado.');
+        window.location.href = 'dashboard.html';
     }
 }
