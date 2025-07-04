@@ -131,8 +131,10 @@ function aplicarFiltros(operaciones) {
     const siloCeldaId = document.getElementById('filtroSiloCelda').value;
     
     const dateRange = $('#filtroFecha').data('daterangepicker');
-    const fechaDesde = dateRange.startDate && dateRange.startDate.isValid() ? dateRange.startDate.toDate() : null;
-    const fechaHasta = dateRange.endDate && dateRange.endDate.isValid() ? dateRange.endDate.toDate() : null;
+    // **AQUÍ ESTÁ LA CORRECCIÓN**
+    const hasDateValue = $('#filtroFecha').val() !== '';
+    const fechaDesde = hasDateValue && dateRange.startDate && dateRange.startDate.isValid() ? dateRange.startDate.toDate() : null;
+    const fechaHasta = hasDateValue && dateRange.endDate && dateRange.endDate.isValid() ? dateRange.endDate.toDate() : null;
 
     if (clienteId) filteredOperations = filteredOperations.filter(op => op.cliente_id === clienteId);
     if (tipo) filteredOperations = filteredOperations.filter(op => op.tipo_registro === tipo);
@@ -163,7 +165,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const operationsForDashboard = allOperations.filter(op => op.tipo_registro !== 'muestreo');
 
     renderSilosEnCurso(allOperations, operationsForDashboard);
-    renderUltimasFinalizadas(); // <--- LLAMADA A LA NUEVA FUNCIÓN
+    renderUltimasFinalizadas();
     await poblarFiltros();
     renderOperaciones(operacionesContainer, operationsForDashboard, true);
 
@@ -173,7 +175,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const filtrosForm = document.getElementById('filtrosRegistro');
     const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltros');
     const filtroFechaInput = document.getElementById('filtroFecha');
-    const btnClearSiloFilter = document.getElementById('btnClearSiloFilter'); // **NUEVO**
+    const btnClearSiloFilter = document.getElementById('btnClearSiloFilter'); 
 
     // --- Inicialización de Date Picker ---
     $(filtroFechaInput).daterangepicker({
@@ -206,7 +208,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // **NUEVO:** Event Listener para el botón de limpiar filtro de silo
     btnClearSiloFilter.addEventListener('click', () => {
         filtrosForm.reset();
         $(filtroFechaInput).val('');
