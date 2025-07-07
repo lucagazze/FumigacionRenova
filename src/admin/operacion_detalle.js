@@ -189,6 +189,9 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
                     const editableTypes = ['producto', 'inicial'];
                     const deletableTypes = ['producto', 'muestreo'];
 
+                    const isRechazado = registro.estado_aprobacion === 'rechazado';
+                    const itemClass = isRechazado ? 'line-through text-gray-400' : '';
+
                     if (editableTypes.includes(registro.tipo_registro)) {
                          actionButtons += `<button class="btn-edit-registro p-1" data-registro-id="${registro.id}" title="Editar este registro"><span class="material-icons text-blue-500 hover:text-blue-700">edit</span></button>`;
                     }
@@ -207,8 +210,10 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
                         case 'finalizacion': detalle = `Operación finalizada por <b>${registro.operario_nombre}</b>.`; break;
                     }
 
-                    return `<div class="flex items-center justify-between text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm ${extraClasses}" ${dataAttributes}>
-                                <div><b>${new Date(registro.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}:</b> ${detalle}</div>
+                    const rechazoLabel = isRechazado ? ` <b class="text-red-500 no-underline">(RECHAZADO)</b>` : '';
+
+                    return `<div class="flex items-center justify-between text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm ${extraClasses} ${itemClass}" ${dataAttributes}>
+                                <div><b>${new Date(registro.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}:</b> ${detalle}${rechazoLabel}</div>
                                 <div class="flex-shrink-0 ml-4">${actionButtons}</div>
                             </div>`;
                 }).join('')}

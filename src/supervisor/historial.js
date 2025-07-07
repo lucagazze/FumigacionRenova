@@ -1,7 +1,7 @@
 import { renderHeader } from '../common/header.js';
 import { requireRole, getUser } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
-import { renderOperaciones, getOperaciones } from '../common/data.js';
+import { renderOperaciones } from '../common/data.js';
 
 requireRole('supervisor');
 
@@ -63,7 +63,6 @@ function renderSilosEnCursoSupervisor(operaciones, onSiloClick) {
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('header').innerHTML = renderHeader();
     
-    const filterForm = document.getElementById('filter-form');
     const container = document.getElementById('historial-container');
     const user = getUser();
 
@@ -86,7 +85,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const { data: depositos } = await supabase.from('depositos').select('id, nombre, tipo').in('cliente_id', user.cliente_ids);
-    const siloCeldaSelect = document.getElementById('filter-silo-celda');
+    const siloCeldaSelect = document.getElementById('filtroSiloCelda');
+    siloCeldaSelect.innerHTML = '<option value="">Todos los Depósitos</option>';
     depositos.forEach(d => {
         siloCeldaSelect.innerHTML += `<option value="${d.id}">${d.nombre} (${d.tipo})</option>`;
     });
@@ -97,9 +97,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (options.operacionId) {
             operacionesFiltradas = operacionesFiltradas.filter(op => op.id === options.operacionId || op.operacion_original_id === options.operacionId);
         } else {
-            const tipo = document.getElementById('filter-tipo').value;
-            const estado = document.getElementById('filter-estado').value;
-            const siloCelda = document.getElementById('filter-silo-celda').value;
+            const tipo = document.getElementById('filtroTipo').value;
+            const estado = document.getElementById('filtroEstado').value;
+            const siloCelda = document.getElementById('filtroSiloCelda').value;
 
             if (tipo) operacionesFiltradas = operacionesFiltradas.filter(op => op.tipo_registro === tipo);
             if (estado) operacionesFiltradas = operacionesFiltradas.filter(op => op.estado === estado);
@@ -111,16 +111,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     renderSilosEnCursoSupervisor(allOperations, aplicarTodosLosFiltros);
     aplicarTodosLosFiltros();
-
-    filterForm.addEventListener('change', () => aplicarTodosLosFiltros());
     
-    document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
-        filterForm.reset();
+    const filtrosForm = document.getElementById('filtrosRegistro');
+    filtrosForm.addEventListener('change', () => aplicarTodosLosFiltros());
+    
+    document.getElementById('toggleFiltrosBtn').addEventListener('click', () => {
+        document.getElementById('filtrosContainer').classList.toggle('hidden');
+    });
+
+    document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
+        filtrosForm.reset();
         aplicarTodosLosFiltros();
     });
 
     document.getElementById('btnClearSiloFilter').addEventListener('click', () => {
-        filterForm.reset();
+        filtrosForm.reset();
         aplicarTodosLosFiltros();
     });
 

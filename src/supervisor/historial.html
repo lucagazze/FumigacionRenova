@@ -20,7 +20,7 @@
           <h2 class="text-2xl font-bold text-gray-900">Depósitos con Operaciones en Curso</h2>
           <button id="btnClearSiloFilter" class="btn btn-secondary !py-1 !px-3 !text-xs">
             <span class="material-icons !text-sm">clear_all</span>
-            <span>Limpiar filtro de silo</span>
+            <span>Limpiar filtro</span>
           </button>
         </div>
         <div id="silosEnCursoContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6 text-center">
@@ -28,25 +28,53 @@
       </div>
 
       <div>
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
-          <h2 class="text-2xl font-bold text-gray-900">Historial de Operaciones</h2>
-          <form id="filter-form" class="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <select id="filter-tipo" class="input-field" name="tipo">
-              <option value="">Todos los Tipos</option>
-              <option value="inicial">Inicio</option>
-              <option value="producto">Aplicación</option>
-              <option value="muestreo">Muestreo</option>
-              <option value="finalizacion">Finalización</option>
-            </select>
-            <select id="filter-estado" class="input-field" name="estado">
-              <option value="">Todos los Estados</option>
-              <option value="en curso">En Curso</option>
-              <option value="finalizada">Finalizada</option>
-            </select>
-            <select id="filter-silo-celda" class="input-field" name="silo-celda">
-              <option value="">Todos los Silos/Celdas</option>
-            </select>
-            <button type="button" id="btn-limpiar-filtros" class="btn btn-secondary">Limpiar Filtros</button>
+        <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+          <h2 class="text-2xl font-bold text-gray-900">Registro Histórico de Operaciones</h2>
+          <button id="toggleFiltrosBtn" class="btn btn-secondary">
+            <span class="material-icons text-base">filter_list</span>
+            <span>Filtros</span>
+          </button>
+        </div>
+
+        <div id="filtrosContainer" class="hidden mb-6 bg-white p-6 rounded-xl shadow-sm border">
+          <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+              <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <span class="material-icons">filter_alt</span>
+                Filtros de Búsqueda
+              </h3>
+              <button id="btnLimpiarFiltros" class="text-sm font-semibold text-blue-600 hover:underline">Limpiar Filtros</button>
+          </div>
+          <form id="filtrosRegistro" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div>
+                <label class="block text-sm font-medium mb-1 text-gray-600">Tipo de Registro</label>
+                <div class="input-wrapper">
+                    <span class="material-icons input-icon">receipt_long</span>
+                    <select id="filtroTipo" class="input-field input-field-with-icon">
+                        <option value="">Todos</option>
+                        <option value="inicial">Inicio</option>
+                        <option value="producto">Aplicación</option>
+                        <option value="finalizacion">Finalización</option>
+                    </select>
+                </div>
+              </div>
+               <div>
+                <label class="block text-sm font-medium mb-1 text-gray-600">Estado</label>
+                 <div class="input-wrapper">
+                  <span class="material-icons input-icon">info</span>
+                  <select id="filtroEstado" class="input-field input-field-with-icon">
+                      <option value="">Todos</option>
+                      <option value="en curso">En Curso</option>
+                      <option value="finalizada">Finalizada</option>
+                  </select>
+                </div>
+              </div>
+              <div class="sm:col-span-2 lg:col-span-1">
+                <label class="block text-sm font-medium mb-1 text-gray-600">Depósito (Silo/Celda)</label>
+                <div class="input-wrapper">
+                    <span class="material-icons input-icon">store</span>
+                    <select id="filtroSiloCelda" class="input-field input-field-with-icon"></select>
+                </div>
+              </div>
           </form>
         </div>
       
