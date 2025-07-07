@@ -2,145 +2,155 @@ import { renderHeader } from '../common/header.js';
 import { requireRole, getUser } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 
-requireRole('supervisor');
-
-const urlParams = new URLSearchParams(window.location.search);
-const operacionId = urlParams.get('id');
 const user = getUser();
-const DENSIDAD_LIQUIDO = 1.2;
-
-async function renderDetalle() {
-    const container = document.getElementById('detalle-container');
-    if (!operacionId) {
-        container.innerHTML = '<p class="text-red-500">ID de operación no válido.</p>';
-        return;
-    }
-
-    const { data: op, error } = await supabase
-        .from('operaciones')
-        .select(`*, clientes(nombre), depositos(nombre, tipo), mercaderias(nombre)`)
-        .eq('id', operacionId)
-        .single();
-    
-    if (error || !op) {
-        container.innerHTML = '<p class="text-red-500">No se pudo cargar la operación.</p>';
-        return;
-    }
-
-    const unidadLabel = op.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';
-
-    container.innerHTML = `
-        <h3 class="text-xl font-bold text-gray-800">Detalles del Registro</h3>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm p-4 mt-4 bg-gray-50 rounded-lg border">
-            <div><strong>Cliente:</strong><br>${op.clientes?.nombre || 'N/A'}</div>
-            <div><strong>Depósito:</strong><br>${op.depositos?.nombre || 'N/A'} (${op.depositos?.tipo || 'N/A'})</div>
-            <div><strong>Mercadería:</strong><br>${op.mercaderias?.nombre || 'N/A'}</div>
-            <div><strong>Método:</strong><br>${op.metodo_fumigacion || 'N/A'}</div>
-            <div><strong>Tratamiento:</strong><br>${op.tratamiento || 'N/A'}</div>
-            <div><strong>Operario:</strong><br>${op.operario_nombre || 'N/A'}</div>
-            <div class="font-semibold"><strong>Total Toneladas:</strong><br>${(op.toneladas || 0).toLocaleString()} tn</div>
-            <div class="font-semibold"><strong>Total Producto:</strong><br>${(op.producto_usado_cantidad || 0).toLocaleString()} ${unidadLabel}</div>
-        </div>
-    `;
+// Permite el acceso a 'admin' y 'supervisor'
+if (user.role !== 'admin' && user.role !== 'supervisor') {
+    requireRole('supervisor'); 
 }
 
-async function handleRejection() {
-    if (!confirm("¿Está seguro de que desea RECHAZAR este registro? El stock utilizado será devuelto.")) return;
+let originalId; // Hacemos el ID original accesible en un scope más amplio
 
-    const observacion = document.getElementById('observacion_aprobacion').value;
-    if (!observacion) {
-        alert('Debe ingresar un motivo para rechazar la operación.');
-        return;
-    }
-
-    const { data: op, error: fetchError } = await supabase.from('operaciones').select('*').eq('id', operacionId).single();
-    if(fetchError || !op) return alert('Error al obtener datos para rechazar.');
-
-    // --- ⭐ AQUÍ OCURRE LA MAGIA: LÓGICA PARA REVERTIR EL STOCK ---
-    if (op.producto_usado_cantidad > 0) {
-        const { data: stock, error: stockError } = await supabase
-            .from('stock')
-            .select('*')
-            .eq('deposito', op.deposito_origen_stock)
-            .eq('tipo_producto', op.metodo_fumigacion)
-            .single();
-
-        if(stockError) {
-            alert('Error al encontrar el stock para revertir: ' + stockError.message);
-            return;
-        }
-        
-        let nuevo_kg = parseFloat(stock.cantidad_kg);
-        let nuevas_unidades = stock.cantidad_unidades ? parseInt(stock.cantidad_unidades) : 0;
-        
-        // Se suma la cantidad rechazada de vuelta al total
-        if (op.metodo_fumigacion === 'pastillas') {
-            nuevas_unidades += op.producto_usado_cantidad;
-            nuevo_kg += (op.producto_usado_cantidad * 3) / 1000;
-        } else { // liquido
-            nuevo_kg += (op.producto_usado_cantidad * DENSIDAD_LIQUIDO) / 1000;
-        }
-        
-        // Se actualiza la base de datos con el stock restaurado
-        const { error: updateStockError } = await supabase.from('stock').update({ cantidad_kg: nuevo_kg, cantidad_unidades: nuevas_unidades }).eq('id', stock.id);
-        
-        if (updateStockError) {
-            alert('CRÍTICO: No se pudo revertir el stock. Contacte a soporte. Error: ' + updateStockError.message);
-            return;
-        }
-    }
-    // --- FIN DE LA LÓGICA DE STOCK ---
-
-    // Finalmente, se actualiza el estado de la operación a 'rechazado'
-    const { error: updateError } = await supabase
-        .from('operaciones')
-        .update({ 
-            estado_aprobacion: 'rechazado', 
-            observacion_aprobacion: observacion,
-            supervisor_id: user.id,
-            fecha_aprobacion: new Date().toISOString()
-        })
-        .eq('id', operacionId);
-
-    if (updateError) {
-        alert('Error al rechazar la operación: ' + updateError.message);
-    } else {
-        alert(`La operación ha sido rechazada con éxito y el stock ha sido restaurado.`);
-        window.location.href = 'dashboard.html';
-    }
-}
-
-async function handleDecision(aprobado) {
-    if (!aprobado) {
-        return handleRejection();
-    }
-
-    if (!confirm("¿Está seguro de que desea APROBAR este registro?")) return;
-
-    const observacion = document.getElementById('observacion_aprobacion').value;
-
-    const { error } = await supabase
-        .from('operaciones')
-        .update({ 
-            estado_aprobacion: 'aprobado',
-            observacion_aprobacion: observacion,
-            supervisor_id: user.id,
-            fecha_aprobacion: new Date().toISOString()
-        })
-        .eq('id', operacionId);
-
-    if (error) {
-        alert('Error al procesar la decisión: ' + error.message);
-    } else {
-        alert(`La operación ha sido aprobada con éxito.`);
-        window.location.href = 'dashboard.html';
-    }
-}
-
+// --- INICIALIZACIÓN ---
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('header').innerHTML = renderHeader();
-    await renderDetalle();
+    const container = document.getElementById('detalle-container');
+    const urlParams = new URLSearchParams(window.location.search);
+    const operacionId = urlParams.get('id');
 
-    document.getElementById('btn-approve').addEventListener('click', () => handleDecision(true));
-    document.getElementById('btn-reject').addEventListener('click', () => handleDecision(false));
+    if (!operacionId) {
+        container.innerHTML = '<p class="text-red-500">ID de operación no encontrado.</p>';
+        return;
+    }
+
+    const { data: registroActual, error: fetchRegistroError } = await supabase.from('operaciones').select('id, operacion_original_id').eq('id', operacionId).single();
+    if (fetchRegistroError || !registroActual) {
+        container.innerHTML = '<p class="text-red-500">No se pudo encontrar el registro de la operación.</p>';
+        return;
+    }
+    originalId = registroActual.operacion_original_id || registroActual.id;
+
+    const { data: allRecords, error: fetchAllError } = await supabase
+        .from('operaciones')
+        .select(`*, clientes(nombre), depositos(nombre, tipo), mercaderias(nombre), checklist_items(*), muestreos(*)`)
+        .or(`id.eq.${originalId},operacion_original_id.eq.${originalId}`)
+        .order('created_at', { ascending: true });
+
+    if (fetchAllError || !allRecords || allRecords.length === 0) {
+        container.innerHTML = '<p class="text-red-500">Error al cargar los detalles de la operación.</p>';
+        return;
+    }
+    
+    const opBaseData = allRecords.find(r => r.id === originalId) || allRecords[0];
+    renderizarPagina(container, opBaseData, allRecords);
+
+    // Renderizar el botón de finalizar si la operación está en curso
+    if (opBaseData.estado === 'en curso') {
+        renderizarBotonFinalizar();
+    }
 });
+
+function renderizarBotonFinalizar() {
+    const accionesContainer = document.getElementById('acciones-container');
+    accionesContainer.innerHTML = `
+        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 flex justify-end">
+            <button id="btnFinalizarOperacion" class="btn btn-primary bg-red-500 hover:bg-red-700">
+                <span class="material-icons">check_circle</span>
+                Finalizar Operación
+            </button>
+        </div>
+    `;
+
+    document.getElementById('btnFinalizarOperacion').addEventListener('click', () => {
+        if (originalId) {
+            localStorage.setItem('operacion_actual', originalId);
+            window.location.href = '/src/operario/finalizar.html';
+        } else {
+            alert("No se pudo identificar la operación a finalizar.");
+        }
+    });
+}
+
+// --- RENDERIZADO DE LA PÁGINA ---
+function renderizarPagina(container, opBase, allRecords) {
+    let totalProducto = 0;
+    let totalToneladas = 0;
+    allRecords.forEach(r => {
+        totalToneladas += (r.toneladas || 0);
+        totalProducto += (r.producto_usado_cantidad || 0);
+    });
+
+    const unidadLabel = opBase.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';
+    
+    container.innerHTML = `
+        <div class="flex flex-wrap justify-between items-center gap-4">
+            <h3 class="text-xl font-bold text-gray-800">Resumen General</h3>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm p-4 mt-4 bg-gray-50 rounded-lg border">
+            <div><strong>Cliente:</strong><br>${opBase.clientes?.nombre || 'N/A'}</div>
+            <div><strong>Depósito:</strong><br>${opBase.depositos?.nombre || 'N/A'} (${opBase.depositos?.tipo || 'N/A'})</div>
+            <div><strong>Mercadería:</strong><br>${opBase.mercaderias?.nombre || 'N/A'}</div>
+            <div><strong>Estado:</strong><br><span class="font-bold ${opBase.estado === 'finalizada' ? 'text-red-600' : 'text-green-600'}">${opBase.estado}</span></div>
+            <div class="font-semibold"><strong>Total Toneladas:</strong><br>${totalToneladas.toLocaleString()} tn</div>
+            <div class="font-semibold"><strong>Total Producto:</strong><br>${totalProducto.toLocaleString()} ${unidadLabel}</div>
+        </div>
+        <div class="border-t pt-6 mt-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Línea de Tiempo de la Operación</h3>
+            <div class="space-y-2">
+                ${allRecords.map(registro => {
+                    let detalle = '';
+                    let actionButtons = '';
+                    
+                    const isRechazado = registro.estado_aprobacion === 'rechazado';
+                    const itemClass = isRechazado ? 'line-through text-gray-400' : '';
+
+                    if (user.role === 'supervisor' && registro.estado_aprobacion === 'pendiente' && registro.tipo_registro !== 'muestreo') {
+                        actionButtons += `<a href="../supervisor/operacion_confirmar.html?id=${registro.id}" class="btn bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600">Revisar</a>`;
+                    }
+                    
+                    if (registro.observacion_aprobacion) {
+                        actionButtons += `<button class="btn-show-observacion p-1" data-observacion="${registro.observacion_aprobacion}" title="Ver observación"><span class="material-icons text-yellow-500 hover:text-yellow-700">comment</span></button>`;
+                    }
+                    
+                    switch(registro.tipo_registro) {
+                        case 'inicial': detalle = `Operación iniciada por <b>${registro.operario_nombre}</b>.`; break;
+                        case 'producto': detalle = `<b>${registro.operario_nombre}</b> aplicó <b>${(registro.producto_usado_cantidad || 0).toLocaleString()} ${unidadLabel}</b> en ${(registro.toneladas || 0).toLocaleString()} tn.`; break;
+                        case 'muestreo': detalle = `<b>${registro.operario_nombre}</b> registró un muestreo.`; break;
+                        case 'finalizacion': detalle = `Operación finalizada por <b>${registro.operario_nombre}</b>.`; break;
+                    }
+
+                    return `<div class="flex items-center justify-between text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm ${itemClass}">
+                                <div><b>${new Date(registro.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}:</b> ${detalle}</div>
+                                <div class="flex-shrink-0 ml-4 flex items-center gap-2">${actionButtons}</div>
+                            </div>`;
+                }).join('')}
+            </div>
+        </div>`;
+        
+    container.addEventListener('click', (e) => {
+        const obsBtn = e.target.closest('.btn-show-observacion');
+        if (obsBtn) {
+            const observacion = obsBtn.dataset.observacion;
+            renderObservacionModal(observacion);
+        }
+    });
+}
+
+function renderObservacionModal(observacion) {
+    const modalHTML = `
+        <div id="observacion-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 relative">
+                <button id="close-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800"><span class="material-icons">close</span></button>
+                <h4 class="text-2xl font-bold mb-4">Observación del Supervisor</h4>
+                <div class="space-y-4">
+                    <p class="p-3 bg-gray-100 rounded-lg text-gray-700 whitespace-pre-wrap">${observacion || 'N/A'}</p>
+                </div>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const modal = document.getElementById('observacion-modal');
+    const closeModal = () => modal.remove();
+    modal.addEventListener('click', (e) => {
+        if (e.target.id === 'observacion-modal' || e.target.closest('#close-modal')) closeModal();
+    });
+}

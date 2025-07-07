@@ -8,6 +8,8 @@ if (user.role !== 'admin' && user.role !== 'supervisor') {
     requireRole('supervisor'); 
 }
 
+let originalId; // Hacemos el ID original accesible en un scope más amplio
+
 // --- INICIALIZACIÓN ---
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('header').innerHTML = renderHeader();
@@ -25,7 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         container.innerHTML = '<p class="text-red-500">No se pudo encontrar el registro de la operación.</p>';
         return;
     }
-    const originalId = registroActual.operacion_original_id || registroActual.id;
+    originalId = registroActual.operacion_original_id || registroActual.id;
 
     const { data: allRecords, error: fetchAllError } = await supabase
         .from('operaciones')
@@ -40,19 +42,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const opBaseData = allRecords.find(r => r.id === originalId) || allRecords[0];
     renderizarPagina(container, opBaseData, allRecords);
+
+    // Renderizar el botón de finalizar si la operación está en curso
+    if (opBaseData.estado === 'en curso') {
+        renderizarBotonFinalizar();
+    }
 });
+
+function renderizarBotonFinalizar() {
+    const accionesContainer = document.getElementById('acciones-container');
+    accionesContainer.innerHTML = `
+        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 flex justify-end">
+            <button id="btnFinalizarOperacion" class="btn btn-primary bg-red-600 hover:bg-red-700">
+                <span class="material-icons">check_circle</span>
+                Finalizar Operación
+            </button>
+        </div>
+    `;
+
+    document.getElementById('btnFinalizarOperacion').addEventListener('click', () => {
+        if (originalId) {
+            localStorage.setItem('operacion_actual', originalId);
+            window.location.href = '/src/operario/finalizar.html';
+        } else {
+            alert("No se pudo identificar la operación a finalizar.");
+        }
+    });
+}
 
 // --- RENDERIZADO DE LA PÁGINA ---
 function renderizarPagina(container, opBase, allRecords) {
     let totalProducto = 0;
     let totalToneladas = 0;
-    
-    // MODIFICACIÓN: Solo sumar si el registro no está rechazado
     allRecords.forEach(r => {
-        if (r.estado_aprobacion !== 'rechazado') {
-            totalToneladas += (r.toneladas || 0);
-            totalProducto += (r.producto_usado_cantidad || 0);
-        }
+        totalToneladas += (r.toneladas || 0);
+        totalProducto += (r.producto_usado_cantidad || 0);
     });
 
     const unidadLabel = opBase.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';

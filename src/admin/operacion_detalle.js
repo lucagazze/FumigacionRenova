@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const opBaseData = allRecords.find(r => r.id === originalId) || allRecords[0];
 
+    // Obtener la última limpieza del depósito
     const { data: limpiezaData, error: limpiezaError } = await supabase
         .from('limpiezas')
         .select('fecha_limpieza, fecha_garantia_limpieza')
@@ -54,12 +55,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 function renderizarPagina(container, opBase, allRecords, limpieza) {
     let totalProducto = 0;
     let totalToneladas = 0;
-
     allRecords.forEach(r => {
-        if (r.estado_aprobacion !== 'rechazado') {
-            totalToneladas += (r.toneladas || 0);
-            totalProducto += (r.producto_usado_cantidad || 0);
-        }
+        totalToneladas += (r.toneladas || 0);
+        totalProducto += (r.producto_usado_cantidad || 0);
     });
 
     const unidadLabel = opBase.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';
@@ -74,6 +72,7 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
            </div>` 
         : '';
 
+    // Lógica para la vigencia de la limpieza
     let limpiezaHtml = '<div><strong>Vigencia Limpieza:</strong><br><span class="text-gray-500">Sin registros</span></div>';
     if (limpieza) {
         const fechaGarantia = new Date(limpieza.fecha_garantia_limpieza + 'T00:00:00');
@@ -90,6 +89,7 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
             </div>`;
     }
 
+    // Lógica para el plazo de la garantía de fumigación (solo para operaciones en curso)
     let plazoHtml = '';
     if (opBase.estado === 'en curso') {
         const fechaInicio = new Date(opBase.created_at);
@@ -119,6 +119,7 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
         }
     }
 
+    // Lógica para el estado final de la garantía (solo para operaciones finalizadas)
     let garantiaHtml = '';
     if (opBase.estado === 'finalizada' && registroFinal) {
         const fechaInicio = new Date(opBase.created_at);
@@ -151,6 +152,8 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
         }
     }
 
+
+    // Contenido HTML principal
     container.innerHTML = `
         <div class="flex flex-wrap justify-between items-center gap-4">
             <h3 class="text-xl font-bold text-gray-800">Resumen General</h3>
@@ -184,17 +187,19 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
                     let extraClasses = '';
                     let dataAttributes = '';
                     const editableTypes = ['producto', 'inicial'];
-                    const deletableTypes = ['producto', 'muestreo'];
-
+                    
                     const isRechazado = registro.estado_aprobacion === 'rechazado';
                     const itemClass = isRechazado ? 'line-through text-gray-400' : '';
 
                     if (editableTypes.includes(registro.tipo_registro)) {
                          actionButtons += `<button class="btn-edit-registro p-1" data-registro-id="${registro.id}" title="Editar este registro"><span class="material-icons text-blue-500 hover:text-blue-700">edit</span></button>`;
                     }
-                    if (deletableTypes.includes(registro.tipo_registro)) {
+
+                    // Botón de eliminar para CUALQUIER registro que no sea el INICIAL
+                    if (registro.tipo_registro !== 'inicial') {
                         actionButtons += `<button class="btn-delete-registro p-1" data-registro-id="${registro.id}" title="Eliminar este registro"><span class="material-icons text-red-500 hover:text-red-700">delete</span></button>`;
                     }
+
                     if (registro.observacion_aprobacion) {
                         actionButtons += `<button class="btn-show-observacion p-1" data-observacion="${registro.observacion_aprobacion}" title="Ver observación"><span class="material-icons text-yellow-500 hover:text-yellow-700">comment</span></button>`;
                     }
@@ -235,6 +240,7 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
             </div>
         </div>`;
     
+    // EVENT LISTENER GLOBAL
     container.addEventListener('click', async (e) => {
         const editTarget = e.target.closest('.btn-edit-registro');
         const deleteTarget = e.target.closest('.btn-delete-registro');
@@ -246,8 +252,16 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
             const registro = allRecords.find(r => r.id === editTarget.dataset.registroId);
             if (registro) renderEditModal(registro);
         } else if (deleteTarget) {
-            const registro = allRecords.find(r => r.id === deleteTarget.dataset.registroId);
-            if(registro) await eliminarRegistro(registro);
+            const registroId = deleteTarget.dataset.registroId;
+            const registro = allRecords.find(r => r.id === registroId);
+            if(registro) {
+                // Si es un registro de finalización, tiene un tratamiento especial
+                if (registro.tipo_registro === 'finalizacion') {
+                    await revertirFinalizacion(registro);
+                } else {
+                    await eliminarRegistro(registro);
+                }
+            }
         } else if (deleteOpTarget) {
             await eliminarOperacionCompleta(opBase.id);
         } else if (muestreoTarget) {
@@ -261,6 +275,31 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
 }
 
 // --- MODALES Y ACCIONES ---
+
+async function revertirFinalizacion(registroFinal) {
+    if (!confirm('¿Está seguro? La operación volverá al estado "en curso" y podrá continuar registrando acciones.')) return;
+    
+    try {
+        // 1. Eliminar el registro de finalización
+        const { error: deleteError } = await supabase.from('operaciones').delete().eq('id', registroFinal.id);
+        if (deleteError) throw deleteError;
+
+        // 2. Actualizar el estado de todos los registros de la operación a "en curso"
+        const operacionOriginalId = registroFinal.operacion_original_id;
+        const { error: updateError } = await supabase
+            .from('operaciones')
+            .update({ estado: 'en curso' })
+            .or(`id.eq.${operacionOriginalId},operacion_original_id.eq.${operacionOriginalId}`);
+        if (updateError) throw updateError;
+        
+        alert('Operación revertida a "en curso" con éxito.');
+        location.reload();
+
+    } catch(error) {
+        alert('ERROR al revertir la finalización: ' + error.message);
+    }
+}
+
 
 async function eliminarRegistro(registro) {
     if (!confirm('¿SEGURO que desea eliminar este registro? El stock asociado será restaurado. Esta acción es irreversible.')) return;

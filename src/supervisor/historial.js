@@ -40,7 +40,7 @@ function renderSilosEnCursoSupervisor(operaciones, onSiloClick) {
         const yPos = 95 - fillHeight;
 
         silosEnCursoContainer.innerHTML += `
-            <div class="flex flex-col items-center gap-2 silo-wrapper" data-operacion-id="${rootId}" title="Click para filtrar esta operación">
+            <div class="flex flex-col items-center gap-2 silo-wrapper" data-operacion-id="${rootId}" title="Click para ver el detalle y finalizar la operación">
                 <svg viewBox="0 0 100 100" class="silo-svg">
                     <path class="silo-outline" d="M 10 10 H 90 V 90 C 90 95, 80 100, 70 100 H 30 C 20 100, 10 95, 10 90 V 10 Z" />
                     <rect class="silo-fill-rect" x="15" y="${yPos}" width="70" height="${fillHeight}" rx="10"/>
@@ -55,7 +55,8 @@ function renderSilosEnCursoSupervisor(operaciones, onSiloClick) {
         const siloWrapper = e.target.closest('.silo-wrapper');
         if (siloWrapper) {
             const operacionId = siloWrapper.dataset.operacionId;
-            onSiloClick({ operacionId });
+            // AHORA REDIRIGE A LA PÁGINA DE DETALLE
+            window.location.href = `operacion_detalle.html?id=${operacionId}`;
         }
     });
 }
@@ -94,22 +95,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const aplicarTodosLosFiltros = (options = {}) => {
         let operacionesFiltradas = [...allOperations];
 
-        if (options.operacionId) {
-            operacionesFiltradas = operacionesFiltradas.filter(op => op.id === options.operacionId || op.operacion_original_id === options.operacionId);
-        } else {
-            const tipo = document.getElementById('filtroTipo').value;
-            const estado = document.getElementById('filtroEstado').value;
-            const siloCelda = document.getElementById('filtroSiloCelda').value;
+        const tipo = document.getElementById('filtroTipo').value;
+        const estado = document.getElementById('filtroEstado').value;
+        const siloCelda = document.getElementById('filtroSiloCelda').value;
 
-            if (tipo) operacionesFiltradas = operacionesFiltradas.filter(op => op.tipo_registro === tipo);
-            if (estado) operacionesFiltradas = operacionesFiltradas.filter(op => op.estado === estado);
-            if (siloCelda) operacionesFiltradas = operacionesFiltradas.filter(op => op.deposito_id === siloCelda);
-        }
+        if (tipo) operacionesFiltradas = operacionesFiltradas.filter(op => op.tipo_registro === tipo);
+        if (estado) operacionesFiltradas = operacionesFiltradas.filter(op => op.estado === estado);
+        if (siloCelda) operacionesFiltradas = operacionesFiltradas.filter(op => op.deposito_id === siloCelda);
         
         renderOperaciones(container, operacionesFiltradas, false, true);
     };
 
-    renderSilosEnCursoSupervisor(allOperations, aplicarTodosLosFiltros);
+    renderSilosEnCursoSupervisor(allOperations);
     aplicarTodosLosFiltros();
     
     const filtrosForm = document.getElementById('filtrosRegistro');
