@@ -1,124 +1,62 @@
 import { renderHeader } from '../common/header.js';
 import { requireRole, getUser } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
+import { renderOperaciones } from '../common/data.js';
 
 requireRole('supervisor');
 
-const urlParams = new URLSearchParams(window.location.search);
-const operacionId = urlParams.get('id');
-const user = getUser();
-const DENSIDAD_LIQUIDO = 1.2;
-
-async function renderDetalle() {
-    const container = document.getElementById('detalle-container');
-    if (!operacionId) {
-        container.innerHTML = '<p class="text-red-500">ID de operación no válido.</p>';
-        return;
-    }
-
-    const { data: op, error } = await supabase
-        .from('operaciones')
-        .select(`*, clientes(nombre), depositos(nombre, tipo), mercaderias(nombre)`)
-        .eq('id', operacionId)
-        .single();
-    
-    if (error || !op) {
-        container.innerHTML = '<p class="text-red-500">No se pudo cargar la operación.</p>';
-        return;
-    }
-
-    const unidadLabel = op.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';
-
-    container.innerHTML = `
-        <h3 class="text-xl font-bold text-gray-800">Detalles del Registro</h3>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm p-4 mt-4 bg-gray-50 rounded-lg border">
-            <div><strong>Cliente:</strong><br>${op.clientes?.nombre || 'N/A'}</div>
-            <div><strong>Depósito:</strong><br>${op.depositos?.nombre || 'N/A'} (${op.depositos?.tipo || 'N/A'})</div>
-            <div><strong>Mercadería:</strong><br>${op.mercaderias?.nombre || 'N/A'}</div>
-            <div><strong>Método:</strong><br>${op.metodo_fumigacion || 'N/A'}</div>
-            <div><strong>Tratamiento:</strong><br>${op.tratamiento || 'N/A'}</div>
-            <div><strong>Operario:</strong><br>${op.operario_nombre || 'N/A'}</div>
-            <div class="font-semibold"><strong>Total Toneladas:</strong><br>${(op.toneladas || 0).toLocaleString()} tn</div>
-            <div class="font-semibold"><strong>Total Producto:</strong><br>${(op.producto_usado_cantidad || 0).toLocaleString()} ${unidadLabel}</div>
-        </div>
-    `;
-}
-
-async function handleRejection() {
-    const observacion = document.getElementById('observacion_aprobacion').value;
-    if (!observacion) {
-        alert('Debe ingresar un motivo para rechazar la operación.');
-        return;
-    }
-
-    const { data: op, error: fetchError } = await supabase.from('operaciones').select('*').eq('id', operacionId).single();
-    if(fetchError || !op) return alert('Error al obtener datos para rechazar.');
-
-    // Revertir el stock
-    const { data: stock, error: stockError } = await supabase
-        .from('stock')
-        .select('*')
-        .eq('deposito', op.deposito_origen_stock)
-        .eq('tipo_producto', op.metodo_fumigacion)
-        .single();
-
-    if(stockError) return alert('Error al encontrar el stock para revertir.');
-    
-    let nuevo_kg = parseFloat(stock.cantidad_kg);
-    let nuevas_unidades = stock.cantidad_unidades ? parseInt(stock.cantidad_unidades) : 0;
-    
-    if (op.metodo_fumigacion === 'pastillas') {
-        nuevas_unidades += op.producto_usado_cantidad;
-        nuevo_kg = nuevas_unidades * 3 / 1000;
-    } else {
-        nuevo_kg += (op.producto_usado_cantidad * DENSIDAD_LIQUIDO) / 1000;
-    }
-
-    await supabase.from('stock').update({ cantidad_kg: nuevo_kg, cantidad_unidades: nuevas_unidades }).eq('id', stock.id);
-
-    // Actualizar el estado de la operación
-    const { error: updateError } = await supabase
-        .from('operaciones')
-        .update({ 
-            estado_aprobacion: 'rechazado', 
-            observacion_aprobacion: observacion,
-            supervisor_id: user.id,
-            fecha_aprobacion: new Date().toISOString()
-        })
-        .eq('id', operacionId);
-
-    if (updateError) {
-        alert('Error al rechazar la operación: ' + updateError.message);
-    } else {
-        alert(`La operación ha sido rechazada con éxito.`);
-        window.location.href = 'dashboard.html';
-    }
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('header').innerHTML = renderHeader();
-    await renderDetalle();
+    
+    const filterForm = document.getElementById('filter-form');
+    const container = document.getElementById('historial-container');
+    const user = getUser();
 
-    document.getElementById('btn-approve').addEventListener('click', () => handleDecision(true));
-    document.getElementById('btn-reject').addEventListener('click', handleRejection);
-});
+    async function cargarHistorial() {
+        container.innerHTML = '<p class="text-center p-4">Cargando historial...</p>';
+        
+        const tipoRegistro = document.getElementById('filter-tipo').value;
+        const estado = document.getElementById('filter-estado').value;
 
-async function handleDecision(aprobado) {
-    if (!aprobado) return handleRejection();
+        let query = supabase
+            .from('operaciones')
+            .select(`*, clientes(nombre), depositos(nombre, tipo, limpiezas(fecha_garantia_limpieza)), mercaderias(nombre), muestreos(observacion, media_url)`)
+            .in('cliente_id', user.cliente_ids)
+            .order('created_at', { ascending: false });
 
-     const { error } = await supabase
-        .from('operaciones')
-        .update({ 
-            estado_aprobacion: 'aprobado',
-            supervisor_id: user.id,
-            fecha_aprobacion: new Date().toISOString()
-        })
-        .eq('id', operacionId);
+        if (tipoRegistro) {
+            query = query.eq('tipo_registro', tipoRegistro);
+        }
+        if (estado) {
+            query = query.eq('estado', estado);
+        }
 
-    if (error) {
-        alert('Error al procesar la decisión: ' + error.message);
-    } else {
-        alert(`La operación ha sido aprobada con éxito.`);
-        window.location.href = 'dashboard.html';
+        const { data, error } = await query;
+
+        if (error) {
+            container.innerHTML = `<p class="text-red-500 text-center">Error al cargar el historial.</p>`;
+            return;
+        }
+
+        renderOperaciones(container, data, false, true); // isAdmin: false, isSupervisor: true
     }
-}
+    
+    await cargarHistorial();
+
+    filterForm.addEventListener('change', cargarHistorial);
+    document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
+        filterForm.reset();
+        cargarHistorial();
+    });
+
+    container.addEventListener('click', (e) => {
+        const headerRow = e.target.closest('tr[data-toggle-details]');
+        if (headerRow) {
+            headerRow.classList.toggle('is-open');
+            const detailsElement = document.getElementById(headerRow.dataset.toggleDetails);
+            if (detailsElement) {
+                detailsElement.classList.toggle('hidden');
+            }
+        }
+    });
+});

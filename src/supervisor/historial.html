@@ -4,8 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fagaz - Historial de Operaciones</title>
-  <link rel="icon" href="/public/assets/img/logohead.webp" type="image/png">
-
   <link rel="stylesheet" href="../common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
@@ -13,21 +11,46 @@
 <body class="bg-gray-50 text-gray-800">
   <header id="header"></header>
   <main class="flex-1 py-8">
-    <div class="content-container">
-      <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
-        <h2 class="text-2xl font-bold text-gray-900">Historial de Operaciones</h2>
-        <form id="filter-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <select id="filter-cliente" class="input-field" name="cliente">
-            <option value="">Todos los Clientes</option>
-          </select>
-          <select id="filter-deposito" class="input-field" name="deposito">
-            <option value="">Todos los Depósitos</option>
-          </select>
-        </form>
-      </div>
+    <div class="content-container space-y-8">
       
-      <div id="historial-container" class="operations-table-container">
+      <div>
+        <div class="flex items-center gap-4 mb-4">
+          <h2 class="text-2xl font-bold text-gray-900">Depósitos con Operaciones en Curso</h2>
+          <button id="btnClearSiloFilter" class="btn btn-secondary !py-1 !px-3 !text-xs">
+            <span class="material-icons !text-sm">clear_all</span>
+            <span>Limpiar filtro de silo</span>
+          </button>
         </div>
+        <div id="silosEnCursoContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6 text-center">
+          </div>
+      </div>
+
+      <div>
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
+          <h2 class="text-2xl font-bold text-gray-900">Historial de Operaciones</h2>
+          <form id="filter-form" class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <select id="filter-deposito" class="input-field" name="deposito">
+              <option value="">Todos los Depósitos</option>
+            </select>
+            <select id="filter-tipo" class="input-field" name="tipo">
+              <option value="">Todos los Tipos</option>
+              <option value="inicial">Inicio</option>
+              <option value="producto">Aplicación</option>
+              <option value="muestreo">Muestreo</option>
+              <option value="finalizacion">Finalización</option>
+            </select>
+            <select id="filter-estado" class="input-field" name="estado">
+              <option value="">Todos los Estados</option>
+              <option value="en curso">En Curso</option>
+              <option value="finalizada">Finalizada</option>
+            </select>
+            <button type="button" id="btn-limpiar-filtros" class="btn btn-secondary">Limpiar</button>
+          </form>
+        </div>
+      
+        <div id="historial-container" class="operations-table-container">
+          </div>
+      </div>
     </div>
   </main>
   <script type="module" src="historial.js"></script>

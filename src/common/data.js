@@ -108,7 +108,6 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin, is
             }
         }
 
-
         const mainRowCells = [
             `<td class="px-4 py-4 whitespace-nowrap text-sm">${fechaFormateada}</td>`,
             `<td class="px-4 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${tipoClass}">${tipoText}</span></td>`,
@@ -128,7 +127,6 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin, is
                     const fechaFin = new Date(finalRecord.created_at);
                     const duracionDias = (fechaFin - fechaInicio) / (1000 * 60 * 60 * 24);
                     const cumplePlazo = duracionDias <= 5;
-
                     const ultimaLimpieza = op.depositos?.limpiezas?.[0]?.fecha_garantia_limpieza;
                     let cumpleLimpieza = false;
                     if (ultimaLimpieza) {
@@ -162,7 +160,7 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin, is
         if (isAdmin) {
             mainRowCells.push(`<td class="px-4 py-4 whitespace-nowrap text-sm"><a href="operacion_detalle.html?id=${op.id}" class="text-blue-600 hover:underline font-semibold">Ver Detalle</a></td>`);
         } else if (isSupervisor) {
-            mainRowCells.push(`<td class="px-4 py-4 whitespace-nowrap text-sm"><a href="../admin/operacion_detalle.html?id=${op.id}" class="text-blue-600 hover:underline font-semibold">Ver Detalle</a></td>`);
+            mainRowCells.push(`<td class="px-4 py-4 whitespace-nowrap text-sm"><a href="operacion_detalle.html?id=${op.id}" class="text-blue-600 hover:underline font-semibold">Ver Detalle</a></td>`);
         }
         mainRowCells.push(`<td class="px-4 py-4 text-center"><span class="material-icons expand-icon">expand_more</span></td>`);
         const mainRow = `<tr class="cursor-pointer hover:bg-gray-50 border-b" data-toggle-details="details-${op.id}">${mainRowCells.join('')}</tr>`;
@@ -191,7 +189,7 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin, is
             const productoAplicado = op.metodo_fumigacion === 'liquido' 
                 ? `${(op.producto_usado_cantidad / 1000).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L`
                 : `${(op.producto_usado_cantidad || 0).toLocaleString()} un.`;
-
+            
             let aprobacionDetalle = '';
             if (op.observacion_aprobacion) {
                 aprobacionDetalle = `<div><strong>Obs. Supervisor:</strong><br>${op.observacion_aprobacion}</div>`;
