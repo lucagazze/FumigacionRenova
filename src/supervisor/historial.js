@@ -85,20 +85,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    async function poblarFiltros() {
-        const depositoSelect = document.getElementById('filter-deposito');
-        const { data: depositos } = await supabase
-            .from('depositos')
-            .select('id, nombre, tipo')
-            .in('cliente_id', user.cliente_ids)
-            .order('nombre');
-        
-        if (depositos) {
-            depositoSelect.innerHTML = '<option value="">Todos los Depósitos</option>';
-            depositos.forEach(d => depositoSelect.innerHTML += `<option value="${d.id}">${d.nombre} (${d.tipo})</option>`);
-        }
-    }
-
     const aplicarTodosLosFiltros = (options = {}) => {
         let operacionesFiltradas = [...allOperations];
 
@@ -107,18 +93,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             const tipo = document.getElementById('filter-tipo').value;
             const estado = document.getElementById('filter-estado').value;
-            const depositoId = document.getElementById('filter-deposito').value;
 
             if (tipo) operacionesFiltradas = operacionesFiltradas.filter(op => op.tipo_registro === tipo);
             if (estado) operacionesFiltradas = operacionesFiltradas.filter(op => op.estado === estado);
-            if (depositoId) operacionesFiltradas = operacionesFiltradas.filter(op => op.deposito_id === depositoId);
         }
         
         renderOperaciones(container, operacionesFiltradas, false, true);
     };
 
     renderSilosEnCursoSupervisor(allOperations, aplicarTodosLosFiltros);
-    await poblarFiltros();
     aplicarTodosLosFiltros();
 
     filterForm.addEventListener('change', () => aplicarTodosLosFiltros());

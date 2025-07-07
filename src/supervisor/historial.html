@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fagaz - Historial de Operaciones</title>
+  <link rel="icon" href="/public/assets/img/logohead.webp" type="image/png">
+
   <link rel="stylesheet" href="../common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
@@ -28,10 +30,7 @@
       <div>
         <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
           <h2 class="text-2xl font-bold text-gray-900">Historial de Operaciones</h2>
-          <form id="filter-form" class="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <select id="filter-deposito" class="input-field" name="deposito">
-              <option value="">Todos los Depósitos</option>
-            </select>
+          <form id="filter-form" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <select id="filter-tipo" class="input-field" name="tipo">
               <option value="">Todos los Tipos</option>
               <option value="inicial">Inicio</option>
@@ -44,7 +43,7 @@
               <option value="en curso">En Curso</option>
               <option value="finalizada">Finalizada</option>
             </select>
-            <button type="button" id="btn-limpiar-filtros" class="btn btn-secondary">Limpiar</button>
+            <button type="button" id="btn-limpiar-filtros" class="btn btn-secondary">Limpiar Filtros</button>
           </form>
         </div>
       

@@ -1,8 +1,14 @@
 import { renderHeader } from '../common/header.js';
-import { requireRole } from '../common/router.js';
+import { requireRole, getUser } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 
-requireRole('supervisor');
+const user = getUser();
+// Permite el acceso a 'admin' y 'supervisor'
+if (user.role !== 'admin' && user.role !== 'supervisor') {
+    requireRole('admin'); 
+}
+
+const DENSIDAD_LIQUIDO = 1.2;
 
 // --- INICIALIZACIÓN ---
 document.addEventListener('DOMContentLoaded', async () => {
@@ -48,19 +54,20 @@ function renderizarPagina(container, opBase, allRecords) {
     });
 
     const unidadLabel = opBase.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';
-    const tratamientosUnicos = [...new Set(allRecords.map(r => r.tratamiento).filter(Boolean))];
-    const tratamiento = tratamientosUnicos.length > 0 ? tratamientosUnicos.join(', ') : 'N/A';
     
     container.innerHTML = `
         <div class="flex flex-wrap justify-between items-center gap-4">
             <h3 class="text-xl font-bold text-gray-800">Resumen General</h3>
+            ${user.role === 'admin' ? `
+            <button id="btnEliminarOperacionCompleta" class="btn btn-danger flex items-center gap-2">
+                <span class="material-icons text-base">delete_forever</span>
+                <span>Eliminar Operación Completa</span>
+            </button>` : ''}
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm p-4 mt-4 bg-gray-50 rounded-lg border">
             <div><strong>Cliente:</strong><br>${opBase.clientes?.nombre || 'N/A'}</div>
             <div><strong>Depósito:</strong><br>${opBase.depositos?.nombre || 'N/A'} (${opBase.depositos?.tipo || 'N/A'})</div>
             <div><strong>Mercadería:</strong><br>${opBase.mercaderias?.nombre || 'N/A'}</div>
-            <div><strong>Método:</strong><br>${opBase.metodo_fumigacion || 'N/A'}</div>
-            <div><strong>Tratamiento(s):</strong><br>${tratamiento}</div>
             <div><strong>Estado:</strong><br><span class="font-bold ${opBase.estado === 'finalizada' ? 'text-red-600' : 'text-green-600'}">${opBase.estado}</span></div>
             <div class="font-semibold"><strong>Total Toneladas:</strong><br>${totalToneladas.toLocaleString()} tn</div>
             <div class="font-semibold"><strong>Total Producto:</strong><br>${totalProducto.toLocaleString()} ${unidadLabel}</div>
@@ -70,30 +77,25 @@ function renderizarPagina(container, opBase, allRecords) {
             <div class="space-y-2">
                 ${allRecords.map(registro => {
                     let detalle = '';
+                    let actionButtons = '';
+
+                    // Lógica de botones para supervisor
+                    if (user.role === 'supervisor' && registro.estado_aprobacion === 'pendiente') {
+                        actionButtons = `<a href="../supervisor/operacion_confirmar.html?id=${registro.id}" class="btn bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600">Revisar y Aprobar</a>`;
+                    }
+                    
                     switch(registro.tipo_registro) {
                         case 'inicial': detalle = `Operación iniciada por <b>${registro.operario_nombre}</b>.`; break;
                         case 'producto': detalle = `<b>${registro.operario_nombre}</b> aplicó <b>${(registro.producto_usado_cantidad || 0).toLocaleString()} ${unidadLabel}</b> en ${(registro.toneladas || 0).toLocaleString()} tn.`; break;
                         case 'muestreo': detalle = `<b>${registro.operario_nombre}</b> registró un muestreo.`; break;
                         case 'finalizacion': detalle = `Operación finalizada por <b>${registro.operario_nombre}</b>.`; break;
                     }
-                    return `<div class="text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm">
-                                <b>${new Date(registro.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}:</b> ${detalle}
+
+                    return `<div class="flex items-center justify-between text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm">
+                                <div><b>${new Date(registro.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}:</b> ${detalle}</div>
+                                <div class="flex-shrink-0 ml-4">${actionButtons}</div>
                             </div>`;
                 }).join('')}
-            </div>
-        </div>
-        <div class="border-t pt-6 mt-6">
-            <h3 class="text-xl font-bold text-gray-800 mb-4">Checklist de Tareas</h3>
-            <div class="space-y-3">
-                ${(opBase.checklist_items || []).map(item => `
-                    <div class="bg-white p-3 rounded-lg border shadow-sm flex justify-between items-center">
-                        <div class="flex items-center">
-                            <span class="material-icons ${item.completado ? 'text-green-500' : 'text-gray-400'}">${item.completado ? 'check_circle' : 'radio_button_unchecked'}</span>
-                            <span class="ml-3 font-medium text-gray-700">${item.item}</span>
-                        </div>
-                        ${item.imagen_url ? `<a href="${item.imagen_url}" target="_blank" class="text-blue-600 hover:underline flex items-center gap-1 text-sm"><span class="material-icons text-base">image</span> Ver Foto</a>` : ''}
-                    </div>
-                `).join('')}
             </div>
         </div>`;
 }
