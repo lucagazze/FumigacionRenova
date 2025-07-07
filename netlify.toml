@@ -1,13 +1,16 @@
-# Configuración para Netlify
-
 [build]
-  # Directorio que Netlify desplegará.
-  # Como es un sitio estático, apuntamos a la raíz del proyecto.
   publish = "/"
-  # No se necesita un comando de construcción para este proyecto.
   command = ""
 
+# Redirección principal para que la app se cargue desde la raíz.
 [[redirects]]
   from = "/"
   to = "/src/login/login.html"
-  status = 301
+  status = 200
+
+# Regla de reescritura para todas las demás rutas.
+# Esto permite que las rutas internas de la app funcionen correctamente.
+[[redirects]]
+  from = "/*"
+  to = "/src/login/login.html"
+  status = 200
