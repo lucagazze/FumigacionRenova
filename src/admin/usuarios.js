@@ -17,18 +17,17 @@ const clienteCheckboxContainer = document.getElementById('cliente-checkbox-conta
 const clienteListDiv = document.getElementById('cliente-list');
 
 // --- Elementos de la Lista y Filtros ---
-const listaUsuarios = document.getElementById('listaUsuarios'); // Ahora es el tbody
+const listaUsuarios = document.getElementById('listaUsuarios');
 const filtrosForm = document.getElementById('filtrosForm');
 const filtroNombre = document.getElementById('filtroNombre');
 const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltros');
 
-let allUsersWithClients = []; // Variable para almacenar todos los usuarios y poder filtrar
+let allUsersWithClients = [];
 
 async function poblarSelectClientes() {
     const { data, error } = await supabase.from('clientes').select('id, nombre').order('nombre');
     if (error) { console.error('Error cargando clientes:', error); return; }
     
-    // Poblar checkboxes del formulario
     clienteListDiv.innerHTML = data.map(c => `
         <label class="flex items-center gap-3 p-2 rounded-md hover:bg-gray-50">
             <input type="checkbox" name="cliente" value="${c.id}" class="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500">
@@ -36,7 +35,6 @@ async function poblarSelectClientes() {
         </label>
     `).join('');
     
-    // Poblar select del filtro
     const filtroClienteSelect = document.getElementById('filtroCliente');
     filtroClienteSelect.innerHTML = '<option value="">Todos los Clientes</option>';
     data.forEach(c => {
@@ -46,33 +44,38 @@ async function poblarSelectClientes() {
 
 function renderUsuarios(usersToRender) {
     if (usersToRender.length === 0) {
-        listaUsuarios.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-gray-500">No se encontraron usuarios con los filtros aplicados.</td></tr>`;
+        listaUsuarios.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-gray-500">No se encontraron usuarios.</td></tr>`;
         return;
     }
     
-    listaUsuarios.innerHTML = usersToRender.map(u => `
-        <tr>
-            <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">${u.nombre} ${u.apellido}</div>
-                <div class="text-sm text-gray-500">${u.email}</div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-700">
-                ${u.password}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${u.role === 'admin' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
-                    ${u.role}
-                </span>
-            </td>
-            <td class="px-6 py-4 text-sm text-gray-600 max-w-xs break-words">
-                ${u.role === 'operario' ? u.clientes.join(', ') || 'Ninguno' : 'N/A'}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button data-id="${u.id}" class="edit-btn text-blue-600 hover:text-blue-900 p-1"><span class="material-icons">edit</span></button>
-                <button data-id="${u.id}" class="delete-btn text-red-600 hover:text-red-900 p-1"><span class="material-icons">delete</span></button>
-            </td>
-        </tr>
-    `).join('');
+    listaUsuarios.innerHTML = usersToRender.map(u => {
+        let roleClass = '';
+        if (u.role === 'admin') roleClass = 'bg-red-100 text-red-800';
+        else if (u.role === 'supervisor') roleClass = 'bg-yellow-100 text-yellow-800';
+        else roleClass = 'bg-green-100 text-green-800';
+
+        return `
+            <tr>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">${u.nombre} ${u.apellido}</div>
+                    <div class="text-sm text-gray-500">${u.email}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-700">${u.password}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${roleClass}">
+                        ${u.role}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-600 max-w-xs break-words">
+                    ${u.role !== 'admin' ? u.clientes.join(', ') || 'Ninguno' : 'N/A'}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button data-id="${u.id}" class="edit-btn text-blue-600 hover:text-blue-900 p-1"><span class="material-icons">edit</span></button>
+                    <button data-id="${u.id}" class="delete-btn text-red-600 hover:text-red-900 p-1"><span class="material-icons">delete</span></button>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 
@@ -89,7 +92,7 @@ async function cargarYRenderizarUsuarios() {
         return { ...u, clientes: clientesAsignados.map(c => c.nombre), cliente_ids: clientesAsignados.map(c => c.id) };
     });
     
-    renderUsuarios(allUsersWithClients);
+    aplicarFiltros();
 }
 
 function aplicarFiltros() {
@@ -108,7 +111,6 @@ function aplicarFiltros() {
     renderUsuarios(filteredUsers);
 }
 
-// --- Lógica de Formulario ---
 function resetForm() {
     form.reset();
     usuarioIdField.value = '';
@@ -143,7 +145,7 @@ async function handleFormSubmit(e) {
         savedUser = data;
     }
 
-    if (savedUser.role === 'operario') {
+    if (savedUser.role === 'operario' || savedUser.role === 'supervisor') {
         await supabase.from('operario_clientes').delete().eq('operario_id', savedUser.id);
         const selectedClientes = Array.from(document.querySelectorAll('[name="cliente"]:checked')).map(cb => cb.value);
         if (selectedClientes.length > 0) {
@@ -154,10 +156,8 @@ async function handleFormSubmit(e) {
     
     resetForm();
     await cargarYRenderizarUsuarios();
-    aplicarFiltros();
 }
 
-// --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', async () => {
     await poblarSelectClientes();
     await cargarYRenderizarUsuarios();
@@ -167,9 +167,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 form.addEventListener('submit', handleFormSubmit);
 btnCancel.addEventListener('click', resetForm);
-roleSelect.addEventListener('change', () => clienteCheckboxContainer.classList.toggle('hidden', roleSelect.value !== 'operario'));
+roleSelect.addEventListener('change', () => {
+    const showClientes = roleSelect.value === 'operario' || roleSelect.value === 'supervisor';
+    clienteCheckboxContainer.classList.toggle('hidden', !showClientes);
+});
 
-// Listeners para filtros
 filtroNombre.addEventListener('input', aplicarFiltros);
 filtrosForm.addEventListener('change', aplicarFiltros);
 btnLimpiarFiltros.addEventListener('click', () => {
@@ -178,13 +180,12 @@ btnLimpiarFiltros.addEventListener('click', () => {
     aplicarFiltros();
 });
 
-// Listener para la tabla (delegación de eventos)
 listaUsuarios.addEventListener('click', async (e) => {
     const editButton = e.target.closest('.edit-btn');
     if (editButton) {
         const id = editButton.dataset.id;
         const userToEdit = allUsersWithClients.find(u => u.id === id);
-        if (!userToEdit) return alert('No se pudo encontrar el usuario para editar.');
+        if (!userToEdit) return alert('No se pudo encontrar el usuario.');
         
         usuarioIdField.value = userToEdit.id;
         document.getElementById('nombre').value = userToEdit.nombre;
@@ -195,14 +196,13 @@ listaUsuarios.addEventListener('click', async (e) => {
         passwordHelper.classList.add('hidden');
         
         document.querySelectorAll('[name="cliente"]').forEach(cb => cb.checked = false);
-        if (userToEdit.role === 'operario') {
-            clienteCheckboxContainer.classList.remove('hidden');
+        const showClientes = userToEdit.role === 'operario' || userToEdit.role === 'supervisor';
+        clienteCheckboxContainer.classList.toggle('hidden', !showClientes);
+        if (showClientes) {
             userToEdit.cliente_ids.forEach(clientId => {
                 const checkbox = document.querySelector(`input[name="cliente"][value="${clientId}"]`);
                 if (checkbox) checkbox.checked = true;
             });
-        } else {
-            clienteCheckboxContainer.classList.add('hidden');
         }
 
         formTitle.textContent = 'Editar Usuario';
@@ -218,7 +218,6 @@ listaUsuarios.addEventListener('click', async (e) => {
             if (error) { alert(`Error al eliminar: ${error.message}`); } 
             else {
                 await cargarYRenderizarUsuarios();
-                aplicarFiltros();
             }
         }
     }

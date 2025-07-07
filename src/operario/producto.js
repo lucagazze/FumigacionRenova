@@ -217,7 +217,8 @@ btnRegistrar.addEventListener('click', async () => {
             operario_nombre: operario_nombre,
             tratamiento: tratamiento.value,
             modalidad: modalidad.value,
-            toneladas: toneladas
+            toneladas: toneladas,
+            estado_aprobacion: 'pendiente' // <-- AÑADIDO PARA EL FLUJO DE APROBACIÓN
         }).select('id').single();
         if (insertOpError) throw insertOpError;
 

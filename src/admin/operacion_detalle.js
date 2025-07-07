@@ -1,8 +1,12 @@
 import { renderHeader } from '../common/header.js';
-import { requireRole } from '../common/router.js';
+import { requireRole, getUser } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 
-requireRole('admin');
+const user = getUser();
+// Permitir acceso a admin y supervisor
+if (user.role !== 'admin' && user.role !== 'supervisor') {
+    requireRole('admin'); // Esto redirigirá si no es ninguno de los dos
+}
 
 // --- CONSTANTES ---
 const DENSIDAD_LIQUIDO = 1.2; // g/cm³ o kg/L

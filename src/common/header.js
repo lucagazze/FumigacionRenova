@@ -22,11 +22,16 @@ export function renderHeader() {
         <a class="${getLinkClasses('muestreos.html')}" href="muestreos.html">Muestreos</a>
         <a class="${getLinkClasses('usuarios.html')}" href="usuarios.html">Usuarios</a>
     `;
+  } else if (user?.role === 'supervisor') {
+    navLinks = `
+        <a class="${getLinkClasses('dashboard.html')}" href="dashboard.html">Pendientes</a>
+        <a class="${getLinkClasses('historial.html')}" href="historial.html">Historial Gral.</a>
+    `;
   } else if (user?.role === 'operario') {
     navLinks = `
         <a class="${getLinkClasses('home.html')}" href="home.html">Operaciones en curso</a>
         <a class="${getLinkClasses('index.html')}" href="index.html">Registrar Nueva Operación</a>
-        <a class="${getLinkClasses('registro.html')}" href="registro.html">Registros</a>
+        <a class="${getLinkClasses('registro.html')}" href="registro.html">Mis Registros</a>
     `;
   }
   

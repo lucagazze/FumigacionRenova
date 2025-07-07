@@ -25,28 +25,30 @@ export async function getOperaciones() {
   return data;
 }
 
-export async function renderOperaciones(container, operaciones, isAdmin = false) {
+export async function renderOperaciones(container, operaciones, isAdmin = false, isSupervisor = false) {
   if (!operaciones || operaciones.length === 0) {
       container.innerHTML = '<p class="text-center p-8 text-gray-500">No se encontraron operaciones.</p>';
       return;
   }
   
-  await renderOperacionesDesplegables(container, operaciones, isAdmin);
+  await renderOperacionesDesplegables(container, operaciones, isAdmin, isSupervisor);
 }
 
-async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
+async function renderOperacionesDesplegables(container, operaciones, isAdmin, isSupervisor) {
     const operationSummaries = new Map();
+    const finalizationRecords = operaciones.filter(op => op.tipo_registro === 'finalizacion');
 
     for (const op of operaciones) {
         const key = op.operacion_original_id || op.id;
 
         if (!operationSummaries.has(key)) {
+            const initialOp = operaciones.find(o => o.id === key) || op;
             operationSummaries.set(key, {
                 totalToneladas: 0,
                 totalProducto: 0,
-                startDate: null,
-                metodo: null,
-                mercaderia: null,
+                startDate: initialOp.created_at,
+                metodo: initialOp.metodo_fumigacion,
+                mercaderia: initialOp.mercaderias?.nombre || 'N/A',
                 tratamientos: new Set(),
             });
         }
@@ -59,20 +61,19 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
         if (op.producto_usado_cantidad) {
             summary.totalProducto += op.producto_usado_cantidad;
         }
-
-        if (op.tipo_registro === 'inicial') {
-            summary.startDate = op.created_at;
-            summary.metodo = op.metodo_fumigacion;
-            summary.mercaderia = op.mercaderias?.nombre || 'N/A';
-        }
         
         if (op.tipo_registro === 'producto' && op.tratamiento) {
             summary.tratamientos.add(op.tratamiento);
         }
     }
     
-    const headers = ["Fecha/Hora", "Tipo", "Cliente", "Operario", "Depósito", "Estado"];
-    if (isAdmin) headers.push("Garantía", "Acciones");
+    const headers = ["Fecha/Hora", "Tipo", "Cliente", "Operario", "Depósito", "Estado", "Aprobación"];
+    if (isAdmin || isSupervisor) headers.push("Garantía");
+    if (isAdmin) {
+        headers.push("Acciones");
+    } else if (isSupervisor) {
+        headers.push("Detalle");
+    }
     headers.push("");
 
     const tableHeaders = headers.map(h => `<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">${h}</th>`).join('');
@@ -87,11 +88,26 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
             default: tipoText = 'N/A'; tipoClass = 'bg-gray-100 text-gray-800';
         }
 
-        // Formato de fecha explícito (am/pm)
         const fechaFormateada = new Date(op.created_at).toLocaleString('es-AR', {
             day: 'numeric', month: 'numeric', year: 'numeric', 
             hour: '2-digit', minute: '2-digit', hour12: true 
         });
+
+        let aprobacionHtml = '';
+        if (op.tipo_registro === 'producto' || op.tipo_registro === 'inicial') {
+            switch(op.estado_aprobacion) {
+                case 'aprobado':
+                    aprobacionHtml = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Aprobado</span>';
+                    break;
+                case 'pendiente':
+                    aprobacionHtml = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pendiente</span>';
+                    break;
+                case 'rechazado':
+                    aprobacionHtml = `<span title="Motivo: ${op.observacion_aprobacion || 'N/A'}" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 cursor-pointer">Rechazado</span>`;
+                    break;
+            }
+        }
+
 
         const mainRowCells = [
             `<td class="px-4 py-4 whitespace-nowrap text-sm">${fechaFormateada}</td>`,
@@ -99,27 +115,54 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
             `<td class="px-4 py-4 whitespace-nowrap text-sm">${op.clientes?.nombre || '-'}</td>`,
             `<td class="px-4 py-4 whitespace-nowrap text-sm">${op.operario_nombre?.replace(' y ', '<br>y ').replace(/, /g, '<br>')}</td>`,
             `<td class="px-4 py-4 whitespace-nowrap text-sm">${op.depositos?.nombre || '-'} (${op.depositos?.tipo || '-'})</td>`,
-            `<td class="px-4 py-4 whitespace-nowrap font-semibold ${op.estado === 'finalizada' ? 'text-red-600' : 'text-green-600'}">${op.estado}</td>`
+            `<td class="px-4 py-4 whitespace-nowrap font-semibold ${op.estado === 'finalizada' ? 'text-red-600' : 'text-green-600'}">${op.estado}</td>`,
+            `<td class="px-4 py-4 whitespace-nowrap">${aprobacionHtml}</td>`
         ];
 
-        if (isAdmin) {
+        if (isAdmin || isSupervisor) {
             let garantiaHtml = '<span class="text-gray-400">-</span>';
-            if (op.estado === 'finalizada') {
-                if (op.con_garantia) {
-                    const hoy = new Date();
-                    hoy.setHours(0,0,0,0);
-                    const vencimiento = new Date(op.fecha_vencimiento_garantia + 'T00:00:00');
-                    if (vencimiento >= hoy) {
-                        garantiaHtml = `<span title="Vence el ${vencimiento.toLocaleDateString('es-AR')}" class="material-icons text-green-600">check_circle</span>`;
-                    } else {
-                        garantiaHtml = `<span title="Venció el ${vencimiento.toLocaleDateString('es-AR')}" class="material-icons text-yellow-600">warning</span>`;
+            if (op.estado === 'finalizada' && op.tipo_registro === 'inicial') {
+                const finalRecord = finalizationRecords.find(f => f.operacion_original_id === op.id);
+                if (finalRecord) {
+                    const fechaInicio = new Date(op.created_at);
+                    const fechaFin = new Date(finalRecord.created_at);
+                    const duracionDias = (fechaFin - fechaInicio) / (1000 * 60 * 60 * 24);
+                    const cumplePlazo = duracionDias <= 5;
+
+                    const ultimaLimpieza = op.depositos?.limpiezas?.[0]?.fecha_garantia_limpieza;
+                    let cumpleLimpieza = false;
+                    if (ultimaLimpieza) {
+                        const fechaVencLimpieza = new Date(ultimaLimpieza + 'T00:00:00');
+                        if (fechaFin <= fechaVencLimpieza) {
+                            cumpleLimpieza = true;
+                        }
                     }
-                } else {
-                    garantiaHtml = `<span title="No cumple condiciones" class="material-icons text-red-600">cancel</span>`;
+
+                    if (cumplePlazo && cumpleLimpieza) {
+                        const hoy = new Date();
+                        hoy.setHours(0,0,0,0);
+                        const fechaVencimientoGarantia = new Date(fechaFin);
+                        fechaVencimientoGarantia.setDate(fechaVencimientoGarantia.getDate() + 40);
+                        
+                        if (fechaVencimientoGarantia >= hoy) {
+                            garantiaHtml = `<span title="Garantía vigente hasta ${fechaVencimientoGarantia.toLocaleDateString('es-AR')}" class="material-icons text-green-600">check_circle</span>`;
+                        } else {
+                            garantiaHtml = `<span title="Garantía vencida el ${fechaVencimientoGarantia.toLocaleDateString('es-AR')}" class="material-icons text-yellow-600">warning</span>`;
+                        }
+                    } else {
+                        garantiaHtml = `<span title="No cumple condiciones para garantía" class="material-icons text-red-600">cancel</span>`;
+                    }
                 }
+            } else if (op.estado === 'finalizada') {
+                garantiaHtml = ''; 
             }
             mainRowCells.push(`<td class="px-4 py-4 text-center">${garantiaHtml}</td>`);
+        }
+        
+        if (isAdmin) {
             mainRowCells.push(`<td class="px-4 py-4 whitespace-nowrap text-sm"><a href="operacion_detalle.html?id=${op.id}" class="text-blue-600 hover:underline font-semibold">Ver Detalle</a></td>`);
+        } else if (isSupervisor) {
+            mainRowCells.push(`<td class="px-4 py-4 whitespace-nowrap text-sm"><a href="../admin/operacion_detalle.html?id=${op.id}" class="text-blue-600 hover:underline font-semibold">Ver Detalle</a></td>`);
         }
         mainRowCells.push(`<td class="px-4 py-4 text-center"><span class="material-icons expand-icon">expand_more</span></td>`);
         const mainRow = `<tr class="cursor-pointer hover:bg-gray-50 border-b" data-toggle-details="details-${op.id}">${mainRowCells.join('')}</tr>`;
@@ -149,12 +192,18 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin) {
                 ? `${(op.producto_usado_cantidad / 1000).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L`
                 : `${(op.producto_usado_cantidad || 0).toLocaleString()} un.`;
 
+            let aprobacionDetalle = '';
+            if (op.observacion_aprobacion) {
+                aprobacionDetalle = `<div><strong>Obs. Supervisor:</strong><br>${op.observacion_aprobacion}</div>`;
+            }
+
             detailsContentHTML = `
                 <div class="p-4 bg-gray-100 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div><strong>Tipo de Producto:</strong><br>${op.metodo_fumigacion === 'liquido' ? 'Líquido' : 'Pastillas'}</div>
                     <div><strong>Tratamiento:</strong><br>${op.tratamiento || 'N/A'}</div>
                     <div><strong>Tn. en Registro:</strong><br>${op.toneladas ? op.toneladas.toLocaleString() + ' tn' : 'N/A'}</div>
                     <div><strong>Producto Aplicado:</strong><br>${productoAplicado}</div>
+                    ${aprobacionDetalle}
                 </div>
             `;
         } else if (op.tipo_registro === 'muestreo') {

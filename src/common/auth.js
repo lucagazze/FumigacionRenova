@@ -1,4 +1,3 @@
-// /src/common/auth.js
 import { supabase } from './supabase.js';
 
 export async function login(email, password) {
@@ -6,23 +5,22 @@ export async function login(email, password) {
     .from('usuarios')
     .select('*')
     .eq('email', email)
-    .eq('password', password) // ¡SOLO PARA FINES DEMOSTRATIVOS!
+    .eq('password', password)
     .single();
   
   if (error || !user) {
     throw new Error('Credenciales incorrectas');
   }
 
-  // Si el usuario es un operario, buscamos sus clientes asignados
-  if (user.role === 'operario') {
+  if (user.role === 'operario' || user.role === 'supervisor') {
     const { data: cliente_ids, error: clienteError } = await supabase
       .from('operario_clientes')
       .select('cliente_id')
       .eq('operario_id', user.id);
 
     if (clienteError) {
-      console.error("Error fetching operator's clients", clienteError);
-      user.cliente_ids = []; // Asignar un array vacío si hay un error
+      console.error("Error fetching user's clients", clienteError);
+      user.cliente_ids = [];
     } else {
       user.cliente_ids = cliente_ids.map(item => item.cliente_id);
     }

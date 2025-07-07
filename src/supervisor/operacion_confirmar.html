@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fagaz - Confirmar Operación</title>
+  <link rel="icon" href="/public/assets/img/logohead.webp" type="image/png">
+
+  <link rel="stylesheet" href="../common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <header id="header"></header>
+  <main class="flex-1 py-8">
+    <div class="content-container max-w-4xl">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Confirmar Registro de Operación</h1>
+        <a href="dashboard.html" class="btn btn-secondary flex items-center gap-2">
+          <span class="material-icons text-base">arrow_back</span>
+          <span>Volver a Pendientes</span>
+        </a>
+      </div>
+
+      <div id="detalle-container" class="bg-white p-6 sm:p-8 rounded-xl shadow-lg border space-y-6">
+          <p class="text-center p-4">Cargando detalles...</p>
+      </div>
+
+      <div id="decision-container" class="bg-white p-6 sm:p-8 rounded-xl shadow-lg border mt-8">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Decisión de Aprobación</h2>
+        <div class="space-y-4">
+            <div>
+                <label for="observacion_aprobacion" class="label-text">Observación (requerido si se rechaza)</label>
+                <textarea id="observacion_aprobacion" class="input-field min-h-[100px]" placeholder="Ej: Faltan datos en el registro..."></textarea>
+            </div>
+            <div class="flex flex-col sm:flex-row justify-end gap-4">
+                <button id="btn-reject" class="btn btn-danger">Rechazar</button>
+                <button id="btn-approve" class="btn btn-primary bg-green-600 hover:bg-green-700">Aprobar Registro</button>
+            </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+  <script type="module" src="operacion_confirmar.js"></script>
+</body>
+</html>

@@ -1,6 +1,5 @@
 import { login } from '../common/auth.js';
 
-// Limpiar usuario anterior al cargar la página
 localStorage.removeItem('user');
 
 const form = document.getElementById('loginForm');
@@ -13,11 +12,10 @@ const errorTextSpan = document.getElementById('errorText');
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  // --- Mostrar estado de carga ---
   loginBtn.disabled = true;
   loginText.style.display = 'none';
   loadingSpinner.style.display = 'block';
-  errorMessageDiv.classList.add('hidden'); // Ocultar errores previos
+  errorMessageDiv.classList.add('hidden');
 
   const email = form.email.value;
   const password = form.password.value;
@@ -26,15 +24,15 @@ form.addEventListener('submit', async (e) => {
     const user = await login(email, password);
     if (user.role === 'admin') {
       window.location.href = '../admin/dashboard.html';
+    } else if (user.role === 'supervisor') {
+      window.location.href = '../supervisor/dashboard.html';
     } else {
       window.location.href = '../operario/home.html';
     }
   } catch (err) {
-    // --- Mostrar el mensaje de error ---
     errorTextSpan.textContent = 'El email o la contraseña son erróneos.';
     errorMessageDiv.classList.remove('hidden');
 
-    // --- Restaurar el botón ---
     loginBtn.disabled = false;
     loginText.style.display = 'block';
     loadingSpinner.style.display = 'none';
