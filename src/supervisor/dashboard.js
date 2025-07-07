@@ -106,7 +106,7 @@ async function renderEnCursoParaFinalizar() {
 
     container.innerHTML = operaciones.map(op => {
         return `
-        <a href="finalizar.html?id=${op.id}" class="block p-4 rounded-lg shadow border bg-green-50 border-green-300 transition hover:shadow-md hover:border-green-500">
+        <a href="operacion_detalle.html?id=${op.id}" class="block p-4 rounded-lg shadow border bg-green-50 border-green-300 transition hover:shadow-md hover:border-green-500">
             <div class="flex flex-wrap justify-between items-center gap-2">
                 <div>
                     <div class="flex items-center gap-3 mb-2">
@@ -117,7 +117,7 @@ async function renderEnCursoParaFinalizar() {
                     <p class="text-sm font-semibold ml-9 mt-1">${op.clientes.nombre} - Depósito ${op.depositos.nombre}</p>
                 </div>
                 <div class="flex items-center gap-2 text-red-600 font-semibold">
-                    <span>Finalizar Operación</span>
+                    <span>Ver Detalle para Finalizar</span>
                     <span class="material-icons">flag</span>
                 </div>
             </div>

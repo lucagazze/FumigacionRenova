@@ -5,7 +5,7 @@ import { supabase } from '../common/supabase.js';
 const user = getUser();
 // Permite el acceso a 'admin' y 'supervisor'
 if (user.role !== 'admin' && user.role !== 'supervisor') {
-    requireRole('supervisor'); 
+    requireRole('supervisor');
 }
 
 let originalId; // Hacemos el ID original accesible en un scope más amplio
@@ -39,56 +39,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         container.innerHTML = '<p class="text-red-500">Error al cargar los detalles de la operación.</p>';
         return;
     }
-    
+
     const opBaseData = allRecords.find(r => r.id === originalId) || allRecords[0];
     renderizarPagina(container, opBaseData, allRecords);
-
-    // Renderizar el botón de finalizar si la operación está en curso
-    if (opBaseData.estado === 'en curso') {
-        renderizarBotonFinalizar();
-    }
 });
 
-function renderizarBotonFinalizar() {
-    const accionesContainer = document.getElementById('acciones-container');
-    accionesContainer.innerHTML = `
-        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 flex justify-end">
-            <button id="btnFinalizarOperacion" class="btn btn-primary bg-red-600 hover:bg-red-700">
-                <span class="material-icons">check_circle</span>
-                Finalizar Operación
-            </button>
-        </div>
-    `;
-
-    document.getElementById('btnFinalizarOperacion').addEventListener('click', () => {
-        if (originalId) {
-            localStorage.setItem('operacion_actual', originalId);
-            window.location.href = '/src/operario/finalizar.html';
-        } else {
-            alert("No se pudo identificar la operación a finalizar.");
-        }
-    });
-}
 
 // --- RENDERIZADO DE LA PÁGINA ---
 function renderizarPagina(container, opBase, allRecords) {
     let totalProducto = 0;
     let totalToneladas = 0;
     allRecords.forEach(r => {
-        totalToneladas += (r.toneladas || 0);
-        totalProducto += (r.producto_usado_cantidad || 0);
+        if(r.estado_aprobacion !== 'rechazado') {
+            totalToneladas += (r.toneladas || 0);
+            totalProducto += (r.producto_usado_cantidad || 0);
+        }
     });
 
     const unidadLabel = opBase.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';
-    
+    const tratamientosUnicos = [...new Set(allRecords.map(r => r.tratamiento).filter(Boolean))];
+    const tratamiento = tratamientosUnicos.length > 0 ? tratamientosUnicos.join(', ') : 'N/A';
+    const metodoCapitalizado = opBase.metodo_fumigacion ? opBase.metodo_fumigacion.charAt(0).toUpperCase() + opBase.metodo_fumigacion.slice(1) : 'N/A';
+
+
+    const finalizarButtonHTML = opBase.estado === 'en curso' ? `
+        <button id="btnFinalizarOperacion" class="btn btn-primary bg-red-600 hover:bg-red-700">
+            <span class="material-icons">check_circle</span>
+            Finalizar Operación
+        </button>
+    ` : '';
+
     container.innerHTML = `
         <div class="flex flex-wrap justify-between items-center gap-4">
             <h3 class="text-xl font-bold text-gray-800">Resumen General</h3>
+            ${finalizarButtonHTML}
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm p-4 mt-4 bg-gray-50 rounded-lg border">
             <div><strong>Cliente:</strong><br>${opBase.clientes?.nombre || 'N/A'}</div>
             <div><strong>Depósito:</strong><br>${opBase.depositos?.nombre || 'N/A'} (${opBase.depositos?.tipo || 'N/A'})</div>
             <div><strong>Mercadería:</strong><br>${opBase.mercaderias?.nombre || 'N/A'}</div>
+            <div><strong>Método:</strong><br>${metodoCapitalizado}</div>
+            <div><strong>Tratamiento(s):</strong><br>${tratamiento}</div>
             <div><strong>Estado:</strong><br><span class="font-bold ${opBase.estado === 'finalizada' ? 'text-red-600' : 'text-green-600'}">${opBase.estado}</span></div>
             <div class="font-semibold"><strong>Total Toneladas:</strong><br>${totalToneladas.toLocaleString()} tn</div>
             <div class="font-semibold"><strong>Total Producto:</strong><br>${totalProducto.toLocaleString()} ${unidadLabel}</div>
@@ -99,18 +90,18 @@ function renderizarPagina(container, opBase, allRecords) {
                 ${allRecords.map(registro => {
                     let detalle = '';
                     let actionButtons = '';
-                    
+
                     const isRechazado = registro.estado_aprobacion === 'rechazado';
                     const itemClass = isRechazado ? 'line-through text-gray-400' : '';
 
                     if (user.role === 'supervisor' && registro.estado_aprobacion === 'pendiente' && registro.tipo_registro !== 'muestreo') {
                         actionButtons += `<a href="../supervisor/operacion_confirmar.html?id=${registro.id}" class="btn bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600">Revisar</a>`;
                     }
-                    
+
                     if (registro.observacion_aprobacion) {
                         actionButtons += `<button class="btn-show-observacion p-1" data-observacion="${registro.observacion_aprobacion}" title="Ver observación"><span class="material-icons text-yellow-500 hover:text-yellow-700">comment</span></button>`;
                     }
-                    
+
                     switch(registro.tipo_registro) {
                         case 'inicial': detalle = `Operación iniciada por <b>${registro.operario_nombre}</b>.`; break;
                         case 'producto': detalle = `<b>${registro.operario_nombre}</b> aplicó <b>${(registro.producto_usado_cantidad || 0).toLocaleString()} ${unidadLabel}</b> en ${(registro.toneladas || 0).toLocaleString()} tn.`; break;
@@ -125,7 +116,17 @@ function renderizarPagina(container, opBase, allRecords) {
                 }).join('')}
             </div>
         </div>`;
-        
+
+    if (opBase.estado === 'en curso') {
+        document.getElementById('btnFinalizarOperacion').addEventListener('click', () => {
+            if (originalId) {
+                window.location.href = `finalizar.html?id=${originalId}`;
+            } else {
+                alert("No se pudo identificar la operación a finalizar.");
+            }
+        });
+    }
+
     container.addEventListener('click', (e) => {
         const obsBtn = e.target.closest('.btn-show-observacion');
         if (obsBtn) {
