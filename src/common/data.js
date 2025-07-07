@@ -56,11 +56,13 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin, is
 
         const summary = operationSummaries.get(key);
 
-        if (op.toneladas) {
-            summary.totalToneladas += op.toneladas;
-        }
-        if (op.producto_usado_cantidad) {
-            summary.totalProducto += op.producto_usado_cantidad;
+        if (op.estado_aprobacion !== 'rechazado') {
+            if (op.toneladas) {
+                summary.totalToneladas += op.toneladas;
+            }
+            if (op.producto_usado_cantidad) {
+                summary.totalProducto += op.producto_usado_cantidad;
+            }
         }
         
         if (op.tipo_registro === 'producto' && op.tratamiento) {
@@ -91,7 +93,7 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin, is
 
         const fechaFormateada = new Date(op.created_at).toLocaleString('es-AR', {
             day: 'numeric', month: 'numeric', year: 'numeric', 
-            hour: '2-digit', minute: '2-digit', hour12: true 
+            hour: '2-digit', minute: '2-digit', hour12: false 
         });
 
         let aprobacionHtml = '';
@@ -107,6 +109,12 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin, is
                     aprobacionHtml = `<span title="Motivo: ${op.observacion_aprobacion || 'N/A'}" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 cursor-pointer">Rechazado</span>`;
                     break;
             }
+        }
+        
+        // ⭐ Lógica para tachar la fila si está rechazada
+        let rowClass = 'cursor-pointer hover:bg-gray-50 border-b';
+        if (op.estado_aprobacion === 'rechazado') {
+            rowClass += ' line-through text-gray-400';
         }
 
         const mainRowCells = [
@@ -165,7 +173,8 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin, is
         }
         
         mainRowCells.push(`<td class="px-4 py-4 text-center"><span class="material-icons expand-icon">expand_more</span></td>`);
-        const mainRow = `<tr class="cursor-pointer hover:bg-gray-50 border-b" data-toggle-details="details-${op.id}">${mainRowCells.join('')}</tr>`;
+        
+        const mainRow = `<tr class="${rowClass}" data-toggle-details="details-${op.id}">${mainRowCells.join('')}</tr>`;
         
         let detailsContentHTML = '';
 
@@ -241,8 +250,8 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin, is
             const durationMins = Math.round((durationMs % 3600000) / 60000);
             const tratamiento = summary.tratamientos.size > 0 ? [...summary.tratamientos].join(', ') : 'N/A';
             const metodo = summary.metodo ? summary.metodo.charAt(0).toUpperCase() + summary.metodo.slice(1) : 'N/A';
-            const fechaInicioFormateada = startDate.toLocaleString('es-AR', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
-            const fechaFinFormateada = endDate.toLocaleString('es-AR', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+            const fechaInicioFormateada = startDate.toLocaleString('es-AR', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+            const fechaFinFormateada = endDate.toLocaleString('es-AR', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
 
             detailsContentHTML = `
                 <div class="p-4 bg-gray-100">

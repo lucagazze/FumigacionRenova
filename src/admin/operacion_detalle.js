@@ -39,7 +39,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const opBaseData = allRecords.find(r => r.id === originalId) || allRecords[0];
 
-    // Obtener la última limpieza del depósito
     const { data: limpiezaData, error: limpiezaError } = await supabase
         .from('limpiezas')
         .select('fecha_limpieza, fecha_garantia_limpieza')
@@ -55,9 +54,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 function renderizarPagina(container, opBase, allRecords, limpieza) {
     let totalProducto = 0;
     let totalToneladas = 0;
+
     allRecords.forEach(r => {
-        totalToneladas += (r.toneladas || 0);
-        totalProducto += (r.producto_usado_cantidad || 0);
+        if (r.estado_aprobacion !== 'rechazado') {
+            totalToneladas += (r.toneladas || 0);
+            totalProducto += (r.producto_usado_cantidad || 0);
+        }
     });
 
     const unidadLabel = opBase.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';
@@ -72,7 +74,6 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
            </div>` 
         : '';
 
-    // Lógica para la vigencia de la limpieza
     let limpiezaHtml = '<div><strong>Vigencia Limpieza:</strong><br><span class="text-gray-500">Sin registros</span></div>';
     if (limpieza) {
         const fechaGarantia = new Date(limpieza.fecha_garantia_limpieza + 'T00:00:00');
@@ -89,7 +90,6 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
             </div>`;
     }
 
-    // Lógica para el plazo de la garantía de fumigación (solo para operaciones en curso)
     let plazoHtml = '';
     if (opBase.estado === 'en curso') {
         const fechaInicio = new Date(opBase.created_at);
@@ -119,7 +119,6 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
         }
     }
 
-    // Lógica para el estado final de la garantía (solo para operaciones finalizadas)
     let garantiaHtml = '';
     if (opBase.estado === 'finalizada' && registroFinal) {
         const fechaInicio = new Date(opBase.created_at);
@@ -152,8 +151,6 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
         }
     }
 
-
-    // Contenido HTML principal
     container.innerHTML = `
         <div class="flex flex-wrap justify-between items-center gap-4">
             <h3 class="text-xl font-bold text-gray-800">Resumen General</h3>
@@ -238,7 +235,6 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
             </div>
         </div>`;
     
-    // EVENT LISTENER GLOBAL
     container.addEventListener('click', async (e) => {
         const editTarget = e.target.closest('.btn-edit-registro');
         const deleteTarget = e.target.closest('.btn-delete-registro');

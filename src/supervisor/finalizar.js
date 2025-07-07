@@ -2,26 +2,32 @@ import { renderHeader } from '../common/header.js';
 import { requireRole, getUser } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 
-requireRole('operario');
+requireRole('supervisor');
 document.getElementById('header').innerHTML = renderHeader();
 
 const form = document.getElementById('formFinalizar');
-
 let operacionOriginal = {};
+let operacionId = null;
 
 async function setupPage() {
-    const opId = localStorage.getItem('operacion_actual');
-    if (!opId) { window.location.href = 'home.html'; return; }
+    const urlParams = new URLSearchParams(window.location.search);
+    operacionId = urlParams.get('id');
+
+    if (!operacionId) { 
+        alert('ID de operación no encontrado en la URL.');
+        window.location.href = 'historial.html'; 
+        return; 
+    }
     
     const { data: operacion, error } = await supabase
         .from('operaciones')
-        .select(`*, clientes(nombre), depositos(nombre, tipo, limpiezas(fecha_garantia_limpieza))`)
-        .eq('id', opId)
+        .select(`*, clientes(nombre), depositos(nombre, tipo)`)
+        .eq('id', operacionId)
         .single();
     
     if(error || !operacion) {
         alert('Error al cargar la operación.');
-        window.location.href = 'home.html';
+        window.location.href = 'historial.html';
         return;
     }
     operacionOriginal = operacion;
@@ -32,14 +38,13 @@ async function setupPage() {
     const { data: allRecords } = await supabase
         .from('operaciones')
         .select('*')
-        .or(`id.eq.${opId},operacion_original_id.eq.${opId}`);
+        .or(`id.eq.${operacionId},operacion_original_id.eq.${operacionId}`);
         
-    const totalToneladas = allRecords.reduce((acc, op) => acc + (op.toneladas || 0), 0);
-    const totalProducto = allRecords.reduce((acc, op) => acc + (op.producto_usado_cantidad || 0), 0);
+    const totalToneladas = allRecords.filter(r => r.estado_aprobacion !== 'rechazado').reduce((acc, op) => acc + (op.toneladas || 0), 0);
+    const totalProducto = allRecords.filter(r => r.estado_aprobacion !== 'rechazado').reduce((acc, op) => acc + (op.producto_usado_cantidad || 0), 0);
     
     document.getElementById('totalToneladas').textContent = totalToneladas.toLocaleString() + ' tn';
     document.getElementById('totalProducto').textContent = totalProducto.toLocaleString() + (operacion.metodo_fumigacion === 'liquido' ? ' cm³' : ' pastillas');
-
 }
 
 form.addEventListener('submit', async (e) => {
@@ -62,9 +67,10 @@ form.addEventListener('submit', async (e) => {
         estado: 'finalizada',
         tipo_registro: 'finalizacion',
         operario_nombre: `${user.nombre} ${user.apellido}`,
-        con_garantia: false,
-        fecha_vencimiento_garantia: null,
-        observacion_finalizacion: observacion
+        observacion_finalizacion: observacion,
+        estado_aprobacion: 'aprobado',
+        supervisor_id: user.id,
+        fecha_aprobacion: new Date().toISOString()
     };
 
     const { data, error } = await supabase.from('operaciones').insert(finalizacionData).select().single();
@@ -97,13 +103,12 @@ form.addEventListener('submit', async (e) => {
         console.error("Error updating pending records:", updatePendientesError);
     }
 
-    localStorage.removeItem('operacion_actual');
     alert('¡Operación finalizada con éxito!');
-    window.location.href = 'home.html';
+    window.location.href = 'historial.html';
 });
 
 document.getElementById('btnVolver').addEventListener('click', () => {
-    window.location.href = 'operacion.html';
+    window.location.href = 'historial.html';
 });
 
 document.addEventListener('DOMContentLoaded', setupPage);

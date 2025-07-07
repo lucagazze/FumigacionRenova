@@ -46,9 +46,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 function renderizarPagina(container, opBase, allRecords) {
     let totalProducto = 0;
     let totalToneladas = 0;
+    
+    // MODIFICACIÓN: Solo sumar si el registro no está rechazado
     allRecords.forEach(r => {
-        totalToneladas += (r.toneladas || 0);
-        totalProducto += (r.producto_usado_cantidad || 0);
+        if (r.estado_aprobacion !== 'rechazado') {
+            totalToneladas += (r.toneladas || 0);
+            totalProducto += (r.producto_usado_cantidad || 0);
+        }
     });
 
     const unidadLabel = opBase.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fagaz - Finalizar Operación</title>
+  <link rel="icon" href="/public/assets/img/logohead.webp" type="image/png">
+  <link rel="stylesheet" href="../common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <header id="header"></header>
+  <main class="flex-1 py-8">
+      <div class="content-container max-w-2xl">
+        <div class="bg-white rounded-xl shadow-lg p-6 border">
+            <h2 class="text-3xl font-bold">Finalizar Operación</h2>
+            <p class="text-gray-500 text-sm mt-1">Revise los datos y confirme el cierre de la operación.</p>
+          <div id="resumenContainer" class="mt-6">
+            <form id="formFinalizar" class="space-y-6">
+              <div>
+                <h3 class="text-xl font-bold mb-4">Resumen de la Operación</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  <div class="bg-gray-50 p-3 rounded-lg">
+                    <p class="text-gray-500">Cliente</p>
+                    <p class="font-semibold text-lg" id="cliente">Cargando...</p>
+                  </div>
+                  <div class="bg-gray-50 p-3 rounded-lg">
+                    <p class="text-gray-500">Depósito</p>
+                    <p class="font-semibold text-lg" id="deposito">Cargando...</p>
+                  </div>
+                  <div class="bg-gray-50 p-3 rounded-lg">
+                    <p class="text-gray-500">Total Trigo Movido</p>
+                    <p class="font-semibold text-lg" id="totalToneladas">0 tn</p>
+                  </div>
+                  <div class="bg-gray-50 p-3 rounded-lg">
+                    <p class="text-gray-500">Total Producto Aplicado</p>
+                    <p class="font-semibold text-lg" id="totalProducto">0</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                  <label for="observacion_finalizacion" class="block font-semibold mb-1">Observación de Finalización</label>
+                  <textarea id="observacion_finalizacion" class="input-field min-h-[100px]" placeholder="Añada aquí cualquier observación sobre el cierre de la operación..."></textarea>
+              </div>
+
+              <div class="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t">
+                <button type="button" id="btnVolver" class="btn btn-secondary w-full sm:w-auto">Cancelar</button>
+                <button type="submit" id="btnConfirmar" class="btn btn-primary bg-red-600 hover:bg-red-700 w-full sm:w-auto">Confirmar y Finalizar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+  </main>
+  <script type="module" src="finalizar.js"></script>
+</body>
+</html>

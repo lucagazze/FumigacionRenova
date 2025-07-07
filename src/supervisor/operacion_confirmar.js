@@ -45,7 +45,7 @@ async function renderDetalle() {
 }
 
 async function handleRejection() {
-    if (!confirm("¿Está seguro de que desea RECHAZAR este registro?")) return;
+    if (!confirm("¿Está seguro de que desea RECHAZAR este registro? El stock utilizado será devuelto.")) return;
 
     const observacion = document.getElementById('observacion_aprobacion').value;
     if (!observacion) {
@@ -56,29 +56,42 @@ async function handleRejection() {
     const { data: op, error: fetchError } = await supabase.from('operaciones').select('*').eq('id', operacionId).single();
     if(fetchError || !op) return alert('Error al obtener datos para rechazar.');
 
-    // Revertir el stock
-    const { data: stock, error: stockError } = await supabase
-        .from('stock')
-        .select('*')
-        .eq('deposito', op.deposito_origen_stock)
-        .eq('tipo_producto', op.metodo_fumigacion)
-        .single();
+    // --- ⭐ AQUÍ OCURRE LA MAGIA: LÓGICA PARA REVERTIR EL STOCK ---
+    if (op.producto_usado_cantidad > 0) {
+        const { data: stock, error: stockError } = await supabase
+            .from('stock')
+            .select('*')
+            .eq('deposito', op.deposito_origen_stock)
+            .eq('tipo_producto', op.metodo_fumigacion)
+            .single();
 
-    if(stockError) return alert('Error al encontrar el stock para revertir.');
-    
-    let nuevo_kg = parseFloat(stock.cantidad_kg);
-    let nuevas_unidades = stock.cantidad_unidades ? parseInt(stock.cantidad_unidades) : 0;
-    
-    if (op.metodo_fumigacion === 'pastillas') {
-        nuevas_unidades += op.producto_usado_cantidad;
-        nuevo_kg = nuevas_unidades * 3 / 1000;
-    } else {
-        nuevo_kg += (op.producto_usado_cantidad * DENSIDAD_LIQUIDO) / 1000;
+        if(stockError) {
+            alert('Error al encontrar el stock para revertir: ' + stockError.message);
+            return;
+        }
+        
+        let nuevo_kg = parseFloat(stock.cantidad_kg);
+        let nuevas_unidades = stock.cantidad_unidades ? parseInt(stock.cantidad_unidades) : 0;
+        
+        // Se suma la cantidad rechazada de vuelta al total
+        if (op.metodo_fumigacion === 'pastillas') {
+            nuevas_unidades += op.producto_usado_cantidad;
+            nuevo_kg += (op.producto_usado_cantidad * 3) / 1000;
+        } else { // liquido
+            nuevo_kg += (op.producto_usado_cantidad * DENSIDAD_LIQUIDO) / 1000;
+        }
+        
+        // Se actualiza la base de datos con el stock restaurado
+        const { error: updateStockError } = await supabase.from('stock').update({ cantidad_kg: nuevo_kg, cantidad_unidades: nuevas_unidades }).eq('id', stock.id);
+        
+        if (updateStockError) {
+            alert('CRÍTICO: No se pudo revertir el stock. Contacte a soporte. Error: ' + updateStockError.message);
+            return;
+        }
     }
+    // --- FIN DE LA LÓGICA DE STOCK ---
 
-    await supabase.from('stock').update({ cantidad_kg: nuevo_kg, cantidad_unidades: nuevas_unidades }).eq('id', stock.id);
-
-    // Actualizar el estado de la operación
+    // Finalmente, se actualiza el estado de la operación a 'rechazado'
     const { error: updateError } = await supabase
         .from('operaciones')
         .update({ 
@@ -92,13 +105,15 @@ async function handleRejection() {
     if (updateError) {
         alert('Error al rechazar la operación: ' + updateError.message);
     } else {
-        alert(`La operación ha sido rechazada con éxito.`);
+        alert(`La operación ha sido rechazada con éxito y el stock ha sido restaurado.`);
         window.location.href = 'dashboard.html';
     }
 }
 
 async function handleDecision(aprobado) {
-    if (!aprobado) return handleRejection();
+    if (!aprobado) {
+        return handleRejection();
+    }
 
     if (!confirm("¿Está seguro de que desea APROBAR este registro?")) return;
 
@@ -108,7 +123,7 @@ async function handleDecision(aprobado) {
         .from('operaciones')
         .update({ 
             estado_aprobacion: 'aprobado',
-            observacion_aprobacion: observacion, // Guardar observación también al aprobar
+            observacion_aprobacion: observacion,
             supervisor_id: user.id,
             fecha_aprobacion: new Date().toISOString()
         })
