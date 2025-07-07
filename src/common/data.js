@@ -26,12 +26,13 @@ export async function getOperaciones() {
 }
 
 export async function renderOperaciones(container, operaciones, isAdmin = false, isSupervisor = false) {
-  if (!operaciones || operaciones.length === 0) {
+  const operacionesSinMuestreos = operaciones.filter(op => op.tipo_registro !== 'muestreo');
+  if (!operacionesSinMuestreos || operacionesSinMuestreos.length === 0) {
       container.innerHTML = '<p class="text-center p-8 text-gray-500">No se encontraron operaciones.</p>';
       return;
   }
   
-  await renderOperacionesDesplegables(container, operaciones, isAdmin, isSupervisor);
+  await renderOperacionesDesplegables(container, operacionesSinMuestreos, isAdmin, isSupervisor);
 }
 
 async function renderOperacionesDesplegables(container, operaciones, isAdmin, isSupervisor) {
@@ -179,11 +180,18 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin, is
                     if (fechaVenc < new Date()) vencimientoClass = 'text-red-600 font-bold';
                 }
             }
+            
+            let aprobacionDetalle = '';
+            if (op.observacion_aprobacion) {
+                aprobacionDetalle = `<div class="col-span-full mt-2"><strong>Obs. Supervisor:</strong><br><p class="mt-1 p-2 bg-white rounded break-words">${op.observacion_aprobacion}</p></div>`;
+            }
+
             detailsContentHTML = `
                 <div class="p-4 bg-gray-100 grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                     <div><strong>Mercadería:</strong><br>${op.mercaderias?.nombre || 'N/A'}</div>
                     <div><strong>Método:</strong><br>${op.metodo_fumigacion || 'N/A'}</div>
                     <div class="${vencimientoClass}"><strong>Venc. Vigencia Limpieza:</strong><br>${vencimientoLimpieza}</div>
+                    ${aprobacionDetalle}
                 </div>
             `;
         } else if (op.tipo_registro === 'producto') {
@@ -193,7 +201,7 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin, is
             
             let aprobacionDetalle = '';
             if (op.observacion_aprobacion) {
-                aprobacionDetalle = `<div><strong>Obs. Supervisor:</strong><br>${op.observacion_aprobacion}</div>`;
+                aprobacionDetalle = `<div class="col-span-full mt-2"><strong>Obs. Supervisor:</strong><br><p class="mt-1 p-2 bg-white rounded break-words">${op.observacion_aprobacion}</p></div>`;
             }
 
             detailsContentHTML = `

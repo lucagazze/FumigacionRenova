@@ -79,8 +79,8 @@ function renderizarPagina(container, opBase, allRecords) {
                     let detalle = '';
                     let actionButtons = '';
 
-                    // Lógica de botones para supervisor
-                    if (user.role === 'supervisor' && registro.estado_aprobacion === 'pendiente') {
+                    // Lógica de botones para supervisor (corregida)
+                    if (user.role === 'supervisor' && registro.estado_aprobacion === 'pendiente' && registro.tipo_registro !== 'muestreo') {
                         actionButtons = `<a href="../supervisor/operacion_confirmar.html?id=${registro.id}" class="btn bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600">Revisar y Aprobar</a>`;
                     }
                     

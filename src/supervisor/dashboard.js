@@ -19,6 +19,7 @@ async function renderPendientes() {
         .select(`*, clientes(nombre), depositos(nombre, tipo)`)
         .in('cliente_id', user.cliente_ids)
         .eq('estado_aprobacion', 'pendiente')
+        .neq('tipo_registro', 'muestreo') // No mostrar muestreos
         .order('created_at', { ascending: true });
         
     if (error) {

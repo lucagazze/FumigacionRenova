@@ -45,6 +45,8 @@ async function renderDetalle() {
 }
 
 async function handleRejection() {
+    if (!confirm("¿Está seguro de que desea RECHAZAR este registro?")) return;
+
     const observacion = document.getElementById('observacion_aprobacion').value;
     if (!observacion) {
         alert('Debe ingresar un motivo para rechazar la operación.');
@@ -98,10 +100,15 @@ async function handleRejection() {
 async function handleDecision(aprobado) {
     if (!aprobado) return handleRejection();
 
-     const { error } = await supabase
+    if (!confirm("¿Está seguro de que desea APROBAR este registro?")) return;
+
+    const observacion = document.getElementById('observacion_aprobacion').value;
+
+    const { error } = await supabase
         .from('operaciones')
         .update({ 
             estado_aprobacion: 'aprobado',
+            observacion_aprobacion: observacion, // Guardar observación también al aprobar
             supervisor_id: user.id,
             fecha_aprobacion: new Date().toISOString()
         })
@@ -120,5 +127,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     await renderDetalle();
 
     document.getElementById('btn-approve').addEventListener('click', () => handleDecision(true));
-    document.getElementById('btn-reject').addEventListener('click', handleRejection);
+    document.getElementById('btn-reject').addEventListener('click', () => handleDecision(false));
 });

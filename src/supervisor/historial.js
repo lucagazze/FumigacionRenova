@@ -85,6 +85,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    const { data: depositos } = await supabase.from('depositos').select('id, nombre, tipo').in('cliente_id', user.cliente_ids);
+    const siloCeldaSelect = document.getElementById('filter-silo-celda');
+    depositos.forEach(d => {
+        siloCeldaSelect.innerHTML += `<option value="${d.id}">${d.nombre} (${d.tipo})</option>`;
+    });
+
     const aplicarTodosLosFiltros = (options = {}) => {
         let operacionesFiltradas = [...allOperations];
 
@@ -93,9 +99,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             const tipo = document.getElementById('filter-tipo').value;
             const estado = document.getElementById('filter-estado').value;
+            const siloCelda = document.getElementById('filter-silo-celda').value;
 
             if (tipo) operacionesFiltradas = operacionesFiltradas.filter(op => op.tipo_registro === tipo);
             if (estado) operacionesFiltradas = operacionesFiltradas.filter(op => op.estado === estado);
+            if (siloCelda) operacionesFiltradas = operacionesFiltradas.filter(op => op.deposito_id === siloCelda);
         }
         
         renderOperaciones(container, operacionesFiltradas, false, true);
