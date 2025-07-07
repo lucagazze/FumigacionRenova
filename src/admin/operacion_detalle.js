@@ -198,6 +198,9 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
                     if (deletableTypes.includes(registro.tipo_registro)) {
                         actionButtons += `<button class="btn-delete-registro p-1" data-registro-id="${registro.id}" title="Eliminar este registro"><span class="material-icons text-red-500 hover:text-red-700">delete</span></button>`;
                     }
+                    if (registro.observacion_aprobacion) {
+                        actionButtons += `<button class="btn-show-observacion p-1" data-observacion="${registro.observacion_aprobacion}" title="Ver observación"><span class="material-icons text-yellow-500 hover:text-yellow-700">comment</span></button>`;
+                    }
 
                     switch(registro.tipo_registro) {
                         case 'inicial': detalle = `Operación iniciada por <b>${registro.operario_nombre}</b>.`; break;
@@ -214,7 +217,7 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
 
                     return `<div class="flex items-center justify-between text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm ${extraClasses} ${itemClass}" ${dataAttributes}>
                                 <div><b>${new Date(registro.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}:</b> ${detalle}${rechazoLabel}</div>
-                                <div class="flex-shrink-0 ml-4">${actionButtons}</div>
+                                <div class="flex-shrink-0 ml-4 flex items-center gap-2">${actionButtons}</div>
                             </div>`;
                 }).join('')}
             </div>
@@ -241,6 +244,7 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
         const deleteTarget = e.target.closest('.btn-delete-registro');
         const deleteOpTarget = e.target.closest('#btnEliminarOperacionCompleta');
         const muestreoTarget = e.target.closest('[data-muestreo-op-id]');
+        const obsBtn = e.target.closest('.btn-show-observacion');
 
         if (editTarget) {
             const registro = allRecords.find(r => r.id === editTarget.dataset.registroId);
@@ -253,6 +257,9 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
         } else if (muestreoTarget) {
             const muestreoData = allRecords.find(r => r.id === muestreoTarget.dataset.muestreoOpId)?.muestreos?.[0];
             if (muestreoData) renderMuestreoModal(muestreoData);
+        } else if (obsBtn) {
+            const observacion = obsBtn.dataset.observacion;
+            renderObservacionModal(observacion);
         }
     });
 }
@@ -263,7 +270,6 @@ async function eliminarRegistro(registro) {
     if (!confirm('¿SEGURO que desea eliminar este registro? El stock asociado será restaurado. Esta acción es irreversible.')) return;
     try {
         if (registro.tipo_registro === 'producto' && registro.producto_usado_cantidad > 0) {
-            // La diferencia es la cantidad total a restaurar. Es como un ajuste de `-cantidad`.
             await ajustarStock(registro, -registro.producto_usado_cantidad);
         }
         if (registro.tipo_registro === 'muestreo') {
@@ -274,7 +280,6 @@ async function eliminarRegistro(registro) {
             }
         }
 
-        // ON DELETE CASCADE se encarga de los registros en tablas hijas como muestreos.
         const { error } = await supabase.from('operaciones').delete().eq('id', registro.id);
         if (error) throw error;
         
@@ -286,8 +291,25 @@ async function eliminarRegistro(registro) {
     }
 }
 
-// El resto de las funciones (renderMuestreoModal, renderEditModal, ajustarStock, eliminarOperacionCompleta)
-// permanecen igual, ya que su lógica es sólida.
+function renderObservacionModal(observacion) {
+    const modalHTML = `
+        <div id="observacion-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 relative">
+                <button id="close-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800"><span class="material-icons">close</span></button>
+                <h4 class="text-2xl font-bold mb-4">Observación del Supervisor</h4>
+                <div class="space-y-4">
+                    <p class="p-3 bg-gray-100 rounded-lg text-gray-700 whitespace-pre-wrap">${observacion || 'N/A'}</p>
+                </div>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const modal = document.getElementById('observacion-modal');
+    const closeModal = () => modal.remove();
+    modal.addEventListener('click', (e) => {
+        if (e.target.id === 'observacion-modal' || e.target.closest('#close-modal')) closeModal();
+    });
+}
 
 function renderMuestreoModal(muestreo) {
     const modalHTML = `

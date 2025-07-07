@@ -5,10 +5,8 @@ import { supabase } from '../common/supabase.js';
 const user = getUser();
 // Permite el acceso a 'admin' y 'supervisor'
 if (user.role !== 'admin' && user.role !== 'supervisor') {
-    requireRole('admin'); 
+    requireRole('supervisor'); 
 }
-
-const DENSIDAD_LIQUIDO = 1.2;
 
 // --- INICIALIZACIÓN ---
 document.addEventListener('DOMContentLoaded', async () => {
@@ -58,11 +56,6 @@ function renderizarPagina(container, opBase, allRecords) {
     container.innerHTML = `
         <div class="flex flex-wrap justify-between items-center gap-4">
             <h3 class="text-xl font-bold text-gray-800">Resumen General</h3>
-            ${user.role === 'admin' ? `
-            <button id="btnEliminarOperacionCompleta" class="btn btn-danger flex items-center gap-2">
-                <span class="material-icons text-base">delete_forever</span>
-                <span>Eliminar Operación Completa</span>
-            </button>` : ''}
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm p-4 mt-4 bg-gray-50 rounded-lg border">
             <div><strong>Cliente:</strong><br>${opBase.clientes?.nombre || 'N/A'}</div>
@@ -78,10 +71,16 @@ function renderizarPagina(container, opBase, allRecords) {
                 ${allRecords.map(registro => {
                     let detalle = '';
                     let actionButtons = '';
+                    
+                    const isRechazado = registro.estado_aprobacion === 'rechazado';
+                    const itemClass = isRechazado ? 'line-through text-gray-400' : '';
 
-                    // Lógica de botones para supervisor (corregida)
                     if (user.role === 'supervisor' && registro.estado_aprobacion === 'pendiente' && registro.tipo_registro !== 'muestreo') {
-                        actionButtons = `<a href="../supervisor/operacion_confirmar.html?id=${registro.id}" class="btn bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600">Revisar y Aprobar</a>`;
+                        actionButtons += `<a href="../supervisor/operacion_confirmar.html?id=${registro.id}" class="btn bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600">Revisar</a>`;
+                    }
+                    
+                    if (registro.observacion_aprobacion) {
+                        actionButtons += `<button class="btn-show-observacion p-1" data-observacion="${registro.observacion_aprobacion}" title="Ver observación"><span class="material-icons text-yellow-500 hover:text-yellow-700">comment</span></button>`;
                     }
                     
                     switch(registro.tipo_registro) {
@@ -91,11 +90,39 @@ function renderizarPagina(container, opBase, allRecords) {
                         case 'finalizacion': detalle = `Operación finalizada por <b>${registro.operario_nombre}</b>.`; break;
                     }
 
-                    return `<div class="flex items-center justify-between text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm">
+                    return `<div class="flex items-center justify-between text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm ${itemClass}">
                                 <div><b>${new Date(registro.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}:</b> ${detalle}</div>
-                                <div class="flex-shrink-0 ml-4">${actionButtons}</div>
+                                <div class="flex-shrink-0 ml-4 flex items-center gap-2">${actionButtons}</div>
                             </div>`;
                 }).join('')}
             </div>
         </div>`;
+        
+    container.addEventListener('click', (e) => {
+        const obsBtn = e.target.closest('.btn-show-observacion');
+        if (obsBtn) {
+            const observacion = obsBtn.dataset.observacion;
+            renderObservacionModal(observacion);
+        }
+    });
+}
+
+function renderObservacionModal(observacion) {
+    const modalHTML = `
+        <div id="observacion-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 relative">
+                <button id="close-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800"><span class="material-icons">close</span></button>
+                <h4 class="text-2xl font-bold mb-4">Observación del Supervisor</h4>
+                <div class="space-y-4">
+                    <p class="p-3 bg-gray-100 rounded-lg text-gray-700 whitespace-pre-wrap">${observacion || 'N/A'}</p>
+                </div>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const modal = document.getElementById('observacion-modal');
+    const closeModal = () => modal.remove();
+    modal.addEventListener('click', (e) => {
+        if (e.target.id === 'observacion-modal' || e.target.closest('#close-modal')) closeModal();
+    });
 }
