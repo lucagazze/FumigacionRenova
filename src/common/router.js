@@ -4,12 +4,12 @@ export function goTo(url) {
 }
 
 export function requireRole(role) {
-  const user = JSON.parse(sessionStorage.getItem('user'));
+  const user = JSON.parse(localStorage.getItem('user'));
   if (!user || user.role !== role) {
     window.location.href = '/src/login/login.html';
   }
 }
 
 export function getUser() {
-  return JSON.parse(sessionStorage.getItem('user'));
+  return JSON.parse(localStorage.getItem('user'));
 }
