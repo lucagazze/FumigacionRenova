@@ -1,4 +1,4 @@
-import { login } from '../common/auth.js';
+import { login } from './src/common/auth.js';
 
 localStorage.removeItem('user');
 
@@ -23,11 +23,11 @@ form.addEventListener('submit', async (e) => {
   try {
     const user = await login(email, password);
     if (user.role === 'admin') {
-      window.location.href = '../admin/dashboard.html';
+      window.location.href = 'src/admin/dashboard.html';
     } else if (user.role === 'supervisor') {
-      window.location.href = '../supervisor/dashboard.html';
+      window.location.href = 'src/supervisor/dashboard.html';
     } else {
-      window.location.href = '../operario/home.html';
+      window.location.href = 'src/operario/home.html';
     }
   } catch (err) {
     errorTextSpan.textContent = 'El email o la contraseña son erróneos.';
