@@ -2,43 +2,45 @@ import { getUser } from './router.js';
 
 export function renderHeader() {
   const user = getUser();
-  const currentPage = window.location.pathname.split('/').pop();
-  
-  const getLinkClasses = (href) => {
+  // Elimina .html de la página actual para una comparación correcta
+  const currentPage = window.location.pathname.split('/').pop().replace('.html', '');
+
+  const getLinkClasses = (pageName) => {
     const base = "text-sm font-medium transition-colors px-3 py-2 rounded-md";
-    const isActive = href.split('/').pop() === currentPage;
-    return isActive 
-      ? `${base} bg-green-100 text-green-700 font-semibold` 
+    // Compara el nombre de la página (sin extensión) con la página actual
+    const isActive = pageName === currentPage;
+    return isActive
+      ? `${base} bg-green-100 text-green-700 font-semibold`
       : `${base} text-gray-500 hover:bg-gray-100 hover:text-gray-900`;
   };
-  
+
   let navLinks = '';
   if (user?.role === 'admin') {
     navLinks = `
-        <a class="${getLinkClasses('dashboard.html')}" href="/src/admin/dashboard.html">Dashboard</a>
-        <a class="${getLinkClasses('historial.html')}" href="/src/admin/historial.html">Historial</a>
-        <a class="${getLinkClasses('stock.html')}" href="/src/admin/stock.html">Stock</a>
-        <a class="${getLinkClasses('gestion.html')}" href="/src/admin/gestion.html">Gestión</a>
-        <a class="${getLinkClasses('limpieza.html')}" href="/src/admin/limpieza.html">Limpieza</a>
-        <a class="${getLinkClasses('muestreos.html')}" href="/src/admin/muestreos.html">Muestreos</a>
-        <a class="${getLinkClasses('usuarios.html')}" href="/src/admin/usuarios.html">Usuarios</a>
-        <a class="${getLinkClasses('reportes.html')}" href="/src/admin/reportes.html">Reportes</a>
+        <a class="${getLinkClasses('dashboard')}" href="/src/admin/dashboard">Dashboard</a>
+        <a class="${getLinkClasses('historial')}" href="/src/admin/historial">Historial</a>
+        <a class="${getLinkClasses('stock')}" href="/src/admin/stock">Stock</a>
+        <a class="${getLinkClasses('gestion')}" href="/src/admin/gestion">Gestión</a>
+        <a class="${getLinkClasses('limpieza')}" href="/src/admin/limpieza">Limpieza</a>
+        <a class="${getLinkClasses('muestreos')}" href="/src/admin/muestreos">Muestreos</a>
+        <a class="${getLinkClasses('usuarios')}" href="/src/admin/usuarios">Usuarios</a>
+        <a class="${getLinkClasses('reportes')}" href="/src/admin/reportes">Reportes</a>
     `;
   } else if (user?.role === 'supervisor') {
     navLinks = `
-        <a class="${getLinkClasses('dashboard.html')}" href="/src/supervisor/dashboard.html">Pendientes</a>
-        <a class="${getLinkClasses('historial.html')}" href="/src/supervisor/historial.html">Historial Gral.</a>
-        <a class="${getLinkClasses('muestreos.html')}" href="/src/supervisor/muestreos.html">Muestreos</a>
-        <a class="${getLinkClasses('reportes.html')}" href="/src/supervisor/reportes.html">Reportes</a>
+        <a class="${getLinkClasses('dashboard')}" href="/src/supervisor/dashboard">Pendientes</a>
+        <a class="${getLinkClasses('historial')}" href="/src/supervisor/historial">Historial Gral.</a>
+        <a class="${getLinkClasses('muestreos')}" href="/src/supervisor/muestreos">Muestreos</a>
+        <a class="${getLinkClasses('reportes')}" href="/src/supervisor/reportes">Reportes</a>
     `;
   } else if (user?.role === 'operario') {
     navLinks = `
-        <a class="${getLinkClasses('home.html')}" href="/src/operario/home.html">Operaciones en curso</a>
-        <a class="${getLinkClasses('index.html')}" href="/src/operario/index.html">Registrar Nueva Operación</a>
-        <a class="${getLinkClasses('registro.html')}" href="/src/operario/registro.html">Mis Registros</a>
+        <a class="${getLinkClasses('home')}" href="/src/operario/home">Operaciones en curso</a>
+        <a class="${getLinkClasses('index')}" href="/src/operario/index">Registrar Nueva Operación</a>
+        <a class="${getLinkClasses('registro')}" href="/src/operario/registro">Mis Registros</a>
     `;
   }
-  
+
   return `
     <header class="flex items-center justify-between border-b bg-white px-4 sm:px-6 py-3 shadow-sm sticky top-0 z-50">
       <div class="flex items-center gap-4">
