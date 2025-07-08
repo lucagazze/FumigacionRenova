@@ -93,17 +93,22 @@ function renderReporte(operaciones, fechaDesde, fechaHasta) {
             totalCurativo += op.toneladas;
         }
 
-        reporteTablaBody.innerHTML += `
-            <tr class="border-b border-gray-200 hover:bg-gray-100">
-                <td class="py-3 px-2 text-left whitespace-nowrap">${moment(fechaDesde).format('DD/MM/YYYY')} - ${moment(fechaHasta).format('DD/MM/YYYY')}</td>
-                <td class="py-3 px-2 text-left">${op.clientes?.nombre || 'N/A'}</td>
-                <td class="py-3 px-2 text-left">${op.mercaderias?.nombre || 'N/A'}</td>
-                <td class="py-3 px-2 text-left">${op.tratamiento || 'N/A'}</td>
-                <td class="py-3 px-2 text-right">${(op.toneladas).toLocaleString()} tn</td>
-                <td class="py-3 px-2 text-left">${op.depositos?.nombre || 'N/A'}</td>
-                <td class="py-3 px-2 text-left"><span class="font-semibold ${claseAprobacion}">${estadoAprobacion}</span></td>
-            </tr>
+        const row = document.createElement('tr');
+        row.className = 'border-b border-gray-200 hover:bg-gray-100 cursor-pointer';
+        row.setAttribute('data-id', op.id);
+        row.innerHTML = `
+            <td class="py-3 px-4 text-left whitespace-nowrap">${moment(fechaDesde).format('DD/MM/YYYY')} - ${moment(fechaHasta).format('DD/MM/YYYY')}</td>
+            <td class="py-3 px-4 text-left">${op.clientes?.nombre || 'N/A'}</td>
+            <td class="py-3 px-4 text-left">${op.mercaderias?.nombre || 'N/A'}</td>
+            <td class="py-3 px-4 text-left">${op.tratamiento || 'N/A'}</td>
+            <td class="py-3 px-4 text-right font-semibold">${(op.toneladas).toLocaleString()} tn</td>
+            <td class="py-3 px-4 text-left">${op.depositos?.nombre || 'N/A'}</td>
+            <td class="py-3 px-4 text-left"><span class="font-semibold ${claseAprobacion}">${estadoAprobacion}</span></td>
         `;
+        row.addEventListener('click', () => {
+            window.location.href = `operacion_detalle.html?id=${op.id}`;
+        });
+        reporteTablaBody.appendChild(row);
     });
 
     reporteTablaFoot.innerHTML = `

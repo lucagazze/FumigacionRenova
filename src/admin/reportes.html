@@ -55,26 +55,27 @@
               </button>
             </div>
             <div>
-              <table class="w-full bg-white rounded-lg shadow overflow-hidden text-sm">
-                <thead class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
-                  <tr class="text-left">
-                  <tr>
-                    <th class="py-3 px-2">Fecha</th>
-                    <th class="py-3 px-2">Cliente</th>
-                    <th class="py-3 px-2">Producto</th>
-                    <th class="py-3 px-2">Tratamiento</th>
-                    <th class="py-3 px-2 text-right">Toneladas</th>
-                    <th class="py-3 px-2">Depósito</th>
-                    <th class="py-3 px-2">Aprobación</th>
-                  </tr>
-                </thead>
-                <tbody id="reporte-tabla-body" class="text-gray-600 text-sm font-light">
-                  <!-- Las filas del reporte se insertarán aquí -->
-                </tbody>
-                <tfoot id="reporte-tabla-foot" class="bg-gray-200 text-gray-600 font-bold text-sm">
-                  <!-- El pie de la tabla con los totales se insertará aquí -->
-                </tfoot>
-              </table>
+              <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-md">
+                  <thead class="bg-gray-800 text-white">
+                    <tr>
+                      <th class="py-3 px-4 text-left">Fecha</th>
+                      <th class="py-3 px-4 text-left">Cliente</th>
+                      <th class="py-3 px-4 text-left">Producto</th>
+                      <th class="py-3 px-4 text-left">Tratamiento</th>
+                      <th class="py-3 px-4 text-right font-bold">Toneladas</th>
+                      <th class="py-3 px-4 text-left">Depósito</th>
+                      <th class="py-3 px-4 text-left">Aprobación</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reporte-tabla-body" class="text-gray-700">
+                    <!-- Las filas del reporte se insertarán aquí -->
+                  </tbody>
+                  <tfoot id="reporte-tabla-foot" class="bg-gray-200 font-bold">
+                    <!-- El pie de la tabla con los totales se insertará aquí -->
+                  </tfoot>
+                </table>
+              </div>
             </div>
           </div>
         </div>
