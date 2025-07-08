@@ -47,6 +47,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (opBaseData.estado === 'en curso') {
         renderizarBotonFinalizar();
     }
+
+    const registroParaAprobar = allRecords.find(r => r.id == operacionId);
+    if (registroParaAprobar && registroParaAprobar.estado_aprobacion === 'pendiente') {
+        renderizarAccionesDeAprobacion(registroParaAprobar);
+    }
 });
 
 function renderizarBotonFinalizar() {
@@ -62,8 +67,7 @@ function renderizarBotonFinalizar() {
 
     document.getElementById('btnFinalizarOperacion').addEventListener('click', () => {
         if (originalId) {
-            localStorage.setItem('operacion_actual', originalId);
-            window.location.href = '/src/operario/finalizar.html';
+            window.location.href = `/src/operario/finalizar.html?id=${originalId}`;
         } else {
             alert("No se pudo identificar la operación a finalizar.");
         }
@@ -102,10 +106,6 @@ function renderizarPagina(container, opBase, allRecords) {
                     
                     const isRechazado = registro.estado_aprobacion === 'rechazado';
                     const itemClass = isRechazado ? 'line-through text-gray-400' : '';
-
-                    if (user.role === 'supervisor' && registro.estado_aprobacion === 'pendiente' && registro.tipo_registro !== 'muestreo') {
-                        actionButtons += `<a href="../supervisor/operacion_confirmar.html?id=${registro.id}" class="btn bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600">Revisar</a>`;
-                    }
                     
                     if (registro.observacion_aprobacion) {
                         actionButtons += `<button class="btn-show-observacion p-1" data-observacion="${registro.observacion_aprobacion}" title="Ver observación"><span class="material-icons text-yellow-500 hover:text-yellow-700">comment</span></button>`;
@@ -153,4 +153,71 @@ function renderObservacionModal(observacion) {
     modal.addEventListener('click', (e) => {
         if (e.target.id === 'observacion-modal' || e.target.closest('#close-modal')) closeModal();
     });
+}
+
+function renderizarAccionesDeAprobacion(registro) {
+    const accionesContainer = document.getElementById('acciones-container');
+    // Limpiar acciones anteriores (como el botón de finalizar)
+    accionesContainer.innerHTML = `
+        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Acciones de Aprobación</h3>
+            <p class="mb-4 text-sm">Está a punto de revisar el registro de: <b>${registro.tipo_registro}</b>, realizado por <b>${registro.operario_nombre}</b>.</p>
+            <div class="space-y-4">
+                <div>
+                    <label for="observacion" class="block text-sm font-medium text-gray-700 mb-1">Observación (requerido si se rechaza):</label>
+                    <textarea id="observacion" name="observacion" rows="3" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+                <div class="flex justify-end gap-4">
+                    <button id="btnRechazar" class="btn bg-red-500 hover:bg-red-700">
+                        <span class="material-icons">cancel</span>
+                        Rechazar
+                    </button>
+                    <button id="btnAprobar" class="btn bg-green-500 hover:bg-green-700">
+                        <span class="material-icons">check_circle</span>
+                        Aprobar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('btnAprobar').addEventListener('click', () => handleAprobacion(registro.id, true));
+    document.getElementById('btnRechazar').addEventListener('click', () => handleAprobacion(registro.id, false));
+}
+
+async function handleAprobacion(id, esAprobado) {
+    const observacion = document.getElementById('observacion').value.trim();
+    if (!esAprobado && !observacion) {
+        alert('Debe ingresar una observación para rechazar el registro.');
+        return;
+    }
+
+    const btnAprobar = document.getElementById('btnAprobar');
+    const btnRechazar = document.getElementById('btnRechazar');
+    btnAprobar.disabled = true;
+    btnRechazar.disabled = true;
+    btnAprobar.innerHTML = 'Procesando...';
+
+
+    const updates = {
+        estado_aprobacion: esAprobado ? 'aprobado' : 'rechazado',
+        observacion_aprobacion: observacion,
+        supervisor_id: user.id,
+        fecha_aprobacion: new Date().toISOString()
+    };
+
+    const { error } = await supabase
+        .from('operaciones')
+        .update(updates)
+        .eq('id', id);
+
+    if (error) {
+        alert('Error al actualizar el estado: ' + error.message);
+        btnAprobar.disabled = false;
+        btnRechazar.disabled = false;
+        btnAprobar.innerHTML = '<span class="material-icons">check_circle</span> Aprobar';
+    } else {
+        alert('El registro ha sido ' + (esAprobado ? 'aprobado' : 'rechazado') + ' con éxito.');
+        window.location.href = '/src/supervisor/dashboard.html';
+    }
 }

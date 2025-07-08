@@ -26,11 +26,11 @@ export async function login(email, password) {
     }
   }
 
-  localStorage.setItem('user', JSON.stringify(user));
+  sessionStorage.setItem('user', JSON.stringify(user));
   return user;
 }
 
 export function logout() {
-  localStorage.removeItem('user');
+  sessionStorage.removeItem('user');
   window.location.href = '/src/login/login.html';
 }

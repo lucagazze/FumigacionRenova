@@ -2,14 +2,29 @@
   publish = "/"
   command = ""
 
-# Redirección principal para que la app se cargue desde la raíz.
+# Reglas específicas para cada página de tu panel de administrador
+# Netlify lee estas reglas de arriba hacia abajo, por eso las específicas van primero.
+
 [[redirects]]
-  from = "/"
-  to = "/src/login/login.html"
+  from = "/src/admin/dashboard.html"
+  to = "/src/admin/dashboard"
   status = 200
 
-# Regla de reescritura para todas las demás rutas.
-# Esto permite que las rutas internas de la app funcionen correctamente.
+[[redirects]]
+  from = "/admin/historial"
+  to = "/src/admin/historial.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/usuarios"
+  to = "/src/admin/usuarios.html"
+  status = 200
+
+# ... y así sucesivamente para todas tus páginas del admin ...
+
+
+# Regla general al final para manejar el enrutamiento de la app
+# y mostrar la página de login si ninguna de las anteriores coincide.
 [[redirects]]
   from = "/*"
   to = "/src/login/login.html"
