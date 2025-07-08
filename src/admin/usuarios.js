@@ -60,7 +60,10 @@ function renderUsuarios(usersToRender) {
                     <div class="text-sm font-medium text-gray-900">${u.nombre} ${u.apellido}</div>
                     <div class="text-sm text-gray-500">${u.email}</div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-700">${u.password}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-700">
+                    <span class="password-text">************</span>
+                    <button data-id="${u.id}" class="toggle-password-btn text-blue-600 hover:text-blue-900 p-1"><span class="material-icons text-base">visibility</span></button>
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${roleClass}">
                         ${u.role}
@@ -80,7 +83,7 @@ function renderUsuarios(usersToRender) {
 
 
 async function cargarYRenderizarUsuarios() {
-    const { data: usuarios, error } = await supabase.from('usuarios').select('id, nombre, apellido, email, password, role').order('nombre');
+    const { data: usuarios, error } = await supabase.from('usuarios').select('id, nombre, apellido, email, role, password').order('nombre');
     if (error) { console.error('Error cargando usuarios:', error); return; }
     
     const { data: relaciones } = await supabase.from('operario_clientes').select('*, clientes(id, nombre)');
@@ -129,20 +132,32 @@ async function handleFormSubmit(e) {
         nombre: document.getElementById('nombre').value,
         apellido: document.getElementById('apellido').value,
         email: document.getElementById('email').value,
-        role: roleSelect.value
+        role: roleSelect.value,
+        password: passwordInput.value || undefined
     };
-    if (passwordInput.value) userData.password = passwordInput.value;
 
     let savedUser;
     if (id) {
         const { data, error } = await supabase.from('usuarios').update(userData).eq('id', id).select().single();
         if (error) return alert(`Error al actualizar usuario: ${error.message}`);
         savedUser = data;
+
+        if (passwordInput.value) {
+            const { error: passwordError } = await supabase.auth.admin.updateUserById(id, { password: passwordInput.value });
+            if (passwordError) return alert(`Error al actualizar la contraseña: ${passwordError.message}`);
+        }
     } else {
-        if (!userData.password) return alert("La contraseña es obligatoria para nuevos usuarios.");
-        const { data, error } = await supabase.from('usuarios').insert([userData]).select().single();
+        if (!passwordInput.value) return alert("La contraseña es obligatoria para nuevos usuarios.");
+        const { data, error } = await supabase.auth.admin.createUser({
+            email: userData.email,
+            password: passwordInput.value,
+            email_confirm: true,
+        });
         if (error) return alert(`Error al crear usuario: ${error.message}`);
-        savedUser = data;
+        
+        const { data: newUser, error: newUserError } = await supabase.from('usuarios').update(userData).eq('id', data.user.id).select().single();
+        if (newUserError) return alert(`Error al actualizar datos del nuevo usuario: ${newUserError.message}`);
+        savedUser = newUser;
     }
 
     if (savedUser.role === 'operario' || savedUser.role === 'supervisor') {
@@ -163,6 +178,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     await cargarYRenderizarUsuarios();
     resetForm(); 
     roleSelect.dispatchEvent(new Event('change'));
+
+    const togglePassword = document.getElementById('togglePassword');
+    togglePassword.addEventListener('click', () => {
+        const password = document.getElementById('password');
+        const icon = togglePassword.querySelector('.material-icons');
+        if (password.type === 'password') {
+            password.type = 'text';
+            icon.textContent = 'visibility_off';
+        } else {
+            password.type = 'password';
+            icon.textContent = 'visibility';
+        }
+    });
 });
 
 form.addEventListener('submit', handleFormSubmit);
@@ -181,6 +209,24 @@ btnLimpiarFiltros.addEventListener('click', () => {
 });
 
 listaUsuarios.addEventListener('click', async (e) => {
+    const togglePasswordButton = e.target.closest('.toggle-password-btn');
+    if (togglePasswordButton) {
+        const id = togglePasswordButton.dataset.id;
+        const user = allUsersWithClients.find(u => u.id === id);
+        if (!user) return;
+
+        const passwordSpan = togglePasswordButton.previousElementSibling;
+        const icon = togglePasswordButton.querySelector('.material-icons');
+
+        if (passwordSpan.textContent === '************') {
+            passwordSpan.textContent = user.password || 'No disponible';
+            icon.textContent = 'visibility_off';
+        } else {
+            passwordSpan.textContent = '************';
+            icon.textContent = 'visibility';
+        }
+    }
+
     const editButton = e.target.closest('.edit-btn');
     if (editButton) {
         const id = editButton.dataset.id;
