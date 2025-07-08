@@ -9,6 +9,12 @@
   <link rel="stylesheet" href="../common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+
 </head>
 <body class="bg-gray-50 text-gray-800">
   <header id="header"></header>
@@ -44,7 +50,7 @@
               </h3>
               <button id="btnLimpiarFiltros" class="text-sm font-semibold text-blue-600 hover:underline">Limpiar Filtros</button>
           </div>
-          <form id="filtrosRegistro" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <form id="filtrosRegistro" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
                 <label class="block text-sm font-medium mb-1 text-gray-600">Tipo de Registro</label>
                 <div class="input-wrapper">
@@ -68,11 +74,18 @@
                   </select>
                 </div>
               </div>
-              <div class="sm:col-span-2 lg:col-span-1">
+              <div class="sm:col-span-1">
                 <label class="block text-sm font-medium mb-1 text-gray-600">Depósito (Silo/Celda)</label>
                 <div class="input-wrapper">
                     <span class="material-icons input-icon">store</span>
                     <select id="filtroSiloCelda" class="input-field input-field-with-icon"></select>
+                </div>
+              </div>
+              <div class="sm:col-span-1">
+                <label class="block text-sm font-medium mb-1 text-gray-600">Fecha</label>
+                <div class="input-wrapper">
+                    <span class="material-icons input-icon">calendar_today</span>
+                    <input type="text" id="filtroFecha" class="input-field input-field-with-icon" placeholder="Seleccione un rango">
                 </div>
               </div>
           </form>

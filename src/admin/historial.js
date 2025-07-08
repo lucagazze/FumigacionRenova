@@ -11,9 +11,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     await populateFilters();
     
+    // Inicialización del Date Range Picker
+    $('#filter-fecha').daterangepicker({
+        autoUpdateInput: false,
+        opens: 'left',
+        locale: {
+            cancelLabel: 'Limpiar',
+            applyLabel: 'Aplicar',
+            fromLabel: 'Desde',
+            toLabel: 'Hasta',
+            format: 'DD/MM/YYYY'
+        }
+    });
+
+    $('#filter-fecha').on('apply.daterangepicker', function(ev, picker) {
+        $(this).val(picker.startDate.format('DD/MM/YYYY') + ' - ' + picker.endDate.format('DD/MM/YYYY'));
+        renderFinishedOperations();
+    });
+
+    $('#filter-fecha').on('cancel.daterangepicker', function() {
+        $(this).val('');
+        renderFinishedOperations();
+    });
+    
     renderFinishedOperations();
 
     filterForm.addEventListener('change', renderFinishedOperations);
+    filterForm.addEventListener('reset', () => {
+        $('#filter-fecha').val('');
+        setTimeout(renderFinishedOperations, 0);
+    });
 });
 
 async function populateFilters() {
@@ -40,6 +67,9 @@ async function renderFinishedOperations() {
     const clienteId = document.getElementById('filter-cliente').value;
     const depositoId = document.getElementById('filter-deposito').value;
     const sortOrder = document.getElementById('sort-order').value;
+    const dateRange = $('#filter-fecha').data('daterangepicker');
+    const fechaDesde = dateRange.startDate && dateRange.startDate.isValid() ? dateRange.startDate.format('YYYY-MM-DD') : null;
+    const fechaHasta = dateRange.endDate && dateRange.endDate.isValid() ? dateRange.endDate.format('YYYY-MM-DD') : null;
 
     // 1. Obtener todos los datos necesarios en paralelo para mayor eficiencia.
     const [
@@ -115,11 +145,16 @@ async function renderFinishedOperations() {
     }
     
     // 4. Obtener los datos actualizados para mostrar en la página.
-    const { data: operations, error } = await supabase
+    let query = supabase
         .from('operaciones')
         .select('id, created_at, updated_at, con_garantia, fecha_vencimiento_garantia, cliente_id, deposito_id, clientes(nombre), depositos(nombre, tipo), mercaderias(nombre)')
         .eq('estado', 'finalizada')
         .eq('tipo_registro', 'inicial');
+    
+    if (fechaDesde) query = query.gte('created_at', fechaDesde);
+    if (fechaHasta) query = query.lte('created_at', `${fechaHasta}T23:59:59`);
+    
+    const { data: operations, error } = await query;
 
     if (error) {
         console.error("Error al obtener operaciones finalizadas:", error);

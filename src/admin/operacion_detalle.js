@@ -205,14 +205,21 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
                     }
 
                     switch(registro.tipo_registro) {
-                        case 'inicial': detalle = `Operación iniciada por <b>${registro.operario_nombre}</b>.`; break;
-                        case 'producto': detalle = `<b>${registro.operario_nombre}</b> aplicó <b>${registro.producto_usado_cantidad?.toLocaleString() || 0} ${unidadLabel}</b> en ${registro.toneladas?.toLocaleString() || 0} tn.`; break;
+                        case 'inicial': 
+                            detalle = `Operación iniciada por <b>${registro.operario_nombre}</b>.`; 
+                            break;
+                        case 'producto': 
+                            const tratamientoProducto = registro.tratamiento ? `(${registro.tratamiento})` : '';
+                            detalle = `<b>${registro.operario_nombre}</b> aplicó <b>${registro.producto_usado_cantidad?.toLocaleString() || 0} ${unidadLabel}</b> en ${registro.toneladas?.toLocaleString() || 0} tn. <span class="font-semibold">${tratamientoProducto}</span>`;
+                            break;
                         case 'muestreo':
                             detalle = `<b>${registro.operario_nombre}</b> registró un muestreo. <span class="text-blue-600 font-semibold underline">Ver detalles</span>`;
                             extraClasses = 'cursor-pointer hover:bg-gray-100';
                             dataAttributes = `data-muestreo-op-id="${registro.id}"`;
                             break;
-                        case 'finalizacion': detalle = `Operación finalizada por <b>${registro.operario_nombre}</b>.`; break;
+                        case 'finalizacion': 
+                            detalle = `Operación finalizada por <b>${registro.operario_nombre}</b>.`; 
+                            break;
                     }
 
                     const rechazoLabel = isRechazado ? ` <b class="text-red-500 no-underline">(RECHAZADO)</b>` : '';

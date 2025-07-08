@@ -9,6 +9,12 @@
   <link rel="stylesheet" href="../common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+
 </head>
 <body class="bg-gray-50 text-gray-800">
   <header id="header"></header>
@@ -16,16 +22,17 @@
     <div class="content-container">
       <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
         <h2 class="text-2xl font-bold text-gray-900">Historial de Operaciones</h2>
-        <form id="filter-form" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <form id="filter-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full lg:w-auto">
           <select id="filter-cliente" class="input-field" name="cliente">
             <option value="">Todos los Clientes</option>
           </select>
           <select id="filter-deposito" class="input-field" name="deposito">
             <option value="">Todos los Depósitos</option>
           </select>
+          <input type="text" id="filter-fecha" class="input-field" placeholder="Filtrar por fecha">
           <select id="sort-order" class="input-field" name="sort">
-            <option value="asc">Más Antiguas</option>
             <option value="desc">Más Recientes</option>
+            <option value="asc">Más Antiguas</option>
           </select>
         </form>
       </div>

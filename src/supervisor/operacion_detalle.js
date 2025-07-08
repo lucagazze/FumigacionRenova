@@ -103,10 +103,19 @@ function renderizarPagina(container, opBase, allRecords) {
                     }
 
                     switch(registro.tipo_registro) {
-                        case 'inicial': detalle = `Operación iniciada por <b>${registro.operario_nombre}</b>.`; break;
-                        case 'producto': detalle = `<b>${registro.operario_nombre}</b> aplicó <b>${(registro.producto_usado_cantidad || 0).toLocaleString()} ${unidadLabel}</b> en ${(registro.toneladas || 0).toLocaleString()} tn.`; break;
-                        case 'muestreo': detalle = `<b>${registro.operario_nombre}</b> registró un muestreo.`; break;
-                        case 'finalizacion': detalle = `Operación finalizada por <b>${registro.operario_nombre}</b>.`; break;
+                        case 'inicial': 
+                            detalle = `Operación iniciada por <b>${registro.operario_nombre}</b>.`; 
+                            break;
+                        case 'producto': 
+                            const tratamientoProducto = registro.tratamiento ? `(${registro.tratamiento})` : '';
+                            detalle = `<b>${registro.operario_nombre}</b> aplicó <b>${(registro.producto_usado_cantidad || 0).toLocaleString()} ${unidadLabel}</b> en ${(registro.toneladas || 0).toLocaleString()} tn. <span class="font-semibold">${tratamientoProducto}</span>`;
+                            break;
+                        case 'muestreo': 
+                            detalle = `<b>${registro.operario_nombre}</b> registró un muestreo.`; 
+                            break;
+                        case 'finalizacion': 
+                            detalle = `Operación finalizada por <b>${registro.operario_nombre}</b>.`; 
+                            break;
                     }
 
                     return `<div class="flex items-center justify-between text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm ${itemClass}">
@@ -114,6 +123,20 @@ function renderizarPagina(container, opBase, allRecords) {
                                 <div class="flex-shrink-0 ml-4 flex items-center gap-2">${actionButtons}</div>
                             </div>`;
                 }).join('')}
+            </div>
+        </div>
+        <div class="border-t pt-6 mt-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Checklist de Tareas</h3>
+            <div id="checklist-container" class="space-y-3">
+                ${(opBase.checklist_items || []).map(item => `
+                    <div class="bg-white p-3 rounded-lg border shadow-sm flex justify-between items-center">
+                        <div class="flex items-center">
+                            <span class="material-icons ${item.completado ? 'text-green-500' : 'text-gray-400'}">${item.completado ? 'check_circle' : 'radio_button_unchecked'}</span>
+                            <span class="ml-3 font-medium text-gray-700">${item.item}</span>
+                        </div>
+                        ${item.imagen_url ? `<a href="${item.imagen_url}" target="_blank" class="text-blue-600 hover:underline flex items-center gap-1 text-sm"><span class="material-icons text-base">image</span> Ver Foto</a>` : ''}
+                    </div>
+                `).join('')}
             </div>
         </div>`;
 

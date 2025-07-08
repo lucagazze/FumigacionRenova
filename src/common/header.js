@@ -6,7 +6,8 @@ export function renderHeader() {
   
   const getLinkClasses = (href) => {
     const base = "text-sm font-medium transition-colors px-3 py-2 rounded-md";
-    return href === currentPage 
+    const isActive = href.split('/').pop() === currentPage;
+    return isActive 
       ? `${base} bg-green-100 text-green-700 font-semibold` 
       : `${base} text-gray-500 hover:bg-gray-100 hover:text-gray-900`;
   };
@@ -14,24 +15,26 @@ export function renderHeader() {
   let navLinks = '';
   if (user?.role === 'admin') {
     navLinks = `
-        <a class="${getLinkClasses('dashboard.html')}" href="dashboard.html">Dashboard</a>
-        <a class="${getLinkClasses('historial.html')}" href="historial.html">Historial</a>
-        <a class="${getLinkClasses('stock.html')}" href="stock.html">Stock</a>
-        <a class="${getLinkClasses('gestion.html')}" href="gestion.html">Gestión</a>
-        <a class="${getLinkClasses('limpieza.html')}" href="limpieza.html">Limpieza</a>
-        <a class="${getLinkClasses('muestreos.html')}" href="muestreos.html">Muestreos</a>
-        <a class="${getLinkClasses('usuarios.html')}" href="usuarios.html">Usuarios</a>
+        <a class="${getLinkClasses('dashboard.html')}" href="/src/admin/dashboard.html">Dashboard</a>
+        <a class="${getLinkClasses('historial.html')}" href="/src/admin/historial.html">Historial</a>
+        <a class="${getLinkClasses('stock.html')}" href="/src/admin/stock.html">Stock</a>
+        <a class="${getLinkClasses('gestion.html')}" href="/src/admin/gestion.html">Gestión</a>
+        <a class="${getLinkClasses('limpieza.html')}" href="/src/admin/limpieza.html">Limpieza</a>
+        <a class="${getLinkClasses('muestreos.html')}" href="/src/admin/muestreos.html">Muestreos</a>
+        <a class="${getLinkClasses('usuarios.html')}" href="/src/admin/usuarios.html">Usuarios</a>
+        <a class="${getLinkClasses('reportes.html')}" href="/src/admin/reportes.html">Reportes</a>
     `;
   } else if (user?.role === 'supervisor') {
     navLinks = `
-        <a class="${getLinkClasses('dashboard.html')}" href="dashboard.html">Pendientes</a>
-        <a class="${getLinkClasses('historial.html')}" href="historial.html">Historial Gral.</a>
+        <a class="${getLinkClasses('dashboard.html')}" href="/src/supervisor/dashboard.html">Pendientes</a>
+        <a class="${getLinkClasses('historial.html')}" href="/src/supervisor/historial.html">Historial Gral.</a>
+        <a class="${getLinkClasses('reportes.html')}" href="/src/admin/reportes.html">Reportes</a>
     `;
   } else if (user?.role === 'operario') {
     navLinks = `
-        <a class="${getLinkClasses('home.html')}" href="home.html">Operaciones en curso</a>
-        <a class="${getLinkClasses('index.html')}" href="index.html">Registrar Nueva Operación</a>
-        <a class="${getLinkClasses('registro.html')}" href="registro.html">Mis Registros</a>
+        <a class="${getLinkClasses('home.html')}" href="/src/operario/home.html">Operaciones en curso</a>
+        <a class="${getLinkClasses('index.html')}" href="/src/operario/index.html">Registrar Nueva Operación</a>
+        <a class="${getLinkClasses('registro.html')}" href="/src/operario/registro.html">Mis Registros</a>
     `;
   }
   

@@ -6,25 +6,45 @@
   <title>Fagaz - Reportes</title>
   <link rel="icon" href="/public/assets/img/logohead.webp" type="image/png">
 
-  <link rel="manifest" href="../../public/manifest.json" />
   <link rel="stylesheet" href="../common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+
 </head>
-<body class="bg-[var(--background-color)] text-[var(--text-primary)]">
+<body class="bg-gray-50 text-gray-800">
   <div class="relative flex min-h-screen flex-col overflow-x-hidden">
     <header id="header"></header>
-    <main class="flex-1 px-2 sm:px-4 md:px-10 lg:px-20 xl:px-40 py-4 sm:py-8">
-      <div class="w-full max-w-4xl mx-auto">
-        <h1 class="text-3xl sm:text-4xl font-bold text-black mb-6">Reportes</h1>
+    <main class="flex-1 py-8">
+      <div class="content-container max-w-5xl mx-auto space-y-8">
+        <h1 class="text-3xl sm:text-4xl font-bold text-black">Reportes de Operaciones</h1>
+        
         <div class="bg-white p-6 rounded-xl shadow-lg">
-          <p class="mb-4">Seleccione el tipo de reporte que desea generar.</p>
-          <button id="btnExportarPDF" class="btn-primary rounded-lg w-full mb-4">Exportar a PDF</button>
-          <button id="btnExportarExcel" class="btn-primary rounded-lg w-full">Exportar a Excel</button>
+          <h2 class="text-xl font-semibold mb-4">Generar Reporte</h2>
+          <form id="formReporte" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 pb-6 border-b">
+            <div id="cliente-filter-container">
+                <label for="filtroCliente" class="label-text">Cliente</label>
+                <select id="filtroCliente" class="input-field"></select>
+            </div>
+            <div>
+                <label for="filtroFecha" class="label-text">Rango de Fechas</label>
+                <input type="text" id="filtroFecha" class="input-field" required>
+            </div>
+            <div class="flex items-end">
+              <button type="submit" class="btn-primary w-full py-3 rounded-lg">Generar Reporte</button>
+            </div>
+          </form>
+
+          <div id="reporte-container" class="space-y-6">
+            <p class="text-center text-gray-500">Seleccione los filtros y genere un reporte para ver los resultados.</p>
+          </div>
         </div>
       </div>
     </main>
-    <footer id="footer"></footer>
   </div>
   <script type="module" src="reportes.js"></script>
 </body>

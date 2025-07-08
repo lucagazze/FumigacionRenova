@@ -66,6 +66,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const container = document.getElementById('historial-container');
     const user = getUser();
+    const filtroFechaInput = document.getElementById('filtroFecha');
 
     if (!user.cliente_ids || user.cliente_ids.length === 0) {
         document.body.innerHTML = '<p class="text-center p-8">No tiene clientes asignados.</p>';
@@ -73,6 +74,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     container.innerHTML = '<p class="text-center p-4">Cargando historial...</p>';
+
+    // Inicializar Date Range Picker
+    $(filtroFechaInput).daterangepicker({
+        autoUpdateInput: false,
+        opens: 'left',
+        locale: {
+            cancelLabel: 'Limpiar',
+            applyLabel: 'Aplicar',
+            fromLabel: 'Desde',
+            toLabel: 'Hasta',
+            format: 'DD/MM/YYYY'
+        }
+    });
 
     const { data: allOperations, error } = await supabase
         .from('operaciones')
@@ -92,16 +106,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         siloCeldaSelect.innerHTML += `<option value="${d.id}">${d.nombre} (${d.tipo})</option>`;
     });
 
-    const aplicarTodosLosFiltros = (options = {}) => {
+    const aplicarTodosLosFiltros = () => {
         let operacionesFiltradas = [...allOperations];
 
         const tipo = document.getElementById('filtroTipo').value;
         const estado = document.getElementById('filtroEstado').value;
         const siloCelda = document.getElementById('filtroSiloCelda').value;
+        const dateRange = $(filtroFechaInput).data('daterangepicker');
+        const fechaDesde = dateRange.startDate && dateRange.startDate.isValid() ? dateRange.startDate.toDate() : null;
+        const fechaHasta = dateRange.endDate && dateRange.endDate.isValid() ? dateRange.endDate.toDate() : null;
 
         if (tipo) operacionesFiltradas = operacionesFiltradas.filter(op => op.tipo_registro === tipo);
         if (estado) operacionesFiltradas = operacionesFiltradas.filter(op => op.estado === estado);
         if (siloCelda) operacionesFiltradas = operacionesFiltradas.filter(op => op.deposito_id === siloCelda);
+        
+        if (fechaDesde) {
+            fechaDesde.setHours(0, 0, 0, 0);
+            operacionesFiltradas = operacionesFiltradas.filter(op => new Date(op.created_at) >= fechaDesde);
+        }
+        if (fechaHasta) {
+            fechaHasta.setHours(23, 59, 59, 999);
+            operacionesFiltradas = operacionesFiltradas.filter(op => new Date(op.created_at) <= fechaHasta);
+        }
         
         renderOperaciones(container, operacionesFiltradas, false, true);
     };
@@ -110,19 +136,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     aplicarTodosLosFiltros();
     
     const filtrosForm = document.getElementById('filtrosRegistro');
-    filtrosForm.addEventListener('change', () => aplicarTodosLosFiltros());
+    filtrosForm.addEventListener('change', aplicarTodosLosFiltros);
     
+    // Eventos del Date Picker
+    $(filtroFechaInput).on('apply.daterangepicker', function(ev, picker) {
+        $(this).val(picker.startDate.format('DD/MM/YYYY') + ' - ' + picker.endDate.format('DD/MM/YYYY'));
+        aplicarTodosLosFiltros();
+    });
+    $(filtroFechaInput).on('cancel.daterangepicker', function() {
+        $(this).val('');
+        aplicarTodosLosFiltros();
+    });
+
     document.getElementById('toggleFiltrosBtn').addEventListener('click', () => {
         document.getElementById('filtrosContainer').classList.toggle('hidden');
     });
 
     document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
         filtrosForm.reset();
+        $(filtroFechaInput).val('');
         aplicarTodosLosFiltros();
     });
 
     document.getElementById('btnClearSiloFilter').addEventListener('click', () => {
         filtrosForm.reset();
+        $(filtroFechaInput).val('');
         aplicarTodosLosFiltros();
     });
 
