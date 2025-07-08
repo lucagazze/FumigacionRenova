@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     renderSilosEnCursoSupervisor(allOperations);
-    aplicarTodosLosFiltros();
+    renderOperaciones(container, allOperations, false, true);
     
     const filtrosForm = document.getElementById('filtrosRegistro');
     filtrosForm.addEventListener('change', aplicarTodosLosFiltros);

@@ -75,7 +75,7 @@ function renderReporte(operaciones, fechaDesde, fechaHasta) {
             <td class="py-3 px-4 text-left">${op.clientes?.nombre || 'N/A'}</td>
             <td class="py-3 px-4 text-left">${op.mercaderias?.nombre || 'N/A'}</td>
             <td class="py-3 px-4 text-left">${op.tratamiento || 'N/A'}</td>
-            <td class="py-3 px-4 text-right font-semibold">${(op.toneladas).toLocaleString()} tn</td>
+            <td class="py-3 px-4 text-left font-semibold">${(op.toneladas).toLocaleString()} tn</td>
             <td class="py-3 px-4 text-left">${op.depositos?.nombre || 'N/A'}</td>
             <td class="py-3 px-4 text-left"><span class="font-semibold ${claseAprobacion}">${estadoAprobacion}</span></td>
         `;
@@ -87,18 +87,18 @@ function renderReporte(operaciones, fechaDesde, fechaHasta) {
 
     reporteTablaFoot.innerHTML = `
         <tr>
-            <td colspan="4" class="py-3 px-2 text-right font-bold">Total Preventivo</td>
-            <td class="py-3 px-2 text-right font-bold">${totalPreventivo.toLocaleString()} tn</td>
+            <td colspan="4" class="py-3 px-2 text-left font-bold">Total Preventivo</td>
+            <td class="py-3 px-2 text-left font-bold">${totalPreventivo.toLocaleString()} tn</td>
             <td colspan="2" class="py-3 px-2"></td>
         </tr>
         <tr>
-            <td colspan="4" class="py-3 px-2 text-right font-bold">Total Curativo</td>
-            <td class="py-3 px-2 text-right font-bold">${totalCurativo.toLocaleString()} tn</td>
+            <td colspan="4" class="py-3 px-2 text-left font-bold">Total Curativo</td>
+            <td class="py-3 px-2 text-left font-bold">${totalCurativo.toLocaleString()} tn</td>
             <td colspan="2" class="py-3 px-2"></td>
         </tr>
         <tr class="bg-gray-300">
-            <td colspan="4" class="py-3 px-2 text-right font-bold">Total General</td>
-            <td class="py-3 px-2 text-right font-bold">${totalGeneralToneladas.toLocaleString()} tn</td>
+            <td colspan="4" class="py-3 px-2 text-left font-bold">Total General</td>
+            <td class="py-3 px-2 text-left font-bold">${totalGeneralToneladas.toLocaleString()} tn</td>
             <td colspan="2" class="py-3 px-2"></td>
         </tr>
     `;
