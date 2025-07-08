@@ -3,37 +3,16 @@ import { requireRole, getUser } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 
 const user = getUser();
-// Solo el admin y supervisor pueden acceder
-if (user.role !== 'admin' && user.role !== 'supervisor') {
+// Solo el supervisor puede acceder
+if (user.role !== 'supervisor') {
     window.location.href = '/src/login/login.html';
 }
 
 document.getElementById('header').innerHTML = renderHeader();
 
 const formReporte = document.getElementById('formReporte');
-const filtroCliente = document.getElementById('filtroCliente');
 const filtroFecha = document.getElementById('filtroFecha');
 const reporteContainer = document.getElementById('reporte-container');
-const clienteFilterContainer = document.getElementById('cliente-filter-container');
-
-
-async function poblarClientes() {
-    if (user.role !== 'admin') {
-        clienteFilterContainer.style.display = 'none';
-        return;
-    }
-
-    const { data, error } = await supabase.from('clientes').select('id, nombre').order('nombre');
-    if (error) {
-        console.error('Error cargando clientes:', error);
-        return;
-    }
-    
-    filtroCliente.innerHTML = '<option value="">Todos los Clientes</option>';
-    data.forEach(c => {
-        filtroCliente.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
-    });
-}
 
 function renderReporte(operaciones, fechaDesde, fechaHasta) {
     const reporteGenerado = document.getElementById('reporte-generado');
@@ -55,12 +34,7 @@ function renderReporte(operaciones, fechaDesde, fechaHasta) {
 
     reporteGenerado.classList.remove('hidden');
     
-    if (user.role === 'admin') {
-        const clienteSeleccionado = filtroCliente.options[filtroCliente.selectedIndex];
-        reporteTitulo.textContent = clienteSeleccionado.value ? `Reporte de ${clienteSeleccionado.text}` : 'Reporte General de Operaciones';
-    } else {
-        reporteTitulo.textContent = 'Reporte de Operaciones';
-    }
+    reporteTitulo.textContent = 'Reporte de Operaciones';
     reporteFechas.textContent = `Del ${moment(fechaDesde).format('DD/MM/YYYY')} al ${moment(fechaHasta).format('DD/MM/YYYY')}`;
 
     const operacionesAgrupadas = operacionesFiltradas.reduce((acc, op) => {
@@ -133,12 +107,7 @@ function exportarAPDF(operacionesAgrupadas, fechaDesde, fechaHasta, totalGeneral
         orientation: 'landscape'
     });
 
-    let titulo = 'Reporte de Operaciones';
-    let clienteSeleccionado;
-    if (user.role === 'admin') {
-        clienteSeleccionado = filtroCliente.options[filtroCliente.selectedIndex];
-        titulo = clienteSeleccionado.value ? `Reporte de ${clienteSeleccionado.text}` : 'Reporte General de Operaciones';
-    }
+    const titulo = 'Reporte de Operaciones';
     const subtitulo = `Período: ${moment(fechaDesde).format('DD/MM/YYYY')} - ${moment(fechaHasta).format('DD/MM/YYYY')}`;
 
     doc.setFontSize(18);
@@ -190,10 +159,8 @@ function exportarAPDF(operacionesAgrupadas, fechaDesde, fechaHasta, totalGeneral
     doc.text('Total General:', 110, finalY + 22);
     doc.text(`${totalGeneralToneladas.toLocaleString()} tn`, 150, finalY + 22);
 
-
-    const clienteNombre = clienteSeleccionado && clienteSeleccionado.value ? clienteSeleccionado.text : 'General';
     const fechaStr = `${moment(fechaDesde).format('DD-MM-YY')} al ${moment(fechaHasta).format('DD-MM-YY')}`;
-    const fileName = `Registro Fumigacion Fagaz (${clienteNombre}, ${fechaStr}).pdf`;
+    const fileName = `Registro Fumigacion Fagaz (${fechaStr}).pdf`;
     doc.save(fileName);
 }
 
@@ -206,10 +173,6 @@ formReporte.addEventListener('submit', async (e) => {
     const dateRange = $(filtroFecha).data('daterangepicker');
     const fechaDesde = dateRange.startDate.format('YYYY-MM-DD');
     const fechaHasta = dateRange.endDate.format('YYYY-MM-DD');
-    let clienteId = null;
-    if (user.role === 'admin') {
-        clienteId = filtroCliente.value;
-    }
     
     let query = supabase
         .from('operaciones')
@@ -218,9 +181,7 @@ formReporte.addEventListener('submit', async (e) => {
         .lte('created_at', `${fechaHasta}T23:59:59`)
         .order('created_at', { ascending: true });
 
-    if (user.role === 'admin' && clienteId) {
-        query = query.eq('cliente_id', clienteId);
-    } else if (user.role === 'supervisor' && user.cliente_ids) {
+    if (user.role === 'supervisor' && user.cliente_ids && user.cliente_ids.length > 0) {
         query = query.in('cliente_id', user.cliente_ids);
     }
     
@@ -236,7 +197,10 @@ formReporte.addEventListener('submit', async (e) => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-    poblarClientes();
+    const clienteFilterContainer = document.getElementById('cliente-filter-container');
+    if (clienteFilterContainer) {
+        clienteFilterContainer.style.display = 'none';
+    }
 
     $(filtroFecha).daterangepicker({
         opens: 'left',

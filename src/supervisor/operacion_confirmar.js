@@ -67,15 +67,6 @@ function setupActionButtons(operacionId) {
     document.getElementById('btnAprobar').addEventListener('click', async () => {
         await updateOperationStatus(operacionId, 'aprobado', document.getElementById('observacion').value);
     });
-
-    document.getElementById('btnRechazar').addEventListener('click', async () => {
-        const observacion = document.getElementById('observacion').value;
-        if (!observacion) {
-            alert('Debe proporcionar una observación para rechazar la operación.');
-            return;
-        }
-        await updateOperationStatus(operacionId, 'rechazado', observacion);
-    });
 }
 
 async function updateOperationStatus(operacionId, estado, observacion) {
