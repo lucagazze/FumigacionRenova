@@ -3,14 +3,10 @@ import { requireRole, getUser } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 
 const user = getUser();
-// Permite el acceso a 'admin' y 'supervisor'
 if (user.role !== 'admin' && user.role !== 'supervisor') {
-    requireRole('supervisor'); 
+    requireRole('supervisor');
 }
 
-let originalId; // Hacemos el ID original accesible en un scope más amplio
-
-// --- INICIALIZACIÓN ---
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('header').innerHTML = renderHeader();
     const container = document.getElementById('detalle-container');
@@ -22,135 +18,81 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    const { data: registroActual, error: fetchRegistroError } = await supabase.from('operaciones').select('id, operacion_original_id').eq('id', operacionId).single();
-    if (fetchRegistroError || !registroActual) {
-        container.innerHTML = '<p class="text-red-500">No se pudo encontrar el registro de la operación.</p>';
-        return;
-    }
-    originalId = registroActual.operacion_original_id || registroActual.id;
-
-    const { data: allRecords, error: fetchAllError } = await supabase
+    const { data: operacion, error } = await supabase
         .from('operaciones')
-        .select(`*, clientes(nombre), depositos(nombre, tipo), mercaderias(nombre), checklist_items(*), muestreos(*)`)
-        .or(`id.eq.${originalId},operacion_original_id.eq.${originalId}`)
-        .order('created_at', { ascending: true });
+        .select(`*, clientes(nombre), depositos(nombre, tipo), mercaderias(nombre)`)
+        .eq('id', operacionId)
+        .single();
 
-    if (fetchAllError || !allRecords || allRecords.length === 0) {
+    if (error || !operacion) {
         container.innerHTML = '<p class="text-red-500">Error al cargar los detalles de la operación.</p>';
         return;
     }
-    
-    const opBaseData = allRecords.find(r => r.id === originalId) || allRecords[0];
-    renderizarPagina(container, opBaseData, allRecords);
 
-    // Renderizar el botón de finalizar si la operación está en curso
-    if (opBaseData.estado === 'en curso') {
-        renderizarBotonFinalizar();
-    }
+    renderizarDetalles(container, operacion);
+    setupActionButtons(operacionId);
 });
 
-function renderizarBotonFinalizar() {
-    const accionesContainer = document.getElementById('acciones-container');
-    accionesContainer.innerHTML = `
-        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 flex justify-end">
-            <button id="btnFinalizarOperacion" class="btn btn-primary bg-red-500 hover:bg-red-700">
-                <span class="material-icons">check_circle</span>
-                Finalizar Operación
-            </button>
-        </div>
-    `;
+function renderizarDetalles(container, operacion) {
+    const unidadLabel = operacion.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';
+    const tratamiento = operacion.tratamiento || 'N/A';
+    const metodoCapitalizado = operacion.metodo_fumigacion ? operacion.metodo_fumigacion.charAt(0).toUpperCase() + operacion.metodo_fumigacion.slice(1) : 'N/A';
 
-    document.getElementById('btnFinalizarOperacion').addEventListener('click', () => {
-        if (originalId) {
-            localStorage.setItem('operacion_actual', originalId);
-            window.location.href = '/src/operario/finalizar.html';
-        } else {
-            alert("No se pudo identificar la operación a finalizar.");
-        }
-    });
-}
-
-// --- RENDERIZADO DE LA PÁGINA ---
-function renderizarPagina(container, opBase, allRecords) {
-    let totalProducto = 0;
-    let totalToneladas = 0;
-    allRecords.forEach(r => {
-        totalToneladas += (r.toneladas || 0);
-        totalProducto += (r.producto_usado_cantidad || 0);
-    });
-
-    const unidadLabel = opBase.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';
-    
     container.innerHTML = `
-        <div class="flex flex-wrap justify-between items-center gap-4">
-            <h3 class="text-xl font-bold text-gray-800">Resumen General</h3>
-        </div>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm p-4 mt-4 bg-gray-50 rounded-lg border">
-            <div><strong>Cliente:</strong><br>${opBase.clientes?.nombre || 'N/A'}</div>
-            <div><strong>Depósito:</strong><br>${opBase.depositos?.nombre || 'N/A'} (${opBase.depositos?.tipo || 'N/A'})</div>
-            <div><strong>Mercadería:</strong><br>${opBase.mercaderias?.nombre || 'N/A'}</div>
-            <div><strong>Estado:</strong><br><span class="font-bold ${opBase.estado === 'finalizada' ? 'text-red-600' : 'text-green-600'}">${opBase.estado}</span></div>
-            <div class="font-semibold"><strong>Total Toneladas:</strong><br>${totalToneladas.toLocaleString()} tn</div>
-            <div class="font-semibold"><strong>Total Producto:</strong><br>${totalProducto.toLocaleString()} ${unidadLabel}</div>
-        </div>
-        <div class="border-t pt-6 mt-6">
-            <h3 class="text-xl font-bold text-gray-800 mb-4">Línea de Tiempo de la Operación</h3>
-            <div class="space-y-2">
-                ${allRecords.map(registro => {
-                    let detalle = '';
-                    let actionButtons = '';
-                    
-                    const isRechazado = registro.estado_aprobacion === 'rechazado';
-                    const itemClass = isRechazado ? 'line-through text-gray-400' : '';
-
-                    if (user.role === 'supervisor' && registro.estado_aprobacion === 'pendiente' && registro.tipo_registro !== 'muestreo') {
-                        actionButtons += `<a href="../supervisor/operacion_confirmar.html?id=${registro.id}" class="btn bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600">Revisar</a>`;
-                    }
-                    
-                    if (registro.observacion_aprobacion) {
-                        actionButtons += `<button class="btn-show-observacion p-1" data-observacion="${registro.observacion_aprobacion}" title="Ver observación"><span class="material-icons text-yellow-500 hover:text-yellow-700">comment</span></button>`;
-                    }
-                    
-                    switch(registro.tipo_registro) {
-                        case 'inicial': detalle = `Operación iniciada por <b>${registro.operario_nombre}</b>.`; break;
-                        case 'producto': detalle = `<b>${registro.operario_nombre}</b> aplicó <b>${(registro.producto_usado_cantidad || 0).toLocaleString()} ${unidadLabel}</b> en ${(registro.toneladas || 0).toLocaleString()} tn.`; break;
-                        case 'muestreo': detalle = `<b>${registro.operario_nombre}</b> registró un muestreo.`; break;
-                        case 'finalizacion': detalle = `Operación finalizada por <b>${registro.operario_nombre}</b>.`; break;
-                    }
-
-                    return `<div class="flex items-center justify-between text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm ${itemClass}">
-                                <div><b>${new Date(registro.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}:</b> ${detalle}</div>
-                                <div class="flex-shrink-0 ml-4 flex items-center gap-2">${actionButtons}</div>
-                            </div>`;
-                }).join('')}
-            </div>
-        </div>`;
-        
-    container.addEventListener('click', (e) => {
-        const obsBtn = e.target.closest('.btn-show-observacion');
-        if (obsBtn) {
-            const observacion = obsBtn.dataset.observacion;
-            renderObservacionModal(observacion);
-        }
-    });
-}
-
-function renderObservacionModal(observacion) {
-    const modalHTML = `
-        <div id="observacion-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 relative">
-                <button id="close-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800"><span class="material-icons">close</span></button>
-                <h4 class="text-2xl font-bold mb-4">Observación del Supervisor</h4>
-                <div class="space-y-4">
-                    <p class="p-3 bg-gray-100 rounded-lg text-gray-700 whitespace-pre-wrap">${observacion || 'N/A'}</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="md:col-span-2">
+                <h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-4">Información General</h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                    <div><strong>Cliente:</strong><br>${operacion.clientes?.nombre || 'N/A'}</div>
+                    <div><strong>Depósito:</strong><br>${operacion.depositos?.nombre || 'N/A'} (${operacion.depositos?.tipo || 'N/A'})</div>
+                    <div><strong>Mercadería:</strong><br>${operacion.mercaderias?.nombre || 'N/A'}</div>
+                    <div><strong>Operario:</strong><br>${operacion.operario_nombre || 'N/A'}</div>
+                    <div><strong>Fecha:</strong><br>${new Date(operacion.created_at).toLocaleString('es-AR')}</div>
                 </div>
             </div>
-        </div>`;
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
+            <div>
+                <h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-4">Detalles del Tratamiento</h3>
+                <div class="space-y-2 text-sm">
+                    <p><strong>Método:</strong> ${metodoCapitalizado}</p>
+                    <p><strong>Tratamiento:</strong> ${tratamiento}</p>
+                    <p><strong>Cantidad Aplicada:</strong> ${(operacion.producto_usado_cantidad || 0).toLocaleString()} ${unidadLabel}</p>
+                    <p><strong>Toneladas Tratadas:</strong> ${(operacion.toneladas || 0).toLocaleString()} tn</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
 
-    const modal = document.getElementById('observacion-modal');
-    const closeModal = () => modal.remove();
-    modal.addEventListener('click', (e) => {
-        if (e.target.id === 'observacion-modal' || e.target.closest('#close-modal')) closeModal();
+function setupActionButtons(operacionId) {
+    document.getElementById('btnAprobar').addEventListener('click', async () => {
+        await updateOperationStatus(operacionId, 'aprobado', document.getElementById('observacion').value);
     });
+
+    document.getElementById('btnRechazar').addEventListener('click', async () => {
+        const observacion = document.getElementById('observacion').value;
+        if (!observacion) {
+            alert('Debe proporcionar una observación para rechazar la operación.');
+            return;
+        }
+        await updateOperationStatus(operacionId, 'rechazado', observacion);
+    });
+}
+
+async function updateOperationStatus(operacionId, estado, observacion) {
+    const { error } = await supabase
+        .from('operaciones')
+        .update({
+            estado_aprobacion: estado,
+            observacion_aprobacion: observacion,
+            supervisor_id: getUser().id
+        })
+        .eq('id', operacionId);
+
+    if (error) {
+        alert('Error al actualizar la operación.');
+        console.error(error);
+    } else {
+        alert('Operación actualizada correctamente.');
+        window.location.href = 'dashboard.html';
+    }
 }

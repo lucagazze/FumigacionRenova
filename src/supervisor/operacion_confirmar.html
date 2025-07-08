@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fagaz - Detalle de Operación</title>
-  <link rel="icon" href="/public/assets/img/logohead.webp" type="image/png">
-
+  <title>Fagaz - Confirmar Operación</title>
+  <link rel="icon" href="/assets/img/logohead.webp" type="image/png">
   <link rel="stylesheet" href="../common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
@@ -15,21 +14,31 @@
   <main class="flex-1 py-8">
     <div class="content-container max-w-4xl">
       <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Resumen de Operación</h1>
-        <a href="historial.html" id="btnVolver" class="btn btn-secondary flex items-center gap-2">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Confirmar Registro de Operación</h1>
+        <a href="dashboard.html" id="btnVolver" class="btn btn-secondary flex items-center gap-2">
           <span class="material-icons text-base">arrow_back</span>
-          <span>Volver al Historial</span>
+          <span>Volver</span>
         </a>
       </div>
 
       <div id="detalle-container" class="bg-white p-6 sm:p-8 rounded-xl shadow-lg border space-y-6">
-          <p class="text-center p-4">Cargando detalles...</p>
+        <p class="text-center p-4">Cargando detalles...</p>
       </div>
-
-      <div id="acciones-container" class="mt-6"></div>
-
+      <div id="acciones-container" class="bg-white p-6 sm:p-8 rounded-xl shadow-lg border mt-6">
+        <h3 class="text-xl font-bold text-gray-800 mb-4">Acción del Supervisor</h3>
+        <div class="space-y-4">
+          <div>
+            <label for="observacion" class="block text-sm font-medium text-gray-700">Observación (obligatorio si se rechaza)</label>
+            <textarea id="observacion" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" rows="3"></textarea>
+          </div>
+          <div class="flex justify-end gap-4">
+            <button id="btnRechazar" class="btn btn-danger">Rechazar</button>
+            <button id="btnAprobar" class="btn btn-primary">Aprobar</button>
+          </div>
+        </div>
+      </div>
     </div>
   </main>
-  <script type="module" src="operacion_detalle.js"></script>
+  <script type="module" src="operacion_confirmar.js"></script>
 </body>
 </html>

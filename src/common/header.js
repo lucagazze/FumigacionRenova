@@ -38,7 +38,7 @@ export function renderHeader() {
   return `
     <header class="flex items-center justify-between border-b bg-white px-4 sm:px-6 py-3 shadow-sm sticky top-0 z-50">
       <div class="flex items-center gap-4">
-        <a href="/src/login/login.html">
+        <a href="/index.html">
             <img src="/public/assets/img/logotipo.png" alt="Fagaz Logo" class="h-10">
         </a>
         <h1 class="text-lg font-bold text-gray-800 hidden sm:block">Gestión Fumigación</h1>
@@ -74,7 +74,7 @@ export function renderHeader() {
 document.addEventListener('click', (e) => {
   const handleLogout = () => {
     localStorage.removeItem('user');
-    window.location.href = '/src/login/login.html';
+    window.location.href = '/index.html';
   };
 
   if (e.target.closest('#btnLogout') || e.target.closest('#logoutMobile')) {

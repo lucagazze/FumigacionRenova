@@ -3,16 +3,6 @@
   command = ""
 
 [[redirects]]
-  from = "/"
-  to = "/src/login/login.html"
-  status = 200
-
-[[redirects]]
-  from = "/assets/*"
-  to = "/public/assets/:splat"
-  status = 200
-
-[[redirects]]
   from = "/admin/dashboard"
   to = "/src/admin/dashboard.html"
   status = 200
