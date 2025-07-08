@@ -1,25 +1,8 @@
 [build]
-  # Publica el directorio raíz donde Netlify encontrará los archivos
-  publish = "src" 
+  publish = "."
   command = ""
 
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
-# Redirecciones específicas para cada rol
-[[redirects]]
-  from = "/admin/:page"
-  to = "/admin/:page.html"
-  status = 200
-
-[[redirects]]
-  from = "/operario/:page"
-  to = "/operario/:page.html"
-  status = 200
-
-[[redirects]]
-  from = "/supervisor/:page"
-  to = "/supervisor/:page.html"
+  from = "/admin/dashboard"
+  to = "/src/admin/dashboard.html"
   status = 200
