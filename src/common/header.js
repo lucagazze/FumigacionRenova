@@ -28,6 +28,7 @@ export function renderHeader() {
     navLinks = `
         <a class="${getLinkClasses('dashboard.html')}" href="/src/supervisor/dashboard.html">Pendientes</a>
         <a class="${getLinkClasses('historial.html')}" href="/src/supervisor/historial.html">Historial Gral.</a>
+        <a class="${getLinkClasses('muestreos.html')}" href="/src/supervisor/muestreos.html">Muestreos</a>
         <a class="${getLinkClasses('reportes.html')}" href="/src/supervisor/reportes.html">Reportes</a>
     `;
   } else if (user?.role === 'operario') {

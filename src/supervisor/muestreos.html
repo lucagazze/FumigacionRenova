@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fagaz - Registro de Muestreos</title>
+  <link rel="icon" href="/public/assets/img/logohead.webp" type="image/png">
+
+  <link rel="stylesheet" href="../common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <header id="header"></header>
+  <main class="flex-1 py-8">
+    <div class="content-container">
+      <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+        <h1 class="text-3xl sm:text-4xl font-bold text-black">Registro de Muestreos</h1>
+        <button id="toggleFiltrosBtn" class="btn btn-secondary">
+          <span class="material-icons text-base">filter_list</span>
+          <span>Filtros</span>
+        </button>
+      </div>
+
+      <div id="filtrosContainer" class="hidden mb-6 bg-white p-6 rounded-xl shadow-sm border">
+        <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+            <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <span class="material-icons">filter_alt</span>
+              Filtros de Búsqueda
+            </h3>
+            <button id="btnLimpiarFiltros" class="text-sm font-semibold text-blue-600 hover:underline">Limpiar Filtros</button>
+        </div>
+        <form id="filtrosForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+           <div>
+              <label class="block text-sm font-medium mb-1 text-gray-600">Depósito (Silo/Celda)</label>
+              <div class="input-wrapper">
+                  <span class="material-icons input-icon">store</span>
+                  <select id="filtroDeposito" class="input-field input-field-with-icon"></select>
+              </div>
+            </div>
+             <div class="lg:col-span-1">
+              <label class="block text-sm font-medium mb-1 text-gray-600">Fecha</label>
+              <div class="input-wrapper">
+                  <span class="material-icons input-icon">calendar_today</span>
+                  <input type="text" id="filtroFecha" class="input-field input-field-with-icon" placeholder="Seleccione un rango de fechas">
+              </div>
+            </div>
+        </form>
+      </div>
+
+      <div id="muestreos-container" class="bg-white p-4 sm:p-6 rounded-xl shadow-lg overflow-x-auto">
+        </div>
+    </div>
+  </main>
+  <script type="module" src="muestreos.js"></script>
+</body>
+</html>

@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const opBaseData = allRecords.find(r => r.id === originalId) || allRecords[0];
     renderizarPagina(container, opBaseData, allRecords);
+    renderMuestreos(document.getElementById('muestreos-container'), allRecords.filter(r => r.tipo_registro === 'muestreo'));
 });
 
 
@@ -110,9 +111,36 @@ function renderizarPagina(container, opBase, allRecords) {
                             const tratamientoProducto = registro.tratamiento ? `(${registro.tratamiento})` : '';
                             detalle = `<b>${registro.operario_nombre}</b> aplicó <b>${(registro.producto_usado_cantidad || 0).toLocaleString()} ${unidadLabel}</b> en ${(registro.toneladas || 0).toLocaleString()} tn. <span class="font-semibold">${tratamientoProducto}</span>`;
                             break;
-                        case 'muestreo': 
-                            detalle = `<b>${registro.operario_nombre}</b> registró un muestreo.`; 
-                            break;
+                        case 'muestreo':
+                            const muestreoData = registro.muestreos && registro.muestreos.length > 0 ? registro.muestreos[0] : {};
+                            const tieneArchivos = muestreoData.media_url && muestreoData.media_url.length > 0;
+                            detalle = `<b>${registro.operario_nombre}</b> registró un muestreo. <button class="text-blue-600 hover:underline btn-ver-muestreo" data-muestreo-id="${registro.id}">Ver detalles</button>`;
+                            
+                            let muestreoDetailsHTML = '';
+                            if (tieneArchivos || muestreoData.observacion) {
+                                muestreoDetailsHTML = `
+                                    <div id="muestreo-details-${registro.id}" class="hidden p-4 mt-2 bg-gray-50 rounded-lg border">
+                                        <p class="mb-3">${muestreoData.observacion || '<em>Sin observación.</em>'}</p>
+                                        ${tieneArchivos ? `
+                                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                                ${muestreoData.media_url.map(url => `
+                                                    <a href="${url}" target="_blank" rel="noopener noreferrer" class="block group relative w-full h-32 bg-gray-200 rounded-lg overflow-hidden">
+                                                        <img src="${url}" alt="Archivo de muestreo" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105">
+                                                    </a>
+                                                `).join('')}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }
+        
+                            return `<div class="text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm ${itemClass}">
+                                        <div class="flex items-center justify-between">
+                                            <div><b>${new Date(registro.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}:</b> ${detalle}</div>
+                                            <div class="flex-shrink-0 ml-4 flex items-center gap-2">${actionButtons}</div>
+                                        </div>
+                                        ${muestreoDetailsHTML}
+                                    </div>`;
                         case 'finalizacion': 
                             detalle = `Operación finalizada por <b>${registro.operario_nombre}</b>.`; 
                             break;
@@ -156,6 +184,15 @@ function renderizarPagina(container, opBase, allRecords) {
             const observacion = obsBtn.dataset.observacion;
             renderObservacionModal(observacion);
         }
+
+        const muestreoBtn = e.target.closest('.btn-ver-muestreo');
+        if (muestreoBtn) {
+            const muestreoId = muestreoBtn.dataset.muestreoId;
+            const detailsContainer = document.getElementById(`muestreo-details-${muestreoId}`);
+            if (detailsContainer) {
+                detailsContainer.classList.toggle('hidden');
+            }
+        }
     });
 }
 
@@ -177,4 +214,19 @@ function renderObservacionModal(observacion) {
     modal.addEventListener('click', (e) => {
         if (e.target.id === 'observacion-modal' || e.target.closest('#close-modal')) closeModal();
     });
+}
+
+function renderMuestreos(container, muestreos) {
+    if (!muestreos || muestreos.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="border-t pt-6 mt-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Muestreos Realizados</h3>
+            <div class="space-y-6">
+            </div>
+        </div>
+    `;
 }
