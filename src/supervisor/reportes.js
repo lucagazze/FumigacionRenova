@@ -178,6 +178,10 @@ formReporte.addEventListener('submit', async (e) => {
     const dateRange = $(filtroFecha).data('daterangepicker');
     const fechaDesde = dateRange.startDate.format('YYYY-MM-DD');
     const fechaHasta = dateRange.endDate.format('YYYY-MM-DD');
+
+    // Guardar en localStorage
+    localStorage.setItem('reporteFechaDesde', fechaDesde);
+    localStorage.setItem('reporteFechaHasta', fechaHasta);
     
     let query = supabase
         .from('operaciones')
@@ -217,4 +221,17 @@ document.addEventListener('DOMContentLoaded', () => {
             format: 'DD/MM/YYYY'
         }
     });
+
+    // Restaurar desde localStorage
+    const savedFechaDesde = localStorage.getItem('reporteFechaDesde');
+    const savedFechaHasta = localStorage.getItem('reporteFechaHasta');
+
+    if (savedFechaDesde && savedFechaHasta) {
+        $(filtroFecha).data('daterangepicker').setStartDate(moment(savedFechaDesde));
+        $(filtroFecha).data('daterangepicker').setEndDate(moment(savedFechaHasta));
+        $(filtroFecha).val(moment(savedFechaDesde).format('DD/MM/YYYY') + ' - ' + moment(savedFechaHasta).format('DD/MM/YYYY'));
+        
+        // Trigger form submission
+        formReporte.dispatchEvent(new Event('submit'));
+    }
 });

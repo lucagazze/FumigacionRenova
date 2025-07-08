@@ -215,6 +215,11 @@ formReporte.addEventListener('submit', async (e) => {
     if (user.role === 'admin') {
         clienteId = filtroCliente.value;
     }
+
+    // Guardar en localStorage
+    localStorage.setItem('reporteClienteId', clienteId);
+    localStorage.setItem('reporteFechaDesde', fechaDesde);
+    localStorage.setItem('reporteFechaHasta', fechaHasta);
     
     let query = supabase
         .from('operaciones')
@@ -240,8 +245,8 @@ formReporte.addEventListener('submit', async (e) => {
     renderReporte(data, fechaDesde, fechaHasta);
 });
 
-document.addEventListener('DOMContentLoaded', () => {
-    poblarClientes();
+document.addEventListener('DOMContentLoaded', async () => {
+    await poblarClientes();
 
     $(filtroFecha).daterangepicker({
         opens: 'left',
@@ -253,4 +258,22 @@ document.addEventListener('DOMContentLoaded', () => {
             format: 'DD/MM/YYYY'
         }
     });
+
+    // Restaurar desde localStorage
+    const savedClienteId = localStorage.getItem('reporteClienteId');
+    const savedFechaDesde = localStorage.getItem('reporteFechaDesde');
+    const savedFechaHasta = localStorage.getItem('reporteFechaHasta');
+
+    if (savedClienteId && user.role === 'admin') {
+        filtroCliente.value = savedClienteId;
+    }
+
+    if (savedFechaDesde && savedFechaHasta) {
+        $(filtroFecha).data('daterangepicker').setStartDate(moment(savedFechaDesde));
+        $(filtroFecha).data('daterangepicker').setEndDate(moment(savedFechaHasta));
+        $(filtroFecha).val(moment(savedFechaDesde).format('DD/MM/YYYY') + ' - ' + moment(savedFechaHasta).format('DD/MM/YYYY'));
+        
+        // Trigger form submission
+        formReporte.dispatchEvent(new Event('submit'));
+    }
 });

@@ -49,6 +49,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         .single();
     
     renderizarPagina(container, opBaseData, allRecords, limpiezaData);
+
+    document.getElementById('btnVolver').addEventListener('click', () => {
+        window.history.back();
+    });
 });
 
 // --- RENDERIZADO DE LA PÁGINA ---

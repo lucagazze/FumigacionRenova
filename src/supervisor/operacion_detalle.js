@@ -43,6 +43,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const opBaseData = allRecords.find(r => r.id === originalId) || allRecords[0];
     renderizarPagina(container, opBaseData, allRecords);
     renderMuestreos(document.getElementById('muestreos-container'), allRecords.filter(r => r.tipo_registro === 'muestreo'));
+
+    document.getElementById('btnVolver').addEventListener('click', () => {
+        window.history.back();
+    });
 });
 
 
