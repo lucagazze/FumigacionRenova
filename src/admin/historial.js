@@ -67,9 +67,15 @@ async function renderFinishedOperations() {
     const clienteId = document.getElementById('filter-cliente').value;
     const depositoId = document.getElementById('filter-deposito').value;
     const sortOrder = document.getElementById('sort-order').value;
-    const dateRange = $('#filter-fecha').data('daterangepicker');
-    const fechaDesde = dateRange.startDate && dateRange.startDate.isValid() ? dateRange.startDate.format('YYYY-MM-DD') : null;
-    const fechaHasta = dateRange.endDate && dateRange.endDate.isValid() ? dateRange.endDate.format('YYYY-MM-DD') : null;
+    const dateRangeInput = $('#filter-fecha');
+    const dateRange = dateRangeInput.data('daterangepicker');
+    let fechaDesde = null;
+    let fechaHasta = null;
+
+    if (dateRangeInput.val()) {
+        fechaDesde = dateRange.startDate && dateRange.startDate.isValid() ? dateRange.startDate.format('YYYY-MM-DD') : null;
+        fechaHasta = dateRange.endDate && dateRange.endDate.isValid() ? dateRange.endDate.format('YYYY-MM-DD') : null;
+    }
 
     // 1. Obtener todos los datos necesarios en paralelo para mayor eficiencia.
     const [
