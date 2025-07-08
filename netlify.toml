@@ -1,16 +1,18 @@
 [build]
-  publish = "/"
+  publish = "."
   command = ""
 
-# Redirige la ruta raíz a la página de login.
 [[redirects]]
   from = "/"
   to = "/src/login/login.html"
   status = 200
 
-# Opcional: Si un usuario intenta acceder a una ruta que no existe,
-# puedes redirigirlo a la página de login en lugar de mostrar un error 404.
 [[redirects]]
-  from = "/*"
-  to = "/src/login/login.html"
-  status = 404
+  from = "/assets/*"
+  to = "/public/assets/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/admin/dashboard"
+  to = "/src/admin/dashboard.html"
+  status = 200
