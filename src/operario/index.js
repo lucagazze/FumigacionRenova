@@ -126,6 +126,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert('Por favor, complete todos los campos.');
             return;
         }
+
+        // --- Verificación de operación en curso ---
+        const { data: existingOperations, error: existingError } = await supabase
+            .from('operaciones')
+            .select('id')
+            .eq('deposito_id', deposito_id)
+            .eq('estado', 'en curso')
+            .eq('tipo_registro', 'inicial');
+
+        if (existingError) {
+            console.error('Error checking for existing operations:', existingError);
+            alert('Error al verificar operaciones existentes.');
+            return;
+        }
+
+        if (existingOperations && existingOperations.length > 0) {
+            alert('Ya existe una operación en curso para este depósito. Por favor, finalice la operación actual antes de iniciar una nueva.');
+            return;
+        }
         
         let operario_nombre = `${user.nombre} ${user.apellido}`;
         if (conCompaneroCheckbox.checked && companeros.length > 0) {
@@ -148,7 +167,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (opError) {
             console.error('Error creating operation:', opError);
-            alert('Error al crear la operación. Es posible que ya exista una operación activa para este depósito.');
+            alert('Error al crear la operación.');
             return;
         }
 
