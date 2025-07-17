@@ -27,8 +27,6 @@ const conCompaneroCheckbox = document.getElementById('conCompanero');
 const companeroContainer = document.getElementById('companeroContainer');
 const companeroList = document.getElementById('companero-list');
 const selectedCompanerosEl = document.getElementById('selected-companeros');
-
-// ===== SELECTOR DE SUPERVISOR AÑADIDO =====
 const supervisorSelect = document.getElementById('supervisor');
 
 let operacionActual = {};
@@ -64,30 +62,42 @@ async function poblarCompaneros(clienteId) {
     });
 }
 
-// ===== NUEVA FUNCIÓN PARA POBLAR SUPERVISORES =====
 async function poblarSupervisores(clienteId) {
     supervisorSelect.innerHTML = '<option value="">Cargando...</option>';
     if (!clienteId) {
-        supervisorSelect.innerHTML = '<option value="">Error: Cliente no definido</option>';
+        supervisorSelect.innerHTML = '<option value="">Error: Cliente no definido en la operación</option>';
         return;
     }
+    
+    // ===== LÍNEA DE DIAGNÓSTICO =====
+    console.log(`Buscando supervisores para el cliente con ID: ${clienteId}`);
 
     const { data: supervisores, error } = await supabase
         .from('supervisor_clientes')
         .select('usuarios(id, nombre, apellido)')
         .eq('cliente_id', clienteId);
 
+    // ===== LÍNEAS DE DIAGNÓSTICO =====
     if (error) {
-        console.error("Error al cargar supervisores:", error);
-        supervisorSelect.innerHTML = '<option value="">No se pudieron cargar</option>';
+        console.error("ERROR AL CARGAR SUPERVISORES:", error);
+        supervisorSelect.innerHTML = '<option value="">Error al cargar</option>';
         return;
     }
-    
+    console.log("Supervisores encontrados en la BD:", supervisores);
+
     supervisorSelect.innerHTML = '<option value="">-- Seleccionar Supervisor --</option>';
-    supervisores.forEach(item => {
-        const s = item.usuarios;
-        supervisorSelect.innerHTML += `<option value="${s.id}">${s.nombre} ${s.apellido}</option>`;
-    });
+    if (supervisores.length === 0) {
+        // Mensaje más claro si no se encuentra ninguno
+        supervisorSelect.innerHTML = '<option value="">No hay supervisores para este cliente</option>';
+        console.warn('ADVERTENCIA: La consulta no devolvió supervisores. Verifica que el cliente tenga supervisores asignados en la tabla "supervisor_clientes".');
+    } else {
+        supervisores.forEach(item => {
+            const s = item.usuarios;
+            if (s) { // Chequeo extra por si el join falla
+                supervisorSelect.innerHTML += `<option value="${s.id}">${s.nombre} ${s.apellido}</option>`;
+            }
+        });
+    }
 }
 
 
@@ -113,9 +123,8 @@ async function setupPage() {
     depositoFijoInfo.querySelector('b').textContent = depositoOrigen;
     depositoFijoInfo.style.display = 'block';
     
-    // Llamadas para poblar los selectores
     await poblarCompaneros(operacionActual.cliente_id);
-    await poblarSupervisores(operacionActual.cliente_id); // <-- LLAMADA A LA NUEVA FUNCIÓN
+    await poblarSupervisores(operacionActual.cliente_id); 
     
     updateCalculations();
 }
@@ -183,7 +192,6 @@ btnRegistrar.addEventListener('click', async () => {
         return;
     }
     
-    // ===== VALIDACIÓN DEL SUPERVISOR =====
     const supervisorId = supervisorSelect.value;
     if (!supervisorId) {
         alert('Debe seleccionar un supervisor a cargo.');
@@ -205,7 +213,6 @@ btnRegistrar.addEventListener('click', async () => {
         const depositoOrigen = operacionActual.deposito_origen_stock || "Fagaz";
         const tipoProducto = operacionActual.metodo_fumigacion;
 
-        // 1. Verificar y descontar stock
         const { data: stock, error: fetchError } = await supabase
             .from('stock')
             .select('*')
@@ -244,7 +251,6 @@ btnRegistrar.addEventListener('click', async () => {
             operario_nombre += ` y ${companerosSeleccionados.join(', ')}`;
         }
 
-        // 2. Insertar el registro de la operación (con supervisor_id)
         const { data: newOpData, error: insertOpError } = await supabase.from('operaciones').insert({
             operacion_original_id: operacionActual.id,
             cliente_id: operacionActual.cliente_id,
@@ -260,11 +266,10 @@ btnRegistrar.addEventListener('click', async () => {
             modalidad: modalidad.value,
             toneladas: toneladas,
             estado_aprobacion: 'pendiente',
-            supervisor_id: supervisorId // <-- CAMPO AÑADIDO
+            supervisor_id: supervisorId 
         }).select('id').single();
         if (insertOpError) throw insertOpError;
 
-        // 3. Insertar en el historial
         await supabase.from('historial_stock').insert({
             tipo_movimiento: 'uso',
             deposito: depositoOrigen,
