@@ -250,18 +250,13 @@ listaUsuarios.addEventListener('click', async (e) => {
     if (deleteButton) {
         const id = deleteButton.dataset.id;
         if (confirm('¿Está seguro de que desea eliminar este usuario? Esta acción es irreversible.')) {
-            // Eliminar usuario de Supabase Auth
-            const { error: authError } = await supabase.auth.admin.deleteUser(id);
-            if(authError && authError.message !== 'User not found') {
-                return alert(`Error al eliminar usuario de autenticación: ${authError.message}`);
-            }
-            
-            // Eliminar perfil de la tabla 'usuarios'
-            const { error: profileError } = await supabase.from('usuarios').delete().eq('id', id);
-            if (profileError) {
-                 alert(`Error al eliminar perfil: ${profileError.message}`);
+            const { error } = await supabase.rpc('delete_user_by_id', { user_id_to_delete: id });
+
+            if (error) {
+                alert(`Error al eliminar usuario: ${error.message}`);
             } else {
-                 await cargarYRenderizarUsuarios();
+                alert('Usuario eliminado correctamente.');
+                await cargarYRenderizarUsuarios();
             }
         }
     }
