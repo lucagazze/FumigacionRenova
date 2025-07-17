@@ -36,7 +36,12 @@ document.addEventListener('DOMContentLoaded', () => {
         operacionesContainer.innerHTML = '<div class="text-center p-8"><div class="spinner"></div><p class="mt-2 text-gray-500">Cargando registros...</p></div>';
         
         let query = supabase.from('operaciones').select(`
-            *, clientes(nombre), depositos(nombre, tipo, limpiezas(fecha_garantia_limpieza)), mercaderias(nombre), muestreos(observacion, media_url)
+            *, 
+            clientes(nombre), 
+            depositos(nombre, tipo, limpiezas(fecha_garantia_limpieza)), 
+            mercaderias(nombre), 
+            muestreos(observacion, media_url),
+            supervisor:supervisor_id(nombre, apellido)
         `).order('created_at', { ascending: false });
 
         if (user.cliente_ids && user.cliente_ids.length > 0) {

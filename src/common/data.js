@@ -129,39 +129,40 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin, is
 
         if (isAdmin || isSupervisor) {
             let garantiaHtml = '<span class="text-gray-400">-</span>';
-            if (op.estado === 'finalizada' && op.tipo_registro === 'inicial') {
-                const finalRecord = finalizationRecords.find(f => f.operacion_original_id === op.id);
-                if (finalRecord) {
-                    const fechaInicio = new Date(op.created_at);
-                    const fechaFin = new Date(finalRecord.created_at);
-                    const duracionDias = (fechaFin - fechaInicio) / (1000 * 60 * 60 * 24);
-                    const cumplePlazo = duracionDias <= 5;
-                    const ultimaLimpieza = op.depositos?.limpiezas?.[0]?.fecha_garantia_limpieza;
-                    let cumpleLimpieza = false;
-                    if (ultimaLimpieza) {
-                        const fechaVencLimpieza = new Date(ultimaLimpieza + 'T00:00:00');
-                        if (fechaFin <= fechaVencLimpieza) {
-                            cumpleLimpieza = true;
-                        }
-                    }
+            const operationId = op.operacion_original_id || op.id;
+            const finalRecord = finalizationRecords.find(f => f.operacion_original_id === operationId);
 
-                    if (cumplePlazo && cumpleLimpieza) {
-                        const hoy = new Date();
-                        hoy.setHours(0,0,0,0);
-                        const fechaVencimientoGarantia = new Date(fechaFin);
-                        fechaVencimientoGarantia.setDate(fechaVencimientoGarantia.getDate() + 40);
-                        
-                        if (fechaVencimientoGarantia >= hoy) {
-                            garantiaHtml = `<span title="Garantía vigente hasta ${fechaVencimientoGarantia.toLocaleDateString('es-AR')}" class="material-icons text-green-600">check_circle</span>`;
-                        } else {
-                            garantiaHtml = `<span title="Garantía vencida el ${fechaVencimientoGarantia.toLocaleDateString('es-AR')}" class="material-icons text-yellow-600">warning</span>`;
-                        }
-                    } else {
-                        garantiaHtml = `<span title="No cumple condiciones para garantía" class="material-icons text-red-600">cancel</span>`;
+            if (op.estado === 'finalizada' && finalRecord) {
+                const initialOp = operaciones.find(o => o.id === operationId) || op;
+                const fechaInicio = new Date(initialOp.created_at);
+                const fechaFin = new Date(finalRecord.created_at);
+                const duracionDias = (fechaFin - fechaInicio) / (1000 * 60 * 60 * 24);
+                const cumplePlazo = duracionDias <= 5;
+                const ultimaLimpieza = initialOp.depositos?.limpiezas?.[0]?.fecha_garantia_limpieza;
+                let cumpleLimpieza = false;
+                if (ultimaLimpieza) {
+                    const fechaVencLimpieza = new Date(ultimaLimpieza + 'T00:00:00');
+                    if (fechaFin <= fechaVencLimpieza) {
+                        cumpleLimpieza = true;
                     }
                 }
+
+                if (cumplePlazo && cumpleLimpieza) {
+                    const hoy = new Date();
+                    hoy.setHours(0,0,0,0);
+                    const fechaVencimientoGarantia = new Date(fechaFin);
+                    fechaVencimientoGarantia.setDate(fechaVencimientoGarantia.getDate() + 40);
+                    
+                    if (fechaVencimientoGarantia >= hoy) {
+                        garantiaHtml = `<span title="Garantía vigente hasta ${fechaVencimientoGarantia.toLocaleDateString('es-AR')}" class="material-icons text-green-600">check_circle</span>`;
+                    } else {
+                        garantiaHtml = `<span title="Garantía vencida el ${fechaVencimientoGarantia.toLocaleDateString('es-AR')}" class="material-icons text-yellow-600">warning</span>`;
+                    }
+                } else {
+                    garantiaHtml = `<span title="No cumple condiciones para garantía" class="material-icons text-red-600">cancel</span>`;
+                }
             } else if (op.estado === 'finalizada') {
-                garantiaHtml = ''; 
+                garantiaHtml = `<span title="No cumple condiciones para garantía" class="material-icons text-red-600">cancel</span>`;
             }
             mainRowCells.push(`<td class="px-4 py-4 text-center">${garantiaHtml}</td>`);
         }
@@ -213,12 +214,15 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin, is
                 aprobacionDetalle = `<div class="col-span-full mt-2"><strong>Obs. Supervisor:</strong><br><p class="mt-1 p-2 bg-white rounded break-words">${op.observacion_aprobacion}</p></div>`;
             }
 
+            const supervisorName = op.supervisor ? `${op.supervisor.nombre} ${op.supervisor.apellido}` : 'No asignado';
             detailsContentHTML = `
                 <div class="p-4 bg-gray-100 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div><strong>Tipo de Producto:</strong><br>${op.metodo_fumigacion === 'liquido' ? 'Líquido' : 'Pastillas'}</div>
                     <div><strong>Tratamiento:</strong><br>${op.tratamiento || 'N/A'}</div>
                     <div><strong>Tn. en Registro:</strong><br>${op.toneladas ? op.toneladas.toLocaleString() + ' tn' : 'N/A'}</div>
                     <div><strong>Producto Aplicado:</strong><br>${productoAplicado}</div>
+                    <div><strong>Supervisor a Cargo:</strong><br>${supervisorName}</div>
+                    <div><strong>Modalidad:</strong><br>${op.modalidad || 'N/A'}</div>
                     ${aprobacionDetalle}
                 </div>
             `;
