@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fagaz - Historial de Limpieza</title>
+    <link rel="stylesheet" href="../common/styles.css" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+</head>
+<body class="bg-[var(--background-color)] text-[var(--text-primary)]">
+    <div class="relative flex min-h-screen flex-col overflow-x-hidden">
+        <header id="header"></header>
+        <main class="flex-1 px-4 sm:px-8 md:px-16 lg:px-24 xl:px-40 py-8">
+            <div class="w-full max-w-5xl mx-auto">
+                <h1 class="text-3xl sm:text-4xl font-bold text-black mb-6">Historial de Limpieza de Depósitos</h1>
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <div id="historial-container" class="overflow-x-auto">
+                        <p>Cargando historial...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script type="module" src="historial_limpieza.js"></script>
+</body>
+</html>
