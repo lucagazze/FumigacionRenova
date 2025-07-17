@@ -28,6 +28,9 @@ const companeroContainer = document.getElementById('companeroContainer');
 const companeroList = document.getElementById('companero-list');
 const selectedCompanerosEl = document.getElementById('selected-companeros');
 
+// ===== SELECTOR DE SUPERVISOR AÑADIDO =====
+const supervisorSelect = document.getElementById('supervisor');
+
 let operacionActual = {};
 let cantidadProductoCalculada = 0;
 
@@ -61,6 +64,33 @@ async function poblarCompaneros(clienteId) {
     });
 }
 
+// ===== NUEVA FUNCIÓN PARA POBLAR SUPERVISORES =====
+async function poblarSupervisores(clienteId) {
+    supervisorSelect.innerHTML = '<option value="">Cargando...</option>';
+    if (!clienteId) {
+        supervisorSelect.innerHTML = '<option value="">Error: Cliente no definido</option>';
+        return;
+    }
+
+    const { data: supervisores, error } = await supabase
+        .from('supervisor_clientes')
+        .select('usuarios(id, nombre, apellido)')
+        .eq('cliente_id', clienteId);
+
+    if (error) {
+        console.error("Error al cargar supervisores:", error);
+        supervisorSelect.innerHTML = '<option value="">No se pudieron cargar</option>';
+        return;
+    }
+    
+    supervisorSelect.innerHTML = '<option value="">-- Seleccionar Supervisor --</option>';
+    supervisores.forEach(item => {
+        const s = item.usuarios;
+        supervisorSelect.innerHTML += `<option value="${s.id}">${s.nombre} ${s.apellido}</option>`;
+    });
+}
+
+
 async function setupPage() {
     const opId = localStorage.getItem('operacion_actual');
     if (!opId) { window.location.href = 'home.html'; return; }
@@ -83,7 +113,10 @@ async function setupPage() {
     depositoFijoInfo.querySelector('b').textContent = depositoOrigen;
     depositoFijoInfo.style.display = 'block';
     
+    // Llamadas para poblar los selectores
     await poblarCompaneros(operacionActual.cliente_id);
+    await poblarSupervisores(operacionActual.cliente_id); // <-- LLAMADA A LA NUEVA FUNCIÓN
+    
     updateCalculations();
 }
 
@@ -149,6 +182,14 @@ btnRegistrar.addEventListener('click', async () => {
         btnRegistrar.disabled = false;
         return;
     }
+    
+    // ===== VALIDACIÓN DEL SUPERVISOR =====
+    const supervisorId = supervisorSelect.value;
+    if (!supervisorId) {
+        alert('Debe seleccionar un supervisor a cargo.');
+        btnRegistrar.disabled = false;
+        return;
+    }
 
     const toneladas = (modalidad.value === 'trasilado') 
         ? Number(toneladasInput.value) 
@@ -203,7 +244,7 @@ btnRegistrar.addEventListener('click', async () => {
             operario_nombre += ` y ${companerosSeleccionados.join(', ')}`;
         }
 
-        // 2. Insertar el registro de la operación
+        // 2. Insertar el registro de la operación (con supervisor_id)
         const { data: newOpData, error: insertOpError } = await supabase.from('operaciones').insert({
             operacion_original_id: operacionActual.id,
             cliente_id: operacionActual.cliente_id,
@@ -218,7 +259,8 @@ btnRegistrar.addEventListener('click', async () => {
             tratamiento: tratamiento.value,
             modalidad: modalidad.value,
             toneladas: toneladas,
-            estado_aprobacion: 'pendiente' // <-- AÑADIDO PARA EL FLUJO DE APROBACIÓN
+            estado_aprobacion: 'pendiente',
+            supervisor_id: supervisorId // <-- CAMPO AÑADIDO
         }).select('id').single();
         if (insertOpError) throw insertOpError;
 

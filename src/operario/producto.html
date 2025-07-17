@@ -43,7 +43,7 @@
       color: #374151 !important; /* text-gray-800 */
     }
     .btn-secondary:hover {
-       background-color: #d1d5db !important; /* hover:bg-gray-300 */
+      background-color: #d1d5db !important; /* hover:bg-gray-300 */
     }
   </style>
 </head>
@@ -96,11 +96,17 @@
             <div id="companeroContainer" class="hidden">
                 <label class="label-text block font-medium">Seleccionar Compañeros</label>
                 <div id="companero-list" class="mt-2 space-y-2 border rounded-lg p-3 max-h-40 overflow-y-auto">
-                    <!-- Los compañeros se cargarán aquí -->
-                </div>
+                    </div>
                 <div class="mt-2">
                   <p class="text-sm font-medium">Seleccionados: <span id="selected-companeros" class="font-normal text-gray-600">Ninguno</span></p>
                 </div>
+            </div>
+
+            <div>
+                <label for="supervisor" class="block font-semibold mb-1">Supervisor a Cargo (Obligatorio)</label>
+                <select id="supervisor" class="input-field" required>
+                    <option value="">Cargando supervisores...</option>
+                </select>
             </div>
             <div class="mt-4">
               <p class="font-semibold">Cantidad de <span id="unidadProducto">producto</span> a usar: <span id="resultadoProducto" class="text-green-600 text-xl font-bold">-</span></p>
