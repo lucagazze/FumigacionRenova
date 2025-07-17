@@ -9,97 +9,81 @@ const historialContainer = document.getElementById('historial-container');
 
 async function renderHistorialLimpieza() {
     const user = getUser();
-    if (!user) {
-        historialContainer.innerHTML = '<p class="text-red-500">Error: No se pudo identificar al supervisor.</p>';
+    if (!user || !user.cliente_ids || user.cliente_ids.length === 0) {
+        historialContainer.innerHTML = '<p class="text-center text-gray-500 p-4">No tiene clientes asignados para ver historiales.</p>';
         return;
     }
 
-    // 1. Obtener los IDs de los clientes asignados al supervisor
-    const { data: clientesAsignados, error: clientesError } = await supabase
-        .from('supervisor_clientes')
-        .select('cliente_id')
-        .eq('supervisor_id', user.id);
-
-    if (clientesError) {
-        console.error('Error fetching supervisor clients:', clientesError);
-        historialContainer.innerHTML = '<p class="text-red-500">No se pudieron cargar los clientes asignados.</p>';
-        return;
-    }
-
-    const clienteIds = clientesAsignados.map(c => c.cliente_id);
-    if (clienteIds.length === 0) {
-        historialContainer.innerHTML = '<p>No tiene clientes asignados para ver historiales.</p>';
-        return;
-    }
-
-    // 2. Obtener los depósitos de esos clientes
     const { data: depositos, error: depositosError } = await supabase
         .from('depositos')
-        .select('id, nombre, tipo, clientes(nombre)')
-        .in('cliente_id', clienteIds);
+        .select('id')
+        .in('cliente_id', user.cliente_ids);
 
     if (depositosError) {
         console.error('Error fetching depositos:', depositosError);
         historialContainer.innerHTML = '<p class="text-red-500">Error al cargar los depósitos.</p>';
         return;
     }
-    
+
     const depositoIds = depositos.map(d => d.id);
     if (depositoIds.length === 0) {
         historialContainer.innerHTML = '<p>No se encontraron depósitos para sus clientes asignados.</p>';
         return;
     }
 
-    // 3. Obtener el historial de limpieza de esos depósitos
-    const { data: limpiezas, error: limpiezasError } = await supabase
+    const { data: limpiezas, error } = await supabase
         .from('limpiezas')
-        .select('*')
+        .select('*, depositos(id, nombre, tipo, clientes(id, nombre))')
         .in('deposito_id', depositoIds)
         .order('fecha_limpieza', { ascending: false });
 
-    if (limpiezasError) {
-        console.error('Error fetching limpiezas:', limpiezasError);
-        historialContainer.innerHTML = '<p class="text-red-500">Error al cargar el historial de limpieza.</p>';
+    if (error) {
+        console.error('Error al cargar el historial:', error);
+        historialContainer.innerHTML = '<p class="text-red-500">No se pudo cargar el historial.</p>';
         return;
     }
 
     if (limpiezas.length === 0) {
-        historialContainer.innerHTML = '<p>No hay registros de limpieza para los depósitos de sus clientes.</p>';
+        historialContainer.innerHTML = '<p class="text-center text-gray-500 py-4">No hay registros de limpieza para los depósitos de sus clientes.</p>';
         return;
     }
 
-    // 4. Renderizar la tabla con los resultados
-    const tableHtml = `
+    const tableHTML = `
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Depósito</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Limpieza</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimiento Garantía</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observaciones</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Depósito</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Limpieza</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vto. Garantía</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Observaciones</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-                ${limpiezas.map(limpieza => {
-                    const deposito = depositos.find(d => d.id === limpieza.deposito_id);
+                ${limpiezas.map(l => {
+                    const deposito = l.depositos;
+                    const hoy = new Date();
+                    hoy.setHours(0, 0, 0, 0);
+                    const vtoGarantia = l.fecha_garantia_limpieza ? new Date(l.fecha_garantia_limpieza + 'T00:00:00') : null;
+                    let garantiaClass = '';
+                    if (vtoGarantia) {
+                        garantiaClass = vtoGarantia < hoy ? 'text-red-500 font-bold' : 'text-green-600';
+                    }
                     return `
                         <tr>
-                            <td class="px-6 py-4 whitespace-nowrap">${deposito ? deposito.clientes.nombre : 'N/A'}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">${deposito ? deposito.nombre : 'N/A'}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">${deposito ? (deposito.tipo.charAt(0).toUpperCase() + deposito.tipo.slice(1)) : 'N/A'}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">${new Date(limpieza.fecha_limpieza).toLocaleDateString()}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">${limpieza.fecha_garantia_limpieza ? new Date(limpieza.fecha_garantia_limpieza).toLocaleDateString() : 'N/A'}</td>
-                            <td class="px-6 py-4">${limpieza.observaciones || ''}</td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm font-medium text-gray-900">${deposito?.nombre || 'N/A'} (${deposito?.tipo || 'N/A'})</div>
+                                <div class="text-sm text-gray-500">${deposito?.clientes?.nombre || 'Cliente no encontrado'}</div>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-700">${new Date(l.fecha_limpieza + 'T00:00:00').toLocaleDateString('es-AR')}</td>
+                            <td class="px-6 py-4 text-sm ${garantiaClass}">${vtoGarantia ? vtoGarantia.toLocaleDateString('es-AR') : 'N/A'}</td>
+                            <td class="px-6 py-4 text-sm text-gray-600 max-w-xs break-words">${l.observaciones || '-'}</td>
                         </tr>
                     `;
                 }).join('')}
             </tbody>
         </table>
     `;
-
-    historialContainer.innerHTML = tableHtml;
+    historialContainer.innerHTML = tableHTML;
 }
 
 document.addEventListener('DOMContentLoaded', renderHistorialLimpieza);

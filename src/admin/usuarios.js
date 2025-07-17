@@ -60,9 +60,8 @@ function renderUsuarios(usersToRender) {
                     <div class="text-sm font-medium text-gray-900">${u.nombre} ${u.apellido}</div>
                     <div class="text-sm text-gray-500">${u.email}</div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-700">
-                    <span class="password-text">************</span>
-                    <button data-id="${u.id}" class="toggle-password-btn text-blue-600 hover:text-blue-900 p-1"><span class="material-icons text-base">visibility</span></button>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    ${u.password}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${roleClass}">
@@ -87,10 +86,14 @@ async function cargarYRenderizarUsuarios() {
     if (error) { console.error('Error cargando usuarios:', error); return; }
     
     const { data: relaciones } = await supabase.from('operario_clientes').select('*, clientes(id, nombre)');
+    if(!relaciones) {
+        console.error('No se pudieron cargar las relaciones de clientes');
+        return;
+    }
 
     allUsersWithClients = usuarios.map(u => {
         const clientesAsignados = relaciones
-            .filter(r => r.operario_id === u.id)
+            .filter(r => r.operario_id === u.id && r.clientes)
             .map(r => ({ id: r.clientes.id, nombre: r.clientes.nombre }));
         return { ...u, clientes: clientesAsignados.map(c => c.nombre), cliente_ids: clientesAsignados.map(c => c.id) };
     });
@@ -106,7 +109,7 @@ function aplicarFiltros() {
     let filteredUsers = allUsersWithClients.filter(user => {
         const matchNombre = user.nombre.toLowerCase().includes(nombreQuery) || user.apellido.toLowerCase().includes(nombreQuery) || user.email.toLowerCase().includes(nombreQuery);
         const matchRol = !rolQuery || user.role === rolQuery;
-        const matchCliente = !clienteQuery || user.cliente_ids.includes(clienteQuery);
+        const matchCliente = !clienteQuery || (user.cliente_ids && user.cliente_ids.includes(clienteQuery));
         
         return matchNombre && matchRol && matchCliente;
     });
@@ -122,44 +125,51 @@ function resetForm() {
     passwordInput.placeholder = "Nueva contraseña";
     passwordHelper.classList.remove('hidden');
     roleSelect.value = 'operario';
-    clienteCheckboxContainer.classList.remove('hidden');
+    clienteCheckboxContainer.classList.add('hidden'); // Ocultar por defecto
+    roleSelect.dispatchEvent(new Event('change')); // Simular cambio para mostrar si es necesario
 }
 
 async function handleFormSubmit(e) {
     e.preventDefault();
     const id = usuarioIdField.value;
-    const userData = {
+    
+    // Objeto base con los datos del perfil
+    const profileData = {
         nombre: document.getElementById('nombre').value,
         apellido: document.getElementById('apellido').value,
         email: document.getElementById('email').value,
         role: roleSelect.value,
-        password: passwordInput.value || undefined
     };
 
     let savedUser;
+
     if (id) {
-        const { data, error } = await supabase.from('usuarios').update(userData).eq('id', id).select().single();
-        if (error) return alert(`Error al actualizar usuario: ${error.message}`);
+        // --- LÓGICA PARA ACTUALIZAR USUARIO ---
+        const updateData = { ...profileData };
+        if (passwordInput.value) {
+            updateData.password = passwordInput.value;
+        }
+
+        const { data, error } = await supabase.from('usuarios').update(updateData).eq('id', id).select().single();
+        if (error) return alert(`Error al actualizar perfil: ${error.message}`);
         savedUser = data;
 
-        if (passwordInput.value) {
-            const { error: passwordError } = await supabase.auth.admin.updateUserById(id, { password: passwordInput.value });
-            if (passwordError) return alert(`Error al actualizar la contraseña: ${passwordError.message}`);
-        }
     } else {
-        if (!passwordInput.value) return alert("La contraseña es obligatoria para nuevos usuarios.");
-        const { data, error } = await supabase.auth.admin.createUser({
-            email: userData.email,
-            password: passwordInput.value,
-            email_confirm: true,
-        });
-        if (error) return alert(`Error al crear usuario: ${error.message}`);
-        
-        const { data: newUser, error: newUserError } = await supabase.from('usuarios').update(userData).eq('id', data.user.id).select().single();
-        if (newUserError) return alert(`Error al actualizar datos del nuevo usuario: ${newUserError.message}`);
-        savedUser = newUser;
+        // --- LÓGICA PARA CREAR NUEVO USUARIO (inseguro) ---
+        if (!passwordInput.value) {
+            return alert("La contraseña es obligatoria para nuevos usuarios.");
+        }
+        profileData.password = passwordInput.value;
+
+        const { data, error } = await supabase.from('usuarios').insert(profileData).select().single();
+
+        if (error) {
+            return alert(`Error al crear usuario: ${error.message}`);
+        }
+        savedUser = data;
     }
 
+    // --- Lógica para asignar clientes ---
     if (savedUser.role === 'operario' || savedUser.role === 'supervisor') {
         await supabase.from('operario_clientes').delete().eq('operario_id', savedUser.id);
         const selectedClientes = Array.from(document.querySelectorAll('[name="cliente"]:checked')).map(cb => cb.value);
@@ -173,24 +183,22 @@ async function handleFormSubmit(e) {
     await cargarYRenderizarUsuarios();
 }
 
+
+
+// --- Event Listeners ---
+
 document.addEventListener('DOMContentLoaded', async () => {
     await poblarSelectClientes();
     await cargarYRenderizarUsuarios();
-    resetForm(); 
-    roleSelect.dispatchEvent(new Event('change'));
-
+    
     const togglePassword = document.getElementById('togglePassword');
     togglePassword.addEventListener('click', () => {
-        const password = document.getElementById('password');
-        const icon = togglePassword.querySelector('.material-icons');
-        if (password.type === 'password') {
-            password.type = 'text';
-            icon.textContent = 'visibility_off';
-        } else {
-            password.type = 'password';
-            icon.textContent = 'visibility';
-        }
+        const isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        togglePassword.querySelector('.material-icons').textContent = isPassword ? 'visibility_off' : 'visibility';
     });
+
+    resetForm();
 });
 
 form.addEventListener('submit', handleFormSubmit);
@@ -209,24 +217,6 @@ btnLimpiarFiltros.addEventListener('click', () => {
 });
 
 listaUsuarios.addEventListener('click', async (e) => {
-    const togglePasswordButton = e.target.closest('.toggle-password-btn');
-    if (togglePasswordButton) {
-        const id = togglePasswordButton.dataset.id;
-        const user = allUsersWithClients.find(u => u.id === id);
-        if (!user) return;
-
-        const passwordSpan = togglePasswordButton.previousElementSibling;
-        const icon = togglePasswordButton.querySelector('.material-icons');
-
-        if (passwordSpan.textContent === '************') {
-            passwordSpan.textContent = user.password || 'No disponible';
-            icon.textContent = 'visibility_off';
-        } else {
-            passwordSpan.textContent = '************';
-            icon.textContent = 'visibility';
-        }
-    }
-
     const editButton = e.target.closest('.edit-btn');
     if (editButton) {
         const id = editButton.dataset.id;
@@ -244,7 +234,7 @@ listaUsuarios.addEventListener('click', async (e) => {
         document.querySelectorAll('[name="cliente"]').forEach(cb => cb.checked = false);
         const showClientes = userToEdit.role === 'operario' || userToEdit.role === 'supervisor';
         clienteCheckboxContainer.classList.toggle('hidden', !showClientes);
-        if (showClientes) {
+        if (showClientes && userToEdit.cliente_ids) {
             userToEdit.cliente_ids.forEach(clientId => {
                 const checkbox = document.querySelector(`input[name="cliente"][value="${clientId}"]`);
                 if (checkbox) checkbox.checked = true;
@@ -259,11 +249,19 @@ listaUsuarios.addEventListener('click', async (e) => {
     const deleteButton = e.target.closest('.delete-btn');
     if (deleteButton) {
         const id = deleteButton.dataset.id;
-        if (confirm('¿Está seguro de que desea eliminar este usuario?')) {
-            const { error } = await supabase.from('usuarios').delete().eq('id', id);
-            if (error) { alert(`Error al eliminar: ${error.message}`); } 
-            else {
-                await cargarYRenderizarUsuarios();
+        if (confirm('¿Está seguro de que desea eliminar este usuario? Esta acción es irreversible.')) {
+            // Eliminar usuario de Supabase Auth
+            const { error: authError } = await supabase.auth.admin.deleteUser(id);
+            if(authError && authError.message !== 'User not found') {
+                return alert(`Error al eliminar usuario de autenticación: ${authError.message}`);
+            }
+            
+            // Eliminar perfil de la tabla 'usuarios'
+            const { error: profileError } = await supabase.from('usuarios').delete().eq('id', id);
+            if (profileError) {
+                 alert(`Error al eliminar perfil: ${profileError.message}`);
+            } else {
+                 await cargarYRenderizarUsuarios();
             }
         }
     }

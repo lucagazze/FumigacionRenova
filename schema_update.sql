@@ -136,3 +136,5 @@ CREATE TABLE public.usuarios (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT usuarios_pkey PRIMARY KEY (id)
 );
+
+DROP TABLE IF EXISTS public.supervisor_clientes;

@@ -47,7 +47,12 @@ async function poblarCompaneros(clienteId) {
     if (relError || !operariosRel) return;
     
     const operarioIds = operariosRel.map(r => r.operario_id);
-    const { data, error } = await supabase.from('usuarios').select('id, nombre, apellido').in('id', operarioIds);
+    const { data, error } = await supabase
+        .from('usuarios')
+        .select('id, nombre, apellido')
+        .in('id', operarioIds)
+        .eq('role', 'operario');
+        
     if (error) return;
 
     data.forEach(c => {
@@ -68,34 +73,35 @@ async function poblarSupervisores(clienteId) {
         supervisorSelect.innerHTML = '<option value="">Error: Cliente no definido en la operación</option>';
         return;
     }
-    
-    // ===== LÍNEA DE DIAGNÓSTICO =====
-    console.log(`Buscando supervisores para el cliente con ID: ${clienteId}`);
 
-    const { data: supervisores, error } = await supabase
-        .from('supervisor_clientes')
-        .select('usuarios(id, nombre, apellido)')
+    const { data: supervisoresRel, error: relError } = await supabase
+        .from('operario_clientes')
+        .select('operario_id')
         .eq('cliente_id', clienteId);
 
-    // ===== LÍNEAS DE DIAGNÓSTICO =====
-    if (error) {
-        console.error("ERROR AL CARGAR SUPERVISORES:", error);
-        supervisorSelect.innerHTML = '<option value="">Error al cargar</option>';
+    if (relError || !supervisoresRel) {
+        supervisorSelect.innerHTML = '<option value="">Error al cargar supervisores</option>';
         return;
     }
-    console.log("Supervisores encontrados en la BD:", supervisores);
+
+    const supervisorIds = supervisoresRel.map(r => r.operario_id);
+    const { data: supervisores, error } = await supabase
+        .from('usuarios')
+        .select('id, nombre, apellido')
+        .in('id', supervisorIds)
+        .eq('role', 'supervisor');
+
+    if (error) {
+        supervisorSelect.innerHTML = '<option value="">Error al cargar supervisores</option>';
+        return;
+    }
 
     supervisorSelect.innerHTML = '<option value="">-- Seleccionar Supervisor --</option>';
     if (supervisores.length === 0) {
-        // Mensaje más claro si no se encuentra ninguno
         supervisorSelect.innerHTML = '<option value="">No hay supervisores para este cliente</option>';
-        console.warn('ADVERTENCIA: La consulta no devolvió supervisores. Verifica que el cliente tenga supervisores asignados en la tabla "supervisor_clientes".');
     } else {
-        supervisores.forEach(item => {
-            const s = item.usuarios;
-            if (s) { // Chequeo extra por si el join falla
-                supervisorSelect.innerHTML += `<option value="${s.id}">${s.nombre} ${s.apellido}</option>`;
-            }
+        supervisores.forEach(s => {
+            supervisorSelect.innerHTML += `<option value="${s.id}">${s.nombre} ${s.apellido}</option>`;
         });
     }
 }

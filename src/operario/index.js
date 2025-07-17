@@ -35,7 +35,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const operarioIds = operariosRel.map(r => r.operario_id);
 
         // 2. Obtener los datos de esos operarios
-        const { data, error } = await supabase.from('usuarios').select('id, nombre, apellido').in('id', operarioIds);
+        const { data, error } = await supabase
+            .from('usuarios')
+            .select('id, nombre, apellido')
+            .in('id', operarioIds)
+            .eq('role', 'operario');
+            
         if (error) { console.error(error); return; }
 
         data.forEach(c => {
