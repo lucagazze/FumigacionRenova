@@ -19,7 +19,6 @@ async function renderPendientes() {
         .select(`*, clientes(nombre), depositos(nombre, tipo)`)
         .in('cliente_id', user.cliente_ids)
         .eq('estado_aprobacion', 'pendiente')
-        .neq('tipo_registro', 'muestreo')
         .order('created_at', { ascending: true });
         
     if (error) {
@@ -33,23 +32,33 @@ async function renderPendientes() {
 
     container.innerHTML = operaciones.map(op => {
         const unidad = op.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';
-        let tipoRegistro, icono, colorFondo, colorBorde;
+        let tipoRegistro, icono, colorFondo, colorBorde, detalle;
 
+        // --- LÓGICA CORREGIDA AQUÍ ---
         if (op.tipo_registro === 'inicial') {
             tipoRegistro = 'Inicio de Operación';
             icono = 'flag';
             colorFondo = 'bg-blue-50';
             colorBorde = 'border-blue-300 hover:border-blue-500';
+            detalle = `<p class="text-sm ml-9">Iniciado por <b>${op.operario_nombre}</b>.</p>`;
         } else if (op.tipo_registro === 'producto') {
             tipoRegistro = 'Aplicación de Producto';
             icono = 'science';
             colorFondo = 'bg-yellow-50';
             colorBorde = 'border-yellow-300 hover:border-yellow-500';
+            detalle = `<p class="text-sm ml-9"><b>${op.operario_nombre}</b> aplicó <b>${(op.producto_usado_cantidad ?? 0).toLocaleString()} ${unidad}</b> en <b>${(op.toneladas ?? 0).toLocaleString()} tn</b>.</p>`;
+        } else if (op.tipo_registro === 'finalizacion') { // <-- AÑADIDO ESTE CASO
+            tipoRegistro = 'Finalización de Operación';
+            icono = 'check_circle';
+            colorFondo = 'bg-red-50';
+            colorBorde = 'border-red-300 hover:border-red-500';
+            detalle = `<p class="text-sm ml-9">Solicitado por <b>${op.operario_nombre}</b>.</p>`;
         } else {
-            tipoRegistro = 'Registro';
+            tipoRegistro = 'Registro'; // Caso por defecto
             icono = 'assignment';
             colorFondo = 'bg-gray-50';
             colorBorde = 'border-gray-300 hover:border-gray-500';
+            detalle = `<p class="text-sm ml-9">Registrado por <b>${op.operario_nombre}</b>.</p>`;
         }
 
         return `
@@ -62,10 +71,7 @@ async function renderPendientes() {
                     </div>
                     <p class="text-sm text-gray-500 ml-9">${new Date(op.created_at).toLocaleString('es-AR')}</p>
                     <p class="text-sm font-semibold ml-9 mt-1">${op.clientes.nombre} - Depósito ${op.depositos.nombre}</p>
-                    ${op.tipo_registro === 'producto' ? 
-                        `<p class="text-sm ml-9"><b>${op.operario_nombre}</b> aplicó <b>${(op.producto_usado_cantidad ?? 0).toLocaleString()} ${unidad}</b> en <b>${(op.toneladas ?? 0).toLocaleString()} tn</b>.</p>`
-                        : `<p class="text-sm ml-9">Iniciado por <b>${op.operario_nombre}</b>.</p>`
-                    }
+                    ${detalle}
                 </div>
                 <div class="flex items-center gap-2 text-blue-600 font-semibold">
                     <span>Revisar y Aprobar</span>

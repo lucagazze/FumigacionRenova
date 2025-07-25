@@ -5,7 +5,7 @@ import { supabase } from '../common/supabase.js';
 requireRole('operario');
 document.getElementById('header').innerHTML = renderHeader();
 
-// --- CONSTANTES Y SELECTORES (COMPLETOS) ---
+// --- CONSTANTES Y SELECTORES ---
 const DENSIDAD_LIQUIDO = 1.2;
 const tituloPagina = document.getElementById('tituloPagina');
 const unidadProducto = document.getElementById('unidadProducto');
@@ -70,7 +70,7 @@ async function poblarCompaneros(clienteId) {
 async function poblarSupervisores(clienteId) {
     supervisorSelect.innerHTML = '<option value="">Cargando...</option>';
     if (!clienteId) {
-        supervisorSelect.innerHTML = '<option value="">Error: Cliente no definido en la operación</option>';
+        supervisorSelect.innerHTML = '<option value="">Error: Cliente no definido</option>';
         return;
     }
 
@@ -80,7 +80,7 @@ async function poblarSupervisores(clienteId) {
         .eq('cliente_id', clienteId);
 
     if (relError || !supervisoresRel) {
-        supervisorSelect.innerHTML = '<option value="">Error al cargar supervisores</option>';
+        supervisorSelect.innerHTML = '<option value="">Error al cargar</option>';
         return;
     }
 
@@ -92,7 +92,7 @@ async function poblarSupervisores(clienteId) {
         .eq('role', 'supervisor');
 
     if (error) {
-        supervisorSelect.innerHTML = '<option value="">Error al cargar supervisores</option>';
+        supervisorSelect.innerHTML = '<option value="">Error al cargar</option>';
         return;
     }
 
@@ -105,7 +105,6 @@ async function poblarSupervisores(clienteId) {
         });
     }
 }
-
 
 async function setupPage() {
     const opId = localStorage.getItem('operacion_actual');
@@ -168,7 +167,7 @@ function updateCalculations() {
     resumenTotal.textContent = `${resultadoProducto.textContent} ${unidadLabel}`;
 }
 
-// --- EVENT LISTENERS (COMPLETOS) ---
+// --- EVENT LISTENERS ---
 
 document.addEventListener('DOMContentLoaded', setupPage);
 
@@ -271,7 +270,7 @@ btnRegistrar.addEventListener('click', async () => {
             tratamiento: tratamiento.value,
             modalidad: modalidad.value,
             toneladas: toneladas,
-            estado_aprobacion: 'pendiente',
+            estado_aprobacion: 'pendiente', // CORREGIDO: Siempre pendiente
             supervisor_id: supervisorId 
         }).select('id').single();
         if (insertOpError) throw insertOpError;

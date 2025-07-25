@@ -45,32 +45,28 @@ async function setupPage() {
     document.getElementById('totalProducto').textContent = totalProducto.toLocaleString() + (operacion.metodo_fumigacion === 'liquido' ? ' cm³' : ' pastillas');
 }
 
-// --- Lógica de Finalización Corregida para CREAR un registro ---
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    if (!confirm("¿Está seguro de que desea finalizar esta operación?")) {
+    if (!confirm("¿Está seguro de que desea solicitar la finalización de esta operación?")) {
         return;
     }
 
     const user = getUser();
     const observacion = document.getElementById('observacion_finalizacion').value;
 
-    // 1. Preparamos los datos para el NUEVO registro de finalización.
-    // Copiamos los IDs clave de la operación original.
     const finalizacionData = {
         operacion_original_id: operacionOriginal.id,
         cliente_id: operacionOriginal.cliente_id,
         deposito_id: operacionOriginal.deposito_id,
         mercaderia_id: operacionOriginal.mercaderia_id,
-        estado: 'finalizada', // Este registro nace como finalizado
+        estado: 'en curso', // El estado general sigue "en curso" hasta la aprobación final
         tipo_registro: 'finalizacion',
         operario_nombre: `${user.nombre} ${user.apellido}`,
         observacion_finalizacion: observacion,
-        estado_aprobacion: 'aprobado' // Las finalizaciones no requieren aprobación
+        estado_aprobacion: 'pendiente' // CORREGIDO: La finalización ahora queda pendiente
     };
 
-    // 2. Insertamos el nuevo registro de finalización en la base de datos.
     const { error: insertError } = await supabase
         .from('operaciones')
         .insert(finalizacionData);
@@ -80,29 +76,8 @@ form.addEventListener('submit', async (e) => {
         return;
     }
 
-    // 3. Si el paso anterior fue exitoso, actualizamos TODA la cadena de operaciones a 'finalizada'.
-    const { error: updateError } = await supabase
-        .from('operaciones')
-        .update({ estado: 'finalizada' })
-        .or(`id.eq.${operacionOriginal.id},operacion_original_id.eq.${operacionOriginal.id}`);
-    
-    if (updateError) {
-        // Aunque esto falle, el registro de finalización ya se creó, lo cual es lo más importante.
-        console.error("Error al actualizar el estado de la cadena de operaciones:", updateError);
-    }
-
-    // 4. (Opcional pero recomendado) Aprobamos los registros que quedaron pendientes.
-    await supabase
-        .from('operaciones')
-        .update({ 
-            estado_aprobacion: 'aprobado',
-            observacion_aprobacion: 'Aprobado automáticamente por finalización de operación.'
-        })
-        .eq('operacion_original_id', operacionOriginal.id)
-        .eq('estado_aprobacion', 'pendiente');
-
     localStorage.removeItem('operacion_actual');
-    alert('¡Operación finalizada y registrada con éxito!');
+    alert('Solicitud de finalización enviada. Queda pendiente de aprobación por un supervisor.');
     window.location.href = 'home.html';
 });
 

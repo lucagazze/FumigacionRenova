@@ -96,7 +96,9 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin, is
         });
 
         let aprobacionHtml = '';
-        if (op.tipo_registro === 'producto' || op.tipo_registro === 'inicial') {
+        // --- LA CORRECCIÓN ESTÁ AQUÍ ---
+        // Se añade 'finalizacion' a la condición para que también muestre su estado.
+        if (op.tipo_registro === 'producto' || op.tipo_registro === 'inicial' || op.tipo_registro === 'finalizacion') {
             switch(op.estado_aprobacion) {
                 case 'aprobado':
                     aprobacionHtml = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Aprobado</span>';
