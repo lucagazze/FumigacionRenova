@@ -1,44 +1,54 @@
 import { supabase } from './supabase.js';
 
 /**
- * Inicia sesión de un usuario usando el sistema de autenticación de Supabase.
- * @param {string} email - El email del usuario.
- * @param {string} password - La contraseña del usuario.
- * @returns {Promise<object>} - El objeto de sesión del usuario.
+ * Obtiene los datos del usuario actual guardados en la sesión.
+ * Esta función es la que usarán todas las páginas para saber quién está conectado.
+ */
+export function getCurrentUser() {
+  try {
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
+  } catch (e) {
+    console.error("Error al obtener el usuario de localStorage:", e);
+    return null;
+  }
+}
+
+/**
+ * Inicia sesión de un usuario usando el sistema REAL de autenticación de Supabase.
  */
 export async function login(email, password) {
-  // 1. Intenta iniciar sesión en el sistema de Auth de Supabase
   const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
     email: email,
     password: password,
   });
 
   if (loginError) {
-    throw new Error(loginError.message);
+    throw new Error('Credenciales incorrectas o el usuario no existe.');
   }
   
   if (!loginData.user) {
-    throw new Error("No se encontró el usuario. Revisa tus credenciales.");
+    throw new Error("No se pudo verificar el usuario. Inténtalo de nuevo.");
   }
 
-  // 2. Una vez autenticado, busca el rol del usuario en tu tabla 'usuarios'
   const { data: userData, error: userError } = await supabase
     .from('usuarios')
-    .select('role')
+    .select('role, nombre, apellido, cliente_ids: operario_clientes (cliente_id)')
     .eq('id', loginData.user.id)
     .single();
   
   if (userError) {
-    // Si hay un error, cerramos la sesión para evitar inconsistencias
     await supabase.auth.signOut();
-    throw new Error('No se pudo encontrar el perfil del usuario en la base de datos.');
+    throw new Error('El perfil del usuario no fue encontrado en la base de datos.');
   }
 
-  // 3. Guardamos la información esencial en el almacenamiento local
   const userToStore = {
     email: loginData.user.email,
     id: loginData.user.id,
-    role: userData.role, // ¡Guardamos el rol!
+    nombre: userData.nombre,
+    apellido: userData.apellido,
+    role: userData.role,
+    cliente_ids: userData.cliente_ids.map(c => c.cliente_id)
   };
   localStorage.setItem('user', JSON.stringify(userToStore));
   
@@ -51,5 +61,5 @@ export async function login(email, password) {
 export async function logout() {
   await supabase.auth.signOut();
   localStorage.removeItem('user');
-  window.location.href = '/src/login/login.html';
+  window.location.href = '/index.html';
 }

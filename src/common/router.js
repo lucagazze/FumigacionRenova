@@ -1,26 +1,32 @@
-// src/common/router.js
-import { supabase } from './supabase.js';
-import { getCurrentUser } from './auth.js'; // Import the new function
+import { getCurrentUser } from './auth.js';
 
+/**
+ * Redirige a otra página de la aplicación.
+ * @param {string} url - La URL a la que se quiere navegar.
+ */
 export function goTo(url) {
   window.location.href = url;
 }
 
-export async function requireRole(requiredRole) {
-  const user = await getCurrentUser();
+/**
+ * Protege una página para que solo sea accesible por un rol específico.
+ * Si el usuario no tiene el rol correcto, lo redirige al login.
+ * @param {string} requiredRole - El rol requerido ('admin', 'supervisor', 'operario').
+ */
+export function requireRole(requiredRole) {
+  const user = getCurrentUser();
+  
+  // Si no hay usuario o el rol no coincide, lo enviamos al login.
   if (!user || user.role !== requiredRole) {
-    goTo('../login/login.html');
+    // Redirige a la página de login en la raíz del proyecto.
+    goTo('/index.html');
   }
 }
 
+/**
+ * Devuelve el objeto del usuario guardado en localStorage.
+ * Es un alias para getCurrentUser para mantener consistencia.
+ */
 export function getUser() {
-  // This function now primarily reads from localStorage,
-  // but for real-time validation, `getCurrentUser` should be preferred
-  // especially on page load or critical actions.
-  try {
-    return JSON.parse(localStorage.getItem('user'));
-  } catch (e) {
-    console.error("Error parsing user from localStorage:", e);
-    return null;
-  }
+  return getCurrentUser();
 }

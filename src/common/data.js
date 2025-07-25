@@ -4,8 +4,7 @@ export async function getOperaciones() {
   const { data, error } = await supabase
     .from('operaciones')
     .select(`
-      *,
-      eliminado, 
+      *, 
       clientes(nombre), 
       depositos(
         nombre, 
@@ -26,13 +25,13 @@ export async function getOperaciones() {
 }
 
 export async function renderOperaciones(container, operaciones, isAdmin = false, isSupervisor = false) {
-  const operacionesSinMuestreos = operaciones.filter(op => op.tipo_registro !== 'muestreo');
-  if (!operacionesSinMuestreos || operacionesSinMuestreos.length === 0) {
-      container.innerHTML = '<p class="text-center p-8 text-gray-500">No se encontraron operaciones.</p>';
-      return;
-  }
+    const operacionesSinMuestreos = operaciones.filter(op => op.tipo_registro !== 'muestreo');
+    if (!operacionesSinMuestreos || operacionesSinMuestreos.length === 0) {
+        container.innerHTML = '<p class="text-center p-8 text-gray-500">No se encontraron operaciones.</p>';
+        return;
+    }
   
-  await renderOperacionesDesplegables(container, operacionesSinMuestreos, isAdmin, isSupervisor);
+    await renderOperacionesDesplegables(container, operacionesSinMuestreos, isAdmin, isSupervisor);
 }
 
 async function renderOperacionesDesplegables(container, operaciones, isAdmin, isSupervisor) {
@@ -111,7 +110,6 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin, is
             }
         }
         
-        // ⭐ Lógica para tachar la fila si está rechazada
         let rowClass = 'cursor-pointer hover:bg-gray-50 border-b';
         if (op.estado_aprobacion === 'rechazado') {
             rowClass += ' line-through text-gray-400';
