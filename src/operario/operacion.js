@@ -9,7 +9,7 @@ document.getElementById('header').innerHTML = renderHeader();
 const btnChecklist = document.getElementById('btnChecklist');
 const btnProducto = document.getElementById('btnProducto');
 const btnMuestreo = document.getElementById('btnMuestreo');
-const btnEnviar = document.getElementById('btnEnviar');
+// Se elimina btnEnviar
 const btnVolver = document.getElementById('btnVolver');
 const btnCancelar = document.getElementById('btnCancelar');
 
@@ -42,21 +42,18 @@ async function renderOperacion() {
         return;
     }
 
-    // Renderizar detalles de la operación
     document.getElementById('cliente').textContent = op.clientes?.nombre || '---';
     const depositoInfo = op.depositos ? `${op.depositos.tipo.charAt(0).toUpperCase() + op.depositos.tipo.slice(1)} ${op.depositos.nombre}` : '---';
     document.getElementById('ubicacion').textContent = depositoInfo;
     document.getElementById('fecha').textContent = new Date(op.created_at).toLocaleString('es-AR');
     document.getElementById('mercaderia').textContent = op.mercaderias?.nombre || '---';
 
-    // Lógica del Checklist y la Barra de Progreso
     const checklist = op.checklist_items || [];
     const completados = checklist.filter(i => i.completado).length;
     const totalItems = checklist.length || 4;
     const porcentaje = totalItems > 0 ? (completados / totalItems) * 100 : 0;
     const checklistCompleto = completados === totalItems && totalItems > 0;
 
-    // Actualizar UI de progreso
     progressBar.value = porcentaje;
     progressText.textContent = `${completados}/${totalItems}`;
 
@@ -68,13 +65,11 @@ async function renderOperacion() {
         progressLabel.classList.remove('text-green-600', 'font-bold');
     }
 
-    // Habilitar/deshabilitar botones según el progreso del checklist
     btnProducto.disabled = !checklistCompleto;
     btnMuestreo.disabled = !checklistCompleto;
-    btnEnviar.disabled = !checklistCompleto;
+    // Se elimina la lógica de btnEnviar.disabled
     
-    // Ocultar botón de cancelar si ya hay acciones registradas
-    const { data: historialAcciones, count } = await supabase
+    const { count } = await supabase
       .from('operaciones')
       .select('id', { count: 'exact' })
       .eq('operacion_original_id', op.id)
@@ -90,15 +85,12 @@ async function renderOperacion() {
 
 async function handleCancelarOperacion() {
     if (!confirm("¿Está seguro de que desea cancelar esta operación? Todos los datos se eliminarán permanentemente.")) return;
-
     const op = await getOperacionActual();
     if (!op) return;
 
     const { error } = await supabase.from('operaciones').delete().eq('id', op.id);
-
     if (error) {
         alert("Error al cancelar la operación. Por favor, inténtelo de nuevo.");
-        console.error("Error deleting operation:", error);
     } else {
         localStorage.removeItem('operacion_actual');
         alert("La operación ha sido cancelada correctamente.");
@@ -110,7 +102,7 @@ async function handleCancelarOperacion() {
 btnChecklist.addEventListener('click', () => { window.location.href = 'checklist.html'; });
 btnProducto.addEventListener('click', () => { window.location.href = 'producto.html'; });
 btnMuestreo.addEventListener('click', () => { window.location.href = 'muestreo.html'; });
-btnEnviar.addEventListener('click', () => { window.location.href = 'finalizar.html'; });
+// Se elimina el listener de btnEnviar
 btnVolver.addEventListener('click', () => { window.location.href = 'home.html'; });
 btnCancelar.addEventListener('click', handleCancelarOperacion);
 
