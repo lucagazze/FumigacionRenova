@@ -39,8 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const opBaseData = allRecords.find(r => r.id === originalId) || allRecords[0];
 
-    // Obtener la última limpieza del depósito
-    const { data: limpiezaData, error: limpiezaError } = await supabase
+    const { data: limpiezaData } = await supabase
         .from('limpiezas')
         .select('fecha_limpieza, fecha_garantia_limpieza')
         .eq('deposito_id', opBaseData.deposito_id)
@@ -60,8 +59,10 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
     let totalProducto = 0;
     let totalToneladas = 0;
     allRecords.forEach(r => {
-        totalToneladas += (r.toneladas || 0);
-        totalProducto += (r.producto_usado_cantidad || 0);
+        if(r.estado_aprobacion !== 'rechazado') {
+            totalToneladas += (r.toneladas || 0);
+            totalProducto += (r.producto_usado_cantidad || 0);
+        }
     });
 
     const unidadLabel = opBase.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';
@@ -84,13 +85,7 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
         hoy.setHours(0, 0, 0, 0);
         const estaVigente = fechaGarantia >= hoy;
         const colorClass = estaVigente ? 'text-green-600' : 'text-red-600';
-        limpiezaHtml = `
-            <div>
-                <strong>Vigencia Limpieza:</strong><br>
-                <span class="font-semibold ${colorClass}">
-                    ${fechaGarantia.toLocaleDateString('es-AR')}
-                </span>
-            </div>`;
+        limpiezaHtml = `<div><strong>Vigencia Limpieza:</strong><br><span class="font-semibold ${colorClass}">${fechaGarantia.toLocaleDateString('es-AR')}</span></div>`;
     }
 
     // Lógica para el plazo de la garantía de fumigación (solo para operaciones en curso)
@@ -99,54 +94,27 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
         const fechaInicio = new Date(opBase.created_at);
         const fechaLimite = new Date(fechaInicio);
         fechaLimite.setDate(fechaLimite.getDate() + 5);
-        
         const hoy = new Date();
-        const diffTime = fechaLimite.getTime() - hoy.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const diffDays = Math.ceil((fechaLimite - hoy) / (1000 * 60 * 60 * 24));
 
         if (diffDays > 0) {
-            plazoHtml = `
-                <div>
-                    <strong>Plazo Garantía:</strong><br>
-                    <span class="font-semibold text-orange-500">
-                        ${diffDays} día(s) restante(s)
-                    </span>
-                </div>`;
+            plazoHtml = `<div><strong>Plazo Garantía:</strong><br><span class="font-semibold text-orange-500">${diffDays} día(s) restante(s)</span></div>`;
         } else {
-            plazoHtml = `
-                <div>
-                    <strong>Plazo Garantía:</strong><br>
-                    <span class="font-semibold text-red-600">
-                        Vencido
-                    </span>
-                </div>`;
+            plazoHtml = `<div><strong>Plazo Garantía:</strong><br><span class="font-semibold text-red-600">Vencido</span></div>`;
         }
     }
 
-    // Lógica para el estado final de la garantía (solo para operaciones finalizadas)
+    // ===== LÓGICA DE GARANTÍA UNIFICADA Y CORREGIDA =====
+    // Esta lógica ahora es idéntica a la de historial.js
     let garantiaHtml = '';
-    if (opBase.estado === 'finalizada' && registroFinal) {
-        const fechaInicio = new Date(opBase.created_at);
-        const fechaFin = new Date(registroFinal.created_at);
-        
-        const duracionDias = (fechaFin - fechaInicio) / (1000 * 60 * 60 * 24);
-        const cumplePlazo = duracionDias <= 5;
-
-        let cumpleLimpieza = false;
-        if (limpieza && limpieza.fecha_garantia_limpieza) {
-            const fechaVencLimpieza = new Date(limpieza.fecha_garantia_limpieza + 'T00:00:00');
-            if (fechaFin <= fechaVencLimpieza) {
-                cumpleLimpieza = true;
-            }
-        }
-
-        if (cumplePlazo && cumpleLimpieza) {
+    if (opBase.estado === 'finalizada') {
+        if (opBase.con_garantia && opBase.fecha_vencimiento_garantia) {
             const hoy = new Date();
             hoy.setHours(0, 0, 0, 0);
-            const fechaVencimientoGarantia = new Date(fechaFin);
-            fechaVencimientoGarantia.setDate(fechaVencimientoGarantia.getDate() + 40);
+            const vencimiento = new Date(opBase.fecha_vencimiento_garantia + 'T00:00:00');
+            const vencimientoStr = vencimiento.toLocaleDateString('es-AR');
             
-            if (fechaVencimientoGarantia >= hoy) {
+            if (vencimiento >= hoy) {
                 garantiaHtml = `<div><strong>Garantía:</strong><br><span class="font-semibold text-green-600 flex items-center gap-1"><span class="material-icons text-base">check_circle</span>Vigente</span></div>`;
             } else {
                 garantiaHtml = `<div><strong>Garantía:</strong><br><span class="font-semibold text-yellow-600 flex items-center gap-1"><span class="material-icons text-base">warning</span>Vencida</span></div>`;
@@ -188,48 +156,29 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
                 ${allRecords.map(registro => {
                     let detalle = '';
                     let actionButtons = '';
-                    let extraClasses = '';
-                    let dataAttributes = '';
-                    const editableTypes = ['producto', 'inicial'];
-                    
                     const isRechazado = registro.estado_aprobacion === 'rechazado';
                     const itemClass = isRechazado ? 'line-through text-gray-400' : '';
 
-                    if (editableTypes.includes(registro.tipo_registro)) {
-                         actionButtons += `<button class="btn-edit-registro p-1" data-registro-id="${registro.id}" title="Editar este registro"><span class="material-icons text-blue-500 hover:text-blue-700">edit</span></button>`;
+                    if (['producto', 'inicial'].includes(registro.tipo_registro)) {
+                         actionButtons += `<button class="btn-edit-registro p-1" data-registro-id="${registro.id}" title="Editar"><span class="material-icons text-blue-500 hover:text-blue-700">edit</span></button>`;
                     }
-
-                    // Botón de eliminar para CUALQUIER registro que no sea el INICIAL
                     if (registro.tipo_registro !== 'inicial') {
-                        actionButtons += `<button class="btn-delete-registro p-1" data-registro-id="${registro.id}" title="Eliminar este registro"><span class="material-icons text-red-500 hover:text-red-700">delete</span></button>`;
+                        actionButtons += `<button class="btn-delete-registro p-1" data-registro-id="${registro.id}" title="Eliminar"><span class="material-icons text-red-500 hover:text-red-700">delete</span></button>`;
                     }
-
                     if (registro.observacion_aprobacion) {
                         actionButtons += `<button class="btn-show-observacion p-1" data-observacion="${registro.observacion_aprobacion}" title="Ver observación"><span class="material-icons text-yellow-500 hover:text-yellow-700">comment</span></button>`;
                     }
 
                     switch(registro.tipo_registro) {
-                        case 'inicial': 
-                            detalle = `Operación iniciada por <b>${registro.operario_nombre}</b>.`; 
-                            break;
-                        case 'producto': 
-                            const tratamientoProducto = registro.tratamiento ? `(${registro.tratamiento})` : '';
-                            detalle = `<b>${registro.operario_nombre}</b> aplicó <b>${registro.producto_usado_cantidad?.toLocaleString() || 0} ${unidadLabel}</b> en ${registro.toneladas?.toLocaleString() || 0} tn. <span class="font-semibold">${tratamientoProducto}</span>`;
-                            break;
-                        case 'muestreo':
-                            detalle = `<b>${registro.operario_nombre}</b> registró un muestreo. <span class="text-blue-600 font-semibold underline">Ver detalles</span>`;
-                            extraClasses = 'cursor-pointer hover:bg-gray-100';
-                            dataAttributes = `data-muestreo-op-id="${registro.id}"`;
-                            break;
-                        case 'finalizacion': 
-                            detalle = `Operación finalizada por <b>${registro.operario_nombre}</b>.`; 
-                            break;
+                        case 'inicial': detalle = `Operación iniciada por <b>${registro.operario_nombre}</b>.`; break;
+                        case 'producto': detalle = `<b>${registro.operario_nombre}</b> aplicó <b>${registro.producto_usado_cantidad?.toLocaleString() || 0} ${unidadLabel}</b> en ${registro.toneladas?.toLocaleString() || 0} tn.`; break;
+                        case 'muestreo': detalle = `<b>${registro.operario_nombre}</b> registró un muestreo.`; break;
+                        case 'finalizacion': detalle = `Operación finalizada por <b>${registro.operario_nombre_finalizacion || registro.operario_nombre}</b>.`; break;
                     }
-
                     const rechazoLabel = isRechazado ? ` <b class="text-red-500 no-underline">(RECHAZADO)</b>` : '';
 
-                    return `<div class="flex items-center justify-between text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm ${extraClasses} ${itemClass}" ${dataAttributes}>
-                                <div><b>${new Date(registro.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}:</b> ${detalle}${rechazoLabel}</div>
+                    return `<div class="flex items-center justify-between text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm ${itemClass}" data-muestreo-op-id="${registro.id}">
+                                <div><b>${new Date(registro.created_at).toLocaleString('es-AR')}:</b> ${detalle}${rechazoLabel}</div>
                                 <div class="flex-shrink-0 ml-4 flex items-center gap-2">${actionButtons}</div>
                             </div>`;
                 }).join('')}
@@ -266,7 +215,6 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
             const registroId = deleteTarget.dataset.registroId;
             const registro = allRecords.find(r => r.id === registroId);
             if(registro) {
-                // Si es un registro de finalización, tiene un tratamiento especial
                 if (registro.tipo_registro === 'finalizacion') {
                     await revertirFinalizacion(registro);
                 } else {
@@ -275,7 +223,7 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
             }
         } else if (deleteOpTarget) {
             await eliminarOperacionCompleta(opBase.id);
-        } else if (muestreoTarget) {
+        } else if (muestreoTarget && muestreoTarget.querySelector('.text-blue-600')) {
             const muestreoData = allRecords.find(r => r.id === muestreoTarget.dataset.muestreoOpId)?.muestreos?.[0];
             if (muestreoData) renderMuestreoModal(muestreoData);
         } else if (obsBtn) {
@@ -289,28 +237,18 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
 
 async function revertirFinalizacion(registroFinal) {
     if (!confirm('¿Está seguro? La operación volverá al estado "en curso" y podrá continuar registrando acciones.')) return;
-    
     try {
-        // 1. Eliminar el registro de finalización
-        const { error: deleteError } = await supabase.from('operaciones').delete().eq('id', registroFinal.id);
-        if (deleteError) throw deleteError;
-
-        // 2. Actualizar el estado de todos los registros de la operación a "en curso"
-        const operacionOriginalId = registroFinal.operacion_original_id;
-        const { error: updateError } = await supabase
+        await supabase.from('operaciones').delete().eq('id', registroFinal.id);
+        await supabase
             .from('operaciones')
-            .update({ estado: 'en curso' })
-            .or(`id.eq.${operacionOriginalId},operacion_original_id.eq.${operacionOriginalId}`);
-        if (updateError) throw updateError;
-        
+            .update({ estado: 'en curso', con_garantia: false, fecha_vencimiento_garantia: null })
+            .or(`id.eq.${registroFinal.operacion_original_id},operacion_original_id.eq.${registroFinal.operacion_original_id}`);
         alert('Operación revertida a "en curso" con éxito.');
         location.reload();
-
     } catch(error) {
         alert('ERROR al revertir la finalización: ' + error.message);
     }
 }
-
 
 async function eliminarRegistro(registro) {
     if (!confirm('¿SEGURO que desea eliminar este registro? El stock asociado será restaurado. Esta acción es irreversible.')) return;
@@ -325,13 +263,9 @@ async function eliminarRegistro(registro) {
                 await supabase.storage.from('muestreos-media').remove(filePaths);
             }
         }
-
-        const { error } = await supabase.from('operaciones').delete().eq('id', registro.id);
-        if (error) throw error;
-        
+        await supabase.from('operaciones').delete().eq('id', registro.id);
         alert('Registro eliminado y stock restaurado.');
         location.reload();
-
     } catch (error) {
         alert('ERROR al eliminar: ' + error.message);
     }
@@ -495,40 +429,80 @@ async function ajustarStock(registro, diferencia) {
     });
 }
 
+// ===== FUNCIÓN ELIMINAR OPERACIÓN CORREGIDA =====
 async function eliminarOperacionCompleta(originalId) {
-    if (!confirm('¿SEGURO? Se eliminará toda la operación y se RESTAURARÁ el stock. Esta acción es irreversible.')) return;
+    if (!confirm('¿SEGURO? Se eliminará toda la operación (incluyendo su historial) y se RESTAURARÁ el stock utilizado. Esta acción es irreversible.')) return;
+    
     try {
-        const { data: records, error } = await supabase.from('operaciones').select('id').or(`id.eq.${originalId},operacion_original_id.eq.${originalId}`);
-        if (error) throw error;
+        // 1. Encontrar todos los registros de la operación a eliminar.
+        const { data: records, error: recordsError } = await supabase
+            .from('operaciones')
+            .select('id')
+            .or(`id.eq.${originalId},operacion_original_id.eq.${originalId}`);
+        if (recordsError) throw recordsError;
+        
         const recordIds = records.map(r => r.id);
-        const { data: history, error: historyErr } = await supabase.from('historial_stock').select('*').in('operacion_id', recordIds);
+
+        // 2. Encontrar todos los movimientos de stock asociados a esos registros.
+        const { data: history, error: historyErr } = await supabase
+            .from('historial_stock')
+            .select('*')
+            .in('operacion_id', recordIds);
         if (historyErr) throw historyErr;
 
+        // 3. Calcular el total de stock a restaurar por depósito y tipo de producto.
         const stockToRestore = {};
         for (const rec of history) {
             const key = `${rec.deposito}_${rec.tipo_producto}`;
-            if (!stockToRestore[key]) stockToRestore[key] = { kg: 0, unidades: 0 };
-            const factor = rec.tipo_movimiento.includes('extraccion') || rec.tipo_movimiento.includes('uso') ? 1 : -1;
+            if (!stockToRestore[key]) {
+                stockToRestore[key] = { kg: 0, unidades: 0 };
+            }
+            // Si fue un 'uso' o 'extraccion', lo sumamos para devolverlo. Si fue una 'adicion', lo restamos.
+            const factor = rec.tipo_movimiento.includes('uso') || rec.tipo_movimiento.includes('extraccion') ? 1 : -1;
             stockToRestore[key].kg += (rec.cantidad_kg_movido || 0) * factor;
             stockToRestore[key].unidades += (rec.cantidad_unidades_movidas || 0) * factor;
         }
 
+        // 4. Actualizar la tabla de stock con los valores restaurados.
         for (const key in stockToRestore) {
             const [deposito, tipo_producto] = key.split('_');
             const { kg, unidades } = stockToRestore[key];
-            const { data: currentStock, error: fetchErr } = await supabase.from('stock').select('*').eq('deposito', deposito).eq('tipo_producto', tipo_producto).single();
-            if (fetchErr) continue;
+
+            // Obtenemos el stock actual para sumarle lo que devolvemos.
+            const { data: currentStock, error: fetchErr } = await supabase
+                .from('stock')
+                .select('*')
+                .eq('deposito', deposito)
+                .eq('tipo_producto', tipo_producto)
+                .single();
+
+            if (fetchErr) {
+                console.warn(`No se encontró stock para ${key}, omitiendo restauración.`);
+                continue; // Si no hay stock, no podemos restaurar nada.
+            }
+            
             await supabase.from('stock').update({
                 cantidad_kg: (currentStock.cantidad_kg || 0) + kg,
                 cantidad_unidades: (currentStock.cantidad_unidades || 0) + unidades
             }).eq('id', currentStock.id);
         }
 
+        // 5. Finalmente, eliminar la operación original. 
+        // Si configuraste el ON DELETE CASCADE, esto eliminará en cascada todos los registros hijos.
         const { error: deleteOpError } = await supabase.from('operaciones').delete().eq('id', originalId);
         if (deleteOpError) throw deleteOpError;
-        alert('Operación eliminada y stock restaurado.');
+
+        alert('Operación eliminada y stock restaurado correctamente.');
         window.location.href = 'dashboard.html';
+
     } catch (error) {
-        alert('ERROR: ' + error.message);
+        alert('ERROR al eliminar la operación: ' + error.message);
+        console.error("Error en eliminarOperacionCompleta:", error);
     }
 }
+
+
+
+
+
+

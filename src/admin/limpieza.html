@@ -24,18 +24,31 @@
         <div class="bg-white p-6 rounded-xl shadow-lg">
           <h2 class="text-xl font-semibold mb-4">Añadir Nuevo Registro</h2>
           <form id="formLimpieza" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            
+            <div>
+              <label for="clienteSelect" class="label-text">Cliente</label>
+              <select id="clienteSelect" class="input-field" required>
+                <option value="">Cargando clientes...</option>
+              </select>
+            </div>
+
             <div>
               <label for="depositoSelect" class="label-text">Depósito (Silo/Celda)</label>
-              <select id="depositoSelect" class="input-field" required></select>
+              <select id="depositoSelect" class="input-field" required disabled>
+                <option value="">Seleccione un cliente primero</option>
+              </select>
             </div>
-            <div>
+
+            <div class="md:col-span-2">
               <label for="fecha" class="label-text">Fecha de Limpieza</label>
               <input type="date" id="fecha" class="input-field" required>
             </div>
+            
             <div class="md:col-span-2">
               <label for="observaciones" class="label-text">Observaciones</label>
               <textarea id="observaciones" class="input-field min-h-[80px]" placeholder="Ej: Se encontraron insectos vivos (IV)"></textarea>
             </div>
+
             <div class="md:col-span-2 flex justify-end">
               <button type="submit" class="btn-primary w-full md:w-auto py-3 rounded-lg">Guardar Registro</button>
             </div>

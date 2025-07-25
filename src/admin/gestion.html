@@ -8,12 +8,12 @@
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
 </head>
-<body class="bg-[var(--background-color)] text-[var(--text-primary)]">
+<body class="bg-gray-50 text-gray-800">
   <div class="relative flex min-h-screen flex-col overflow-x-hidden">
     <header id="header"></header>
     <main class="flex-1 px-2 sm:px-4 md:px-10 lg:px-20 xl:px-40 py-4 sm:py-8">
       <div class="w-full max-w-7xl mx-auto">
-        <h1 class="text-3xl sm:text-4xl font-bold text-black mb-6">Gestión de Datos</h1>
+        <h1 class="text-3xl sm:text-4xl font-bold text-black mb-6">Gestión de Datos Maestros</h1>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           
           <div class="bg-white p-6 rounded-xl shadow-lg">
@@ -35,33 +35,37 @@
           </div>
 
           <div class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-xl font-semibold mb-4">Áreas (Silos/Celdas)</h2>
-            <form id="formArea" class="space-y-4 mb-4">
-              <input type="text" id="nombreArea" placeholder="Nombre del área" class="input-field w-full" required>
-              <select id="tipoArea" class="input-field w-full">
-                <option value="silo">Silo</option>
-                <option value="celda">Celda</option>
-              </select>
-              <button type="submit" class="btn-primary w-full">Añadir</button>
-            </form>
-            <div id="listaAreas" class="space-y-2"></div>
-          </div>
+            <h2 class="text-xl font-semibold mb-4">Depósitos (Silos/Celdas)</h2>
+            <form id="formDeposito" class="space-y-4 mb-4">
+              
+              <div>
+                <label for="depositoClienteSelect" class="block text-sm font-medium mb-1 text-gray-600">Cliente al que pertenece</label>
+                <select id="depositoClienteSelect" class="input-field w-full" required>
+                  <option value="">Cargando clientes...</option>
+                </select>
+              </div>
 
-          <div class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-xl font-semibold mb-4">Usuarios</h2>
-            <form id="formUsuario" class="space-y-4 mb-4">
-              <input type="text" id="nombreUsuario" placeholder="Nombre" class="input-field w-full" required>
-              <input type="text" id="apellidoUsuario" placeholder="Apellido" class="input-field w-full" required>
-              <input type="email" id="emailUsuario" placeholder="Email" class="input-field w-full" required>
-              <input type="password" id="passwordUsuario" placeholder="Contraseña" class="input-field w-full" required>
-              <select id="rolUsuario" class="input-field w-full">
-                <option value="operario">Operario</option>
-                <option value="supervisor">Supervisor</option>
-                <option value="admin">Admin</option>
-              </select>
-              <button type="submit" class="btn-primary w-full">Añadir Usuario</button>
+              <div>
+                <label for="nombreDeposito" class="block text-sm font-medium mb-1 text-gray-600">Nombre del Depósito</label>
+                <input type="text" id="nombreDeposito" placeholder="Ej: 301" class="input-field w-full" required>
+              </div>
+              
+              <div>
+                <label for="tipoDeposito" class="block text-sm font-medium mb-1 text-gray-600">Tipo</label>
+                <select id="tipoDeposito" class="input-field w-full">
+                  <option value="silo">Silo</option>
+                  <option value="celda">Celda</option>
+                </select>
+              </div>
+
+               <div>
+                <label for="capacidadDeposito" class="block text-sm font-medium mb-1 text-gray-600">Capacidad (Toneladas)</label>
+                <input type="number" id="capacidadDeposito" placeholder="Ej: 13500" class="input-field w-full">
+              </div>
+
+              <button type="submit" class="btn-primary w-full !py-3 !rounded-lg">Añadir Depósito</button>
             </form>
-            <div id="listaUsuarios" class="space-y-2"></div>
+            <div id="listaDepositos" class="space-y-2"></div>
           </div>
 
         </div>

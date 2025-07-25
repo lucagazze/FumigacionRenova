@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderFinishedOperations();
     });
     
-    renderFinishedOperations();
+    await renderFinishedOperations();
 
     filterForm.addEventListener('change', renderFinishedOperations);
     filterForm.addEventListener('reset', () => {
@@ -69,15 +69,10 @@ async function renderFinishedOperations() {
     const sortOrder = document.getElementById('sort-order').value;
     const dateRangeInput = $('#filter-fecha');
     const dateRange = dateRangeInput.data('daterangepicker');
-    let fechaDesde = null;
-    let fechaHasta = null;
+    let fechaDesde = dateRange.startDate?.isValid() ? dateRange.startDate.format('YYYY-MM-DD') : null;
+    let fechaHasta = dateRange.endDate?.isValid() ? dateRange.endDate.format('YYYY-MM-DD') : null;
 
-    if (dateRangeInput.val()) {
-        fechaDesde = dateRange.startDate && dateRange.startDate.isValid() ? dateRange.startDate.format('YYYY-MM-DD') : null;
-        fechaHasta = dateRange.endDate && dateRange.endDate.isValid() ? dateRange.endDate.format('YYYY-MM-DD') : null;
-    }
-
-    // 1. Obtener todos los datos necesarios en paralelo para mayor eficiencia.
+    // 1. Obtener todos los datos necesarios en paralelo para el cálculo de garantías.
     const [
         { data: finalizadasIniciales, error: opsError },
         { data: todasLasLimpiezas, error: limpiezasError },
@@ -89,71 +84,57 @@ async function renderFinishedOperations() {
     ]);
 
     if (opsError || limpiezasError || finalesError) {
-        console.error("Error al obtener datos para la actualización:", opsError || limpiezasError || finalesError);
         container.innerHTML = '<p class="text-red-500 text-center p-4 col-span-full">Error al cargar datos para la actualización.</p>';
         return;
     }
 
-    const updates = [];
-    const limpiezasMap = new Map();
-    // Optimizar la búsqueda de la última limpieza por depósito
-    for (const limpieza of todasLasLimpiezas) {
-        if (!limpiezasMap.has(limpieza.deposito_id)) {
-            limpiezasMap.set(limpieza.deposito_id, limpieza.fecha_garantia_limpieza);
-        }
-    }
-
-    // 2. Procesar cada operación finalizada para verificar su garantía.
-    for (const op of finalizadasIniciales) {
-        const registroFinal = todosLosFinales.find(f => f.operacion_original_id === op.id);
-        if (!registroFinal) continue; // Omitir si no tiene registro de finalización
-
-        // Condición 1: Duración de la operación
-        const fechaInicio = new Date(op.created_at);
-        const fechaFin = new Date(registroFinal.created_at);
-        const duracionDias = (fechaFin - fechaInicio) / (1000 * 60 * 60 * 24);
-        const cumplePlazo = duracionDias <= 5;
-
-        // Condición 2: Vigencia de la limpieza del depósito
-        const fechaGarantiaLimpieza = limpiezasMap.get(op.deposito_id);
-        let cumpleLimpieza = false;
-        if (fechaGarantiaLimpieza) {
-            const fechaVencLimpieza = new Date(fechaGarantiaLimpieza + 'T00:00:00');
-            if (fechaFin <= fechaVencLimpieza) {
-                cumpleLimpieza = true;
+    // 2. Procesar y actualizar las garantías en la base de datos si es necesario.
+    if (finalizadasIniciales) {
+        const updates = [];
+        const limpiezasMap = new Map();
+        if (todasLasLimpiezas) {
+            for (const limpieza of todasLasLimpiezas) {
+                if (!limpiezasMap.has(limpieza.deposito_id)) {
+                    limpiezasMap.set(limpieza.deposito_id, limpieza.fecha_garantia_limpieza);
+                }
             }
         }
-
-        // Determinar el nuevo estado de la garantía
-        let con_garantia = false;
-        let fecha_vencimiento_garantia = null;
-        if (cumplePlazo && cumpleLimpieza) {
-            con_garantia = true;
-            let vencimiento = new Date(fechaFin);
-            vencimiento.setDate(vencimiento.getDate() + 40);
-            fecha_vencimiento_garantia = vencimiento.toISOString().split('T')[0];
+    
+        for (const op of finalizadasIniciales) {
+            const registroFinal = todosLosFinales.find(f => f.operacion_original_id === op.id);
+            if (!registroFinal) continue;
+    
+            const fechaFin = new Date(registroFinal.created_at);
+            const duracionDias = (fechaFin - new Date(op.created_at)) / (1000 * 60 * 60 * 24);
+            const cumplePlazo = duracionDias <= 5;
+    
+            let cumpleLimpieza = false;
+            const fechaGarantiaLimpieza = limpiezasMap.get(op.deposito_id);
+            if (fechaGarantiaLimpieza) {
+                if (fechaFin <= new Date(fechaGarantiaLimpieza + 'T00:00:00')) cumpleLimpieza = true;
+            }
+    
+            const con_garantia = cumplePlazo && cumpleLimpieza;
+            let fecha_vencimiento_garantia = null;
+            if (con_garantia) {
+                let vencimiento = new Date(fechaFin);
+                vencimiento.setDate(vencimiento.getDate() + 40);
+                fecha_vencimiento_garantia = vencimiento.toISOString().split('T')[0];
+            }
+    
+            if (op.con_garantia !== con_garantia || op.fecha_vencimiento_garantia !== fecha_vencimiento_garantia) {
+                updates.push(
+                    supabase.from('operaciones').update({ con_garantia, fecha_vencimiento_garantia }).match({ id: op.id })
+                );
+            }
         }
-
-        // Si el estado de la garantía ha cambiado, se prepara una actualización.
-        if (op.con_garantia !== con_garantia || op.fecha_vencimiento_garantia !== fecha_vencimiento_garantia) {
-            updates.push(
-                supabase
-                    .from('operaciones')
-                    .update({ con_garantia, fecha_vencimiento_garantia })
-                    .or(`id.eq.${op.id},operacion_original_id.eq.${op.id}`)
-            );
-        }
-    }
-
-    // 3. Ejecutar todas las actualizaciones necesarias.
-    if (updates.length > 0) {
-        await Promise.all(updates);
+        if (updates.length > 0) await Promise.all(updates);
     }
     
-    // 4. Obtener los datos actualizados para mostrar en la página.
+    // 3. Obtener los datos ya actualizados para mostrar en la página.
     let query = supabase
         .from('operaciones')
-        .select('id, created_at, updated_at, con_garantia, fecha_vencimiento_garantia, cliente_id, deposito_id, clientes(nombre), depositos(nombre, tipo), mercaderias(nombre)')
+        .select('*, clientes(nombre), depositos(nombre, tipo)')
         .eq('estado', 'finalizada')
         .eq('tipo_registro', 'inicial');
     
@@ -161,80 +142,69 @@ async function renderFinishedOperations() {
     if (fechaHasta) query = query.lte('created_at', `${fechaHasta}T23:59:59`);
     
     const { data: operations, error } = await query;
-
     if (error) {
-        console.error("Error al obtener operaciones finalizadas:", error);
-        container.innerHTML = '<p class="text-red-500 text-center p-4 col-span-full">Error al cargar el historial.</p>';
+        container.innerHTML = `<p class="text-red-500 text-center p-4 col-span-full">Error al cargar el historial.</p>`;
         return;
     }
 
+    const { data: allMercaderias } = await supabase.from('mercaderias').select('id, nombre');
+    const mercaderiasMap = new Map((allMercaderias || []).map(m => [m.id, m.nombre]));
+
+    const operationsWithData = operations.map(op => ({
+        ...op,
+        mercaderias: { nombre: mercaderiasMap.get(op.mercaderia_id) || 'N/A' }
+    }));
+    
     const finalizationDateMap = new Map();
-    for (const final of todosLosFinales) {
-        if (final.operacion_original_id) {
-            finalizationDateMap.set(final.operacion_original_id, new Date(final.created_at));
+    if (todosLosFinales) {
+        for (const final of todosLosFinales) {
+            if (final.operacion_original_id) finalizationDateMap.set(final.operacion_original_id, new Date(final.created_at));
         }
     }
 
-    const filteredOps = operations.filter(op => {
+    const filteredOps = operationsWithData.filter(op => {
         if (clienteId && op.cliente_id != clienteId) return false;
         if (depositoId && op.deposito_id != depositoId) return false;
         return true;
-    });
-
-    const sortedOps = filteredOps.map(op => ({
+    }).map(op => ({
         ...op,
-        fecha_fin_real: finalizationDateMap.get(op.id) || new Date(op.updated_at)
+        fecha_fin_real: finalizationDateMap.get(op.id) || (op.updated_at ? new Date(op.updated_at) : null)
     })).sort((a, b) => {
-        return sortOrder === 'asc' 
-            ? a.fecha_fin_real - b.fecha_fin_real 
-            : b.fecha_fin_real - a.fecha_fin_real;
+        const dateA = a.fecha_fin_real || 0;
+        const dateB = b.fecha_fin_real || 0;
+        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
     });
 
-    if (sortedOps.length === 0) {
+    if (filteredOps.length === 0) {
         container.innerHTML = '<p class="text-center text-gray-500 p-4 col-span-full">No hay operaciones que coincidan con los filtros.</p>';
         return;
     }
 
-    // 5. Renderizar las tarjetas con la información ya actualizada.
-    container.innerHTML = sortedOps.map(op => {
+    container.innerHTML = filteredOps.map(op => {
         const depositoInfo = op.depositos ? `${op.depositos.tipo.charAt(0).toUpperCase() + op.depositos.tipo.slice(1)} ${op.depositos.nombre}` : 'N/A';
         const fechaInicio = op.created_at ? new Date(op.created_at).toLocaleString('es-AR') : 'N/A';
         const fechaFin = op.fecha_fin_real ? op.fecha_fin_real.toLocaleString('es-AR') : 'N/A';
-
+        
         let garantiaHtml = '';
-        if (op.con_garantia) {
+        if (op.con_garantia && op.fecha_vencimiento_garantia) {
             const hoy = new Date();
             hoy.setHours(0, 0, 0, 0);
             const vencimiento = new Date(op.fecha_vencimiento_garantia + 'T00:00:00');
             const vencimientoStr = vencimiento.toLocaleDateString('es-AR');
             if (vencimiento >= hoy) {
-                garantiaHtml = `
-                    <div class="flex items-center gap-2" title="Garantía vigente hasta ${vencimientoStr}">
-                        <span class="material-icons text-lg text-green-600">check_circle</span>
-                        <span>Garantía: <strong class="text-green-700">Vigente</strong></span>
-                    </div>`;
+                garantiaHtml = `<div class="flex items-center gap-2" title="Garantía vigente hasta ${vencimientoStr}"><span class="material-icons text-lg text-green-600">check_circle</span><span>Garantía: <strong class="text-green-700">Vigente</strong></span></div>`;
             } else {
-                garantiaHtml = `
-                    <div class="flex items-center gap-2" title="Garantía vencida el ${vencimientoStr}">
-                        <span class="material-icons text-lg text-yellow-600">warning</span>
-                        <span>Garantía: <strong class="text-yellow-700">Vencida</strong></span>
-                    </div>`;
+                garantiaHtml = `<div class="flex items-center gap-2" title="Garantía vencida el ${vencimientoStr}"><span class="material-icons text-lg text-yellow-600">warning</span><span>Garantía: <strong class="text-yellow-700">Vencida</strong></span></div>`;
             }
         } else {
-            garantiaHtml = `
-                <div class="flex items-center gap-2" title="La operación no cumplió los requisitos para la garantía">
-                    <span class="material-icons text-lg text-red-600">cancel</span>
-                    <span>Garantía: <strong class="text-red-700">No incluida</strong></span>
-                </div>`;
+            garantiaHtml = `<div class="flex items-center gap-2" title="La operación no cumplió los requisitos para la garantía"><span class="material-icons text-lg text-red-600">cancel</span><span>Garantía: <strong class="text-red-700">No incluida</strong></span></div>`;
         }
 
         return `
         <a href="operacion_detalle.html?id=${op.id}" class="block bg-white rounded-xl shadow-lg border border-gray-200 p-6 transition hover:shadow-xl hover:border-blue-500 cursor-pointer">
             <div class="flex justify-between items-start mb-4">
                 <h3 class="font-bold text-xl text-gray-800">${op.clientes?.nombre || 'N/A'}</h3>
-                <span class="text-xs font-bold px-3 py-1 rounded-full bg-red-100 text-red-800">
-                    Finalizada
-                </span>
+                <span class="text-xs font-bold px-3 py-1 rounded-full bg-red-100 text-red-800">Finalizada</span>
             </div>
             <div class="space-y-2 text-sm text-gray-700">
                 <div class="flex items-center gap-2"><span class="material-icons text-lg text-gray-400">store</span><span>Depósito: <strong class="text-gray-900">${depositoInfo}</strong></span></div>

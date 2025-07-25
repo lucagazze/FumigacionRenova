@@ -5,36 +5,38 @@ import { supabase } from '../common/supabase.js';
 requireRole('admin');
 document.getElementById('header').innerHTML = renderHeader();
 
-// Elementos del DOM
+// --- Elementos del DOM ---
 const formCliente = document.getElementById('formCliente');
-const nombreCliente = document.getElementById('nombreCliente');
 const listaClientes = document.getElementById('listaClientes');
 
 const formMercaderia = document.getElementById('formMercaderia');
-const nombreMercaderia = document.getElementById('nombreMercaderia');
 const listaMercaderias = document.getElementById('listaMercaderias');
 
-const formArea = document.getElementById('formArea');
-const nombreArea = document.getElementById('nombreArea');
-const tipoArea = document.getElementById('tipoArea');
-const listaAreas = document.getElementById('listaAreas');
-
-const formUsuario = document.getElementById('formUsuario');
-const listaUsuarios = document.getElementById('listaUsuarios');
+// Apuntamos a los nuevos IDs del formulario de depósitos
+const formDeposito = document.getElementById('formDeposito');
+const listaDepositos = document.getElementById('listaDepositos');
+const depositoClienteSelect = document.getElementById('depositoClienteSelect');
 
 // --- Funciones de Renderizado ---
 
 async function renderClientes() {
   const { data, error } = await supabase.from('clientes').select('*').order('nombre');
   if (error) return;
+  
   listaClientes.innerHTML = data.map(c => `
     <div class="flex justify-between items-center p-2 rounded hover:bg-gray-100">
       <span>${c.nombre}</span>
-      <button data-id="${c.id}" class="text-red-500 hover:text-red-700">
+      <button data-id="${c.id}" data-table="clientes" class="text-red-500 hover:text-red-700">
         <span class="material-icons">delete</span>
       </button>
     </div>
   `).join('');
+
+  // Llena el selector de clientes en el formulario de Depósitos
+  depositoClienteSelect.innerHTML = '<option value="">Seleccione un cliente</option>';
+  data.forEach(cliente => {
+    depositoClienteSelect.innerHTML += `<option value="${cliente.id}">${cliente.nombre}</option>`;
+  });
 }
 
 async function renderMercaderias() {
@@ -43,141 +45,118 @@ async function renderMercaderias() {
   listaMercaderias.innerHTML = data.map(m => `
     <div class="flex justify-between items-center p-2 rounded hover:bg-gray-100">
       <span>${m.nombre}</span>
-      <button data-id="${m.id}" class="text-red-500 hover:text-red-700">
+      <button data-id="${m.id}" data-table="mercaderias" class="text-red-500 hover:text-red-700">
         <span class="material-icons">delete</span>
       </button>
     </div>
   `).join('');
 }
 
-async function renderAreas() {
-  const { data, error } = await supabase.from('areas').select('*').order('tipo').order('nombre');
-  if (error) return;
-  listaAreas.innerHTML = data.map(a => `
-    <div class="flex justify-between items-center p-2 rounded hover:bg-gray-100">
-      <span>${a.nombre} (${a.tipo})</span>
-      <button data-id="${a.id}" class="text-red-500 hover:text-red-700">
-        <span class="material-icons">delete</span>
-      </button>
-    </div>
-  `).join('');
-}
+// Función corregida para renderizar DEPÓSITOS
+async function renderDepositos() {
+  const { data, error } = await supabase
+    .from('depositos')
+    .select('id, nombre, tipo, capacidad_toneladas, clientes(nombre)')
+    .order('nombre');
 
-async function renderUsuarios() {
-    const { data, error } = await supabase.from('usuarios').select('id, nombre, apellido, role').order('nombre');
-    if (error) {
-        console.error('Error al renderizar usuarios:', error);
-        return;
-    }
-    listaUsuarios.innerHTML = data.map(u => `
-    <div class="flex justify-between items-center p-2 rounded hover:bg-gray-100">
-      <span>${u.nombre} ${u.apellido} (${u.role})</span>
-      <button data-id="${u.id}" class="text-red-500 hover:text-red-700">
-        <span class="material-icons">delete</span>
-      </button>
-    </div>
-  `).join('');
-}
+  if (error) {
+    console.error("Error cargando depósitos:", error);
+    return;
+  }
 
+  listaDepositos.innerHTML = data.map(d => {
+    const nombreCliente = d.clientes ? d.clientes.nombre : 'Sin cliente';
+    return `
+        <div class="flex justify-between items-center p-2 rounded hover:bg-gray-100">
+          <span>${d.nombre} (${d.tipo}) - <b>${nombreCliente}</b></span>
+          <button data-id="${d.id}" data-table="depositos" class="text-red-500 hover:text-red-700">
+            <span class="material-icons">delete</span>
+          </button>
+        </div>
+    `;
+  }).join('');
+}
 
 // --- Event Listeners ---
 
 formCliente.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const nombre = nombreCliente.value.trim();
+  const nombre = document.getElementById('nombreCliente').value.trim();
   if (!nombre) return;
-  await supabase.from('clientes').insert([{ nombre }]);
-  nombreCliente.value = '';
-  renderClientes();
+  const { error } = await supabase.from('clientes').insert([{ nombre }]);
+  if (error) {
+    alert('Error al añadir cliente: ' + error.message);
+  } else {
+    formCliente.reset();
+    renderClientes();
+  }
 });
 
 formMercaderia.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const nombre = nombreMercaderia.value.trim();
+  const nombre = document.getElementById('nombreMercaderia').value.trim();
   if (!nombre) return;
-  await supabase.from('mercaderias').insert([{ nombre }]);
-  nombreMercaderia.value = '';
-  renderMercaderias();
+  const { error } = await supabase.from('mercaderias').insert([{ nombre }]);
+  if (error) {
+    alert('Error al añadir mercadería: ' + error.message);
+  } else {
+    formMercaderia.reset();
+    renderMercaderias();
+  }
 });
 
-formArea.addEventListener('submit', async (e) => {
+// Listener del formulario de Depósitos CORREGIDO
+formDeposito.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const nombre = nombreArea.value.trim();
-  const tipo = tipoArea.value;
-  if (!nombre) return;
-  await supabase.from('areas').insert([{ nombre, tipo }]);
-  nombreArea.value = '';
-  renderAreas();
+  const nombre = document.getElementById('nombreDeposito').value.trim();
+  const tipo = document.getElementById('tipoDeposito').value;
+  const cliente_id = depositoClienteSelect.value;
+  const capacidad_toneladas = document.getElementById('capacidadDeposito').value || null;
+
+  if (!nombre || !cliente_id) {
+    alert("Por favor, complete todos los campos, incluyendo el cliente.");
+    return;
+  }
+
+  // Insertamos en la tabla 'depositos'
+  const { error } = await supabase.from('depositos').insert([
+    { nombre, tipo, cliente_id, capacidad_toneladas }
+  ]);
+  
+  if (error) {
+    alert('Error al añadir depósito: ' + error.message);
+  } else {
+    formDeposito.reset();
+    renderDepositos();
+  }
 });
-
-formUsuario.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const nombre = document.getElementById('nombreUsuario').value;
-    const apellido = document.getElementById('apellidoUsuario').value;
-    const email = document.getElementById('emailUsuario').value;
-    const password = document.getElementById('passwordUsuario').value;
-    const role = document.getElementById('rolUsuario').value;
-
-    const { data, error } = await supabase.functions.invoke('crear-usuario', {
-        body: { email, password, nombre, apellido, role },
-    });
-
-    if (error) {
-        alert('Error al crear el usuario: ' + error.message);
-    } else {
-        alert('Usuario creado correctamente');
-        formUsuario.reset();
-        renderUsuarios();
-    }
-});
-
 
 // Delegación de eventos para botones de borrado
 document.addEventListener('click', async (e) => {
-  const button = e.target.closest('button[data-id]');
+  const button = e.target.closest('button[data-id][data-table]');
   if (!button) return;
 
-  const id = button.dataset.id;
-  const listContainer = button.closest('div[id^="lista"]');
+  const { id, table } = button.dataset;
   
   if (confirm('¿Está seguro de que desea eliminar este elemento?')) {
-    let tableName, renderFunction;
-    if (listContainer.id === 'listaClientes') {
-      tableName = 'clientes';
-      renderFunction = renderClientes;
-    } else if (listContainer.id === 'listaMercaderias') {
-      tableName = 'mercaderias';
-      renderFunction = renderMercaderias;
-    } else if (listContainer.id === 'listaAreas') {
-      tableName = 'areas';
-      renderFunction = renderAreas;
-    } else if (listContainer.id === 'listaUsuarios') {
-        // Para borrar usuarios, debemos llamar a una función segura también
-        const { error } = await supabase.functions.invoke('eliminar-usuario', {
-            body: { id },
-        });
-        if (error) {
-            alert('Error al eliminar usuario: ' + error.message);
-        } else {
-            alert('Usuario eliminado correctamente');
-            renderUsuarios();
-        }
-        return; // Salimos para no ejecutar el borrado genérico
-    }
+    const { error } = await supabase.from(table).delete().eq('id', id);
     
-    if (tableName) {
-      const { error } = await supabase.from(tableName).delete().eq('id', id);
-      if(error){
+    if (error) {
         alert("Error al eliminar: " + error.message);
-      } else {
-        renderFunction();
-      }
+    } else {
+        // Vuelve a renderizar la sección correspondiente
+        if (table === 'clientes') renderClientes();
+        if (table === 'mercaderias') renderMercaderias();
+        if (table === 'depositos') renderDepositos();
     }
   }
 });
 
-// Carga inicial
-renderClientes();
-renderMercaderias();
-renderAreas();
-renderUsuarios();
+// Carga inicial de datos
+function init() {
+    renderClientes();
+    renderMercaderias();
+    renderDepositos();
+}
+
+init();
