@@ -21,32 +21,47 @@ async function poblarCompaneros(clienteId) {
     if (!clienteId) return;
     const currentUser = getUser();
     
-    // 1. Encontrar todos los operarios para ese cliente
+    // 1. Encontrar todos los usuarios (operarios/supervisores) asignados a ese cliente
     const { data: operariosRel, error: relError } = await supabase
         .from('operario_clientes')
         .select('operario_id')
         .eq('cliente_id', clienteId);
 
     if (relError || !operariosRel || operariosRel.length === 0) {
-        console.error(relError || "No operators for this client");
+        console.error(relError || "No hay operarios asignados a este cliente");
+        companeroList.innerHTML = '<p class="text-sm text-gray-500">No hay otros operarios asignados a este cliente.</p>';
         return;
     }
     
     const operarioIds = operariosRel.map(r => r.operario_id);
 
-    // 2. Obtener los datos de esos operarios
-    const { data, error } = await supabase.from('usuarios').select('id, nombre, apellido').in('id', operarioIds);
-    if (error) { console.error(error); return; }
+    // 2. Obtener los datos de esos usuarios, PERO FILTRANDO SOLO POR EL ROL 'operario'
+    const { data: operarios, error } = await supabase
+        .from('usuarios')
+        .select('id, nombre, apellido')
+        .in('id', operarioIds)
+        .eq('role', 'operario'); // <-- ESTA ES LA CORRECCIÓN CLAVE
     
-    data.forEach(c => {
-        if (c.id !== currentUser.id) {
-            companeroList.innerHTML += `
-                <label class="flex items-center gap-3 p-2 rounded-md hover:bg-gray-50">
-                    <input type="checkbox" name="companero" value="${c.nombre} ${c.apellido}" class="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500">
-                    <span>${c.nombre} ${c.apellido}</span>
-                </label>
-            `;
-        }
+    if (error) { 
+        console.error(error); 
+        return; 
+    }
+    
+    const companerosDisponibles = operarios.filter(c => c.id !== currentUser.id);
+
+    if (companerosDisponibles.length === 0) {
+        companeroList.innerHTML = '<p class="text-sm text-gray-500">No hay otros operarios disponibles para este cliente.</p>';
+        return;
+    }
+
+    companeroList.innerHTML = ''; // Limpiar antes de añadir
+    companerosDisponibles.forEach(c => {
+        companeroList.innerHTML += `
+            <label class="flex items-center gap-3 p-2 rounded-md hover:bg-gray-50">
+                <input type="checkbox" name="companero" value="${c.nombre} ${c.apellido}" class="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500">
+                <span>${c.nombre} ${c.apellido}</span>
+            </label>
+        `;
     });
 }
 
@@ -99,7 +114,7 @@ form.addEventListener('submit', async (e) => {
     const companeros = Array.from(document.querySelectorAll('[name="companero"]:checked')).map(cb => cb.value);
 
     if (!operacionId || !user || !observacion) {
-        alert('Faltan datos. Asegúrese de tener una operación activa, seleccionado al menos un archivo y escrito una observación.');
+        alert('Faltan datos. Asegúrese de tener una operación activa y haber escrito una observación.');
         return;
     }
 
@@ -118,7 +133,8 @@ form.addEventListener('submit', async (e) => {
             mercaderia_id: opData.mercaderia_id,
             estado: 'en curso',
             tipo_registro: 'muestreo',
-            operario_nombre: conCompaneroCheckbox.checked ? `${user.nombre} ${user.apellido} y ${companeros.join(', ')}` : `${user.nombre} ${user.apellido}`,
+            operario_nombre: conCompaneroCheckbox.checked && companeros.length > 0 ? `${user.nombre} ${user.apellido} y ${companeros.join(', ')}` : `${user.nombre} ${user.apellido}`,
+            estado_aprobacion: 'aprobado'
         }).select().single();
         
         if (insertOpError) throw insertOpError;
