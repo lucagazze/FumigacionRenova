@@ -1,21 +1,26 @@
 import { supabase } from './supabase.js';
 
 export async function getOperaciones() {
-  const { data, error } = await supabase
-    .from('operaciones')
-    .select(`
-      *, 
-      clientes(nombre), 
-      depositos(
-        nombre, 
-        tipo,
-        capacidad_toneladas, 
-        limpiezas(fecha_garantia_limpieza)
-      ), 
-      mercaderias(nombre), 
-      muestreos(observacion, media_url)
-    `)
-    .order('created_at', { ascending: false });
+    // --- CONSULTA CORREGIDA Y MEJORADA ---
+    // Se añade "supervisor:supervisor_id(nombre, apellido)" para que la consulta
+    // siempre traiga el nombre y apellido del supervisor asociado a la operación.
+    const { data, error } = await supabase
+      .from('operaciones')
+      .select(`
+        *, 
+        clientes(nombre), 
+        depositos(
+          nombre, 
+          tipo,
+          capacidad_toneladas, 
+          limpiezas(fecha_garantia_limpieza)
+        ), 
+        mercaderias(nombre), 
+        muestreos(observacion, media_url),
+        supervisor:supervisor_id(nombre, apellido)
+      `)
+      .order('created_at', { ascending: false });
+  
 
   if (error) {
     console.error('Error fetching operaciones:', error);
@@ -214,7 +219,8 @@ async function renderOperacionesDesplegables(container, operaciones, isAdmin, is
                 aprobacionDetalle = `<div class="col-span-full mt-2"><strong>Obs. Supervisor:</strong><br><p class="mt-1 p-2 bg-white rounded break-words">${op.observacion_aprobacion}</p></div>`;
             }
 
-            const supervisorName = op.supervisor ? `${op.supervisor.nombre} ${op.supervisor.apellido}` : 'No asignado';
+             const supervisorName = op.supervisor ? `${op.supervisor.nombre} ${op.supervisor.apellido}` : 'No asignado';
+            
             detailsContentHTML = `
                 <div class="p-4 bg-gray-100 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div><strong>Tipo de Producto:</strong><br>${op.metodo_fumigacion === 'liquido' ? 'Líquido' : 'Pastillas'}</div>
