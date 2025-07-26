@@ -8,7 +8,7 @@ requireRole('supervisor');
 function renderSilosEnCursoSupervisor(operaciones, onSiloClick) {
     const silosEnCursoContainer = document.getElementById('silosEnCursoContainer');
     const opsEnCurso = operaciones.filter(op => op.estado === 'en curso' && op.tipo_registro === 'inicial');
-    
+
     if (opsEnCurso.length === 0) {
         silosEnCursoContainer.innerHTML = '<p class="col-span-full text-center text-gray-500">No hay operaciones en curso.</p>';
         return;
@@ -50,7 +50,7 @@ function renderSilosEnCursoSupervisor(operaciones, onSiloClick) {
                 <div class="text-xs font-semibold text-center">${op.totalToneladas.toLocaleString()} / ${capacidad.toLocaleString()} tn (${porcentajeLlenado.toFixed(1)}%)</div>
             </div>`;
     });
-    
+
     silosEnCursoContainer.addEventListener('click', (e) => {
         const siloWrapper = e.target.closest('.silo-wrapper');
         if (siloWrapper) {
@@ -63,7 +63,7 @@ function renderSilosEnCursoSupervisor(operaciones, onSiloClick) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('header').innerHTML = renderHeader();
-    
+
     const container = document.getElementById('historial-container');
     const user = getUser();
     const filtroFechaInput = document.getElementById('filtroFecha');
@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const { data: allOperations, error } = await supabase
         .from('operaciones')
-        .select(`*, clientes(nombre), depositos(nombre, tipo, capacidad_toneladas, limpiezas(fecha_garantia_limpieza)), mercaderias(nombre), muestreos(observacion, media_url)`)
+        .select(`*, clientes(nombre), depositos(nombre, tipo, capacidad_toneladas, limpiezas(fecha_garantia_limpieza)), mercaderias(nombre), muestreos(observacion, media_url), supervisor:supervisor_id(nombre, apellido)`)
         .in('cliente_id', user.cliente_ids)
         .order('created_at', { ascending: false });
 
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (tipo) operacionesFiltradas = operacionesFiltradas.filter(op => op.tipo_registro === tipo);
         if (estado) operacionesFiltradas = operacionesFiltradas.filter(op => op.estado === estado);
         if (siloCelda) operacionesFiltradas = operacionesFiltradas.filter(op => op.deposito_id === siloCelda);
-        
+
         if (fechaDesde) {
             fechaDesde.setHours(0, 0, 0, 0);
             operacionesFiltradas = operacionesFiltradas.filter(op => new Date(op.created_at) >= fechaDesde);
@@ -128,16 +128,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             fechaHasta.setHours(23, 59, 59, 999);
             operacionesFiltradas = operacionesFiltradas.filter(op => new Date(op.created_at) <= fechaHasta);
         }
-        
+
         renderOperaciones(container, operacionesFiltradas, false, true);
     };
 
     renderSilosEnCursoSupervisor(allOperations);
     renderOperaciones(container, allOperations, false, true);
-    
+
     const filtrosForm = document.getElementById('filtrosRegistro');
     filtrosForm.addEventListener('change', aplicarTodosLosFiltros);
-    
+
     // Eventos del Date Picker
     $(filtroFechaInput).on('apply.daterangepicker', function(ev, picker) {
         $(this).val(picker.startDate.format('DD/MM/YYYY') + ' - ' + picker.endDate.format('DD/MM/YYYY'));
