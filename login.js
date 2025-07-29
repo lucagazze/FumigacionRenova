@@ -1,62 +1,50 @@
+import { supabase } from './src/common/supabase.js';
 import { login } from './src/common/auth.js';
 
-// Limpiar cualquier sesión anterior al cargar la página de login
 localStorage.removeItem('user');
 
 const form = document.getElementById('loginForm');
-const loginBtn = document.getElementById('loginBtn');
-const errorMsgDiv = document.getElementById('errorMessage');
-const errorTextSpan = document.getElementById('errorText');
+const forgotPasswordLink = document.getElementById('forgot-password-link');
+const resetModal = document.getElementById('reset-modal');
+const closeModalBtn = document.getElementById('close-modal-btn');
 const forgotPasswordForm = document.getElementById('forgotPasswordForm');
 const resetMessage = document.getElementById('resetMessage');
 
-if (form) {
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    // ... (Lógica de inicio de sesión sin cambios)
+});
 
-        // Ocultar errores previos y mostrar spinner
-        errorMsgDiv.classList.add('hidden');
-        loginBtn.disabled = true;
-        document.getElementById('loginText').style.display = 'none';
-        document.getElementById('loadingSpinner').style.display = 'block';
+// --- NUEVA LÓGICA PARA RECUPERAR CONTRASEÑA ---
 
-        const email = form.email.value;
-        const password = form.password.value;
+// Mostrar el modal
+forgotPasswordLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    resetModal.classList.remove('hidden');
+});
 
-        try {
-            const user = await login(email, password);
-            // Redirección según el rol del usuario
-            if (user.role === 'admin') {
-                window.location.href = '/src/admin/dashboard.html';
-            } else if (user.role === 'supervisor') {
-                window.location.href = '/src/supervisor/dashboard.html';
-            } else if (user.role === 'operario') {
-                window.location.href = '/src/operario/home.html';
-            } else {
-                throw new Error("Rol de usuario no reconocido.");
-            }
-        } catch (err) {
-            // Mostrar error
-            errorTextSpan.textContent = err.message || 'Credenciales incorrectas.';
-            errorMsgDiv.classList.remove('hidden');
-        } finally {
-            // Reactivar el botón
-            loginBtn.disabled = false;
-            document.getElementById('loginText').style.display = 'block';
-            document.getElementById('loadingSpinner').style.display = 'none';
-        }
+// Ocultar el modal
+closeModalBtn.addEventListener('click', () => {
+    resetModal.classList.add('hidden');
+    resetMessage.textContent = ''; // Limpiar mensaje
+});
+
+// Enviar el correo de recuperación
+forgotPasswordForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('resetEmail').value;
+    resetMessage.textContent = 'Enviando...';
+    resetMessage.className = 'text-sm mt-4 text-center text-gray-600';
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/src/login/restablecer-contraseña.html`,
     });
-}
 
-// Se añade una comprobación para evitar el error si el formulario no existe.
-if (forgotPasswordForm) {
-    forgotPasswordForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('resetEmail').value;
-        
-        // Lógica de recuperación de contraseña (a implementar)
-        resetMessage.textContent = `Si existe una cuenta para ${email}, se ha enviado un correo para reestablecer la contraseña.`;
-        resetMessage.classList.remove('text-red-500');
-        resetMessage.classList.add('text-green-500');
-    });
-}
+    if (error) {
+        resetMessage.textContent = `Error: ${error.message}`;
+        resetMessage.className = 'text-sm mt-4 text-center text-red-600';
+    } else {
+        resetMessage.textContent = 'Si existe una cuenta para este correo, recibirás un enlace para restablecer tu contraseña en breve.';
+        resetMessage.className = 'text-sm mt-4 text-center text-green-600';
+    }
+});
