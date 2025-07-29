@@ -4,23 +4,42 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Fagaz - Restablecer Contraseña</title>
+    <link rel="icon" href="/public/assets/img/logohead.webp" type="image/png">
     <link rel="stylesheet" href="../common/styles.css" />
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen flex items-center justify-center p-4">
         <div class="max-w-md w-full bg-white p-8 rounded-xl shadow-lg">
-            <h2 class="text-2xl font-bold text-center mb-6">Elige una nueva contraseña</h2>
+            <div class="text-center mb-6">
+                <img src="/public/assets/img/logotipo.png" alt="Fagaz Logo" class="mx-auto h-16 w-auto mb-4">
+                <h2 class="text-2xl font-bold text-gray-800">Elige una nueva contraseña</h2>
+                <p class="text-sm text-gray-500 mt-2">La contraseña debe tener al menos 6 caracteres.</p>
+            </div>
             <form id="updatePasswordForm" class="space-y-4">
                 <div>
                     <label for="new-password" class="block text-sm font-semibold text-gray-700 mb-2">Nueva Contraseña</label>
-                    <input type="password" id="new-password" class="input-field" required placeholder="••••••••">
+                    <div class="relative">
+                        <input type="password" id="new-password" class="input-field w-full pr-10" required placeholder="••••••••">
+                        <button type="button" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500" id="toggle-new-password">
+                            <span class="material-icons text-base">visibility</span>
+                        </button>
+                    </div>
                 </div>
                  <div>
                     <label for="confirm-password" class="block text-sm font-semibold text-gray-700 mb-2">Confirmar Contraseña</label>
-                    <input type="password" id="confirm-password" class="input-field" required placeholder="••••••••">
+                    <div class="relative">
+                        <input type="password" id="confirm-password" class="input-field w-full pr-10" required placeholder="••••••••">
+                        <button type="button" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500" id="toggle-confirm-password">
+                            <span class="material-icons text-base">visibility</span>
+                        </button>
+                    </div>
+                    <p id="password-match-message" class="text-xs mt-2 h-4"></p>
                 </div>
-                <button type="submit" class="w-full btn-primary mt-4">Actualizar Contraseña</button>
+                <button type="submit" id="submit-btn" class="w-full btn-primary mt-4 py-3 rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                    Actualizar Contraseña
+                </button>
             </form>
             <div id="message" class="mt-4 text-center text-sm"></div>
         </div>
