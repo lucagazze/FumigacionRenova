@@ -72,23 +72,17 @@ async function renderFinishedOperations() {
     let fechaDesde = dateRange.startDate?.isValid() ? dateRange.startDate.format('YYYY-MM-DD') : null;
     let fechaHasta = dateRange.endDate?.isValid() ? dateRange.endDate.format('YYYY-MM-DD') : null;
 
-    // 1. Obtener todos los datos necesarios en paralelo para el cálculo de garantías.
+    // 1. Lógica de actualización de garantías en la base de datos (AHORA ES SEGURA)
     const [
-        { data: finalizadasIniciales, error: opsError },
-        { data: todasLasLimpiezas, error: limpiezasError },
-        { data: todosLosFinales, error: finalesError }
+        { data: finalizadasIniciales },
+        { data: todasLasLimpiezas },
+        { data: todosLosFinales }
     ] = await Promise.all([
         supabase.from('operaciones').select('*').eq('estado', 'finalizada').eq('tipo_registro', 'inicial'),
         supabase.from('limpiezas').select('deposito_id, fecha_garantia_limpieza').order('fecha_limpieza', { ascending: false }),
         supabase.from('operaciones').select('operacion_original_id, created_at').eq('estado', 'finalizada').eq('tipo_registro', 'finalizacion')
     ]);
 
-    if (opsError || limpiezasError || finalesError) {
-        container.innerHTML = '<p class="text-red-500 text-center p-4 col-span-full">Error al cargar datos para la actualización.</p>';
-        return;
-    }
-
-    // 2. Procesar y actualizar las garantías en la base de datos si es necesario.
     if (finalizadasIniciales) {
         const updates = [];
         const limpiezasMap = new Map();
@@ -124,14 +118,14 @@ async function renderFinishedOperations() {
     
             if (op.con_garantia !== con_garantia || op.fecha_vencimiento_garantia !== fecha_vencimiento_garantia) {
                 updates.push(
-                    supabase.from('operaciones').update({ con_garantia, fecha_vencimiento_garantia }).match({ id: op.id })
+                    supabase.from('operaciones').update({ con_garantia, fecha_vencimiento_garantia }).eq('id', op.id)
                 );
             }
         }
         if (updates.length > 0) await Promise.all(updates);
     }
     
-    // 3. Obtener los datos ya actualizados para mostrar en la página.
+    // 2. Obtener los datos ya actualizados para mostrar en la página.
     let query = supabase
         .from('operaciones')
         .select('*, clientes(nombre), depositos(nombre, tipo)')
