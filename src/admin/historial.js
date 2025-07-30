@@ -11,9 +11,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     await populateFilters();
     
-    // Inicialización del Date Range Picker
+    // --- INICIALIZACIÓN DEL DATE RANGE PICKER CORREGIDA ---
     $('#filter-fecha').daterangepicker({
-        autoUpdateInput: false,
+        autoUpdateInput: false, // Clave: no actualiza el input automáticamente
         opens: 'left',
         locale: {
             cancelLabel: 'Limpiar',
@@ -23,6 +23,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             format: 'DD/MM/YYYY'
         }
     });
+
+    // Nos aseguramos de que el campo de fecha comience vacío
+    $('#filter-fecha').val('');
 
     $('#filter-fecha').on('apply.daterangepicker', function(ev, picker) {
         $(this).val(picker.startDate.format('DD/MM/YYYY') + ' - ' + picker.endDate.format('DD/MM/YYYY'));
@@ -34,12 +37,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderFinishedOperations();
     });
     
+    // La primera carga ahora se hará sin filtros de fecha
     await renderFinishedOperations();
 
     filterForm.addEventListener('change', renderFinishedOperations);
     filterForm.addEventListener('reset', () => {
         $('#filter-fecha').val('');
-        setTimeout(renderFinishedOperations, 0);
+        setTimeout(renderFinishedOperations, 0); // setTimeout para asegurar que el reset se aplique antes de re-renderizar
     });
 });
 
@@ -68,21 +72,25 @@ async function renderFinishedOperations() {
     const depositoId = document.getElementById('filter-deposito').value;
     const sortOrder = document.getElementById('sort-order').value;
     const dateRangeInput = $('#filter-fecha');
-    const dateRange = dateRangeInput.data('daterangepicker');
-    let fechaDesde = dateRange.startDate?.isValid() ? dateRange.startDate.format('YYYY-MM-DD') : null;
-    let fechaHasta = dateRange.endDate?.isValid() ? dateRange.endDate.format('YYYY-MM-DD') : null;
+    let fechaDesde = null;
+    let fechaHasta = null;
 
-    // 1. Lógica de actualización de garantías en la base de datos (AHORA ES SEGURA)
-    const [
-        { data: finalizadasIniciales },
-        { data: todasLasLimpiezas },
-        { data: todosLosFinales }
-    ] = await Promise.all([
+    // --- LÓGICA DE LECTURA DE FILTROS CORREGIDA ---
+    // Solo aplicamos el filtro de fecha si el campo de texto tiene un valor
+    if (dateRangeInput.val()) {
+        const dateRange = dateRangeInput.data('daterangepicker');
+        fechaDesde = dateRange.startDate?.isValid() ? dateRange.startDate.format('YYYY-MM-DD') : null;
+        fechaHasta = dateRange.endDate?.isValid() ? dateRange.endDate.format('YYYY-MM-DD') : null;
+    }
+    
+    // 1. Obtener datos para el cálculo de garantías.
+    const [{ data: finalizadasIniciales }, { data: todasLasLimpiezas }, { data: todosLosFinales }] = await Promise.all([
         supabase.from('operaciones').select('*').eq('estado', 'finalizada').eq('tipo_registro', 'inicial'),
         supabase.from('limpiezas').select('deposito_id, fecha_garantia_limpieza').order('fecha_limpieza', { ascending: false }),
         supabase.from('operaciones').select('operacion_original_id, created_at').eq('estado', 'finalizada').eq('tipo_registro', 'finalizacion')
     ]);
-
+    
+    // 2. Procesar y actualizar las garantías en la base de datos si es necesario (sin cambios).
     if (finalizadasIniciales) {
         const updates = [];
         const limpiezasMap = new Map();
@@ -125,7 +133,7 @@ async function renderFinishedOperations() {
         if (updates.length > 0) await Promise.all(updates);
     }
     
-    // 2. Obtener los datos ya actualizados para mostrar en la página.
+    // 3. Obtener los datos ya actualizados para mostrar en la página.
     let query = supabase
         .from('operaciones')
         .select('*, clientes(nombre), depositos(nombre, tipo)')
