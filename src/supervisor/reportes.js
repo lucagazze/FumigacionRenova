@@ -3,28 +3,43 @@ import { requireRole, getUser } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 
 const user = getUser();
-// Solo el supervisor puede acceder
-if (user.role !== 'supervisor') {
+// Solo el admin y supervisor pueden acceder
+if (user.role !== 'admin' && user.role !== 'supervisor') {
     window.location.href = '/src/login/login.html';
 }
 
 document.getElementById('header').innerHTML = renderHeader();
 
 const formReporte = document.getElementById('formReporte');
+const filtroCliente = document.getElementById('filtroCliente');
 const filtroFecha = document.getElementById('filtroFecha');
 const reporteContainer = document.getElementById('reporte-container');
-
-// Ocultar el filtro de cliente que no se usa en la vista de supervisor
 const clienteFilterContainer = document.getElementById('cliente-filter-container');
-if (clienteFilterContainer) clienteFilterContainer.style.display = 'none';
-// Ajustar el grid para que ocupe el espacio correcto
-if(formReporte) formReporte.classList.replace('md:grid-cols-3', 'md:grid-cols-2');
 
+
+async function poblarClientes() {
+    if (user.role !== 'admin') {
+        if (clienteFilterContainer) clienteFilterContainer.style.display = 'none';
+        return;
+    }
+
+    const { data, error } = await supabase.from('clientes').select('id, nombre').order('nombre');
+    if (error) {
+        console.error('Error cargando clientes:', error);
+        return;
+    }
+    
+    filtroCliente.innerHTML = '<option value="">Todos los Clientes</option>';
+    data.forEach(c => {
+        filtroCliente.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
+    });
+}
 
 function getQuincena(dateStr) {
     const day = moment(dateStr).date();
     return day <= 15 ? '1er Quincena' : '2da Quincena';
 }
+
 
 function renderReporte(operaciones, fechaDesde, fechaHasta) {
     const reporteGenerado = document.getElementById('reporte-generado');
@@ -33,11 +48,12 @@ function renderReporte(operaciones, fechaDesde, fechaHasta) {
     const reporteTablaBody = document.getElementById('reporte-tabla-body');
     const reporteTablaFoot = document.getElementById('reporte-tabla-foot');
     const exportarPdfBtn = document.getElementById('exportar-pdf');
+    const exportarExcelBtn = document.getElementById('exportar-excel');
 
     reporteContainer.innerHTML = '';
     
     const operacionesFiltradas = operaciones
-        .filter(op => op.tipo_registro === 'producto') // Solo mostrar aplicaciones
+        .filter(op => op.tipo_registro === 'producto')
         .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
 
@@ -49,27 +65,35 @@ function renderReporte(operaciones, fechaDesde, fechaHasta) {
 
     reporteGenerado.classList.remove('hidden');
     
-    reporteTitulo.textContent = 'Reporte de Operaciones';
+    if (user.role === 'admin') {
+        const clienteSeleccionado = filtroCliente.options[filtroCliente.selectedIndex];
+        reporteTitulo.textContent = clienteSeleccionado.value ? `Reporte de ${clienteSeleccionado.text}` : 'Reporte General de Operaciones';
+    } else {
+        reporteTitulo.textContent = 'Reporte de Operaciones';
+    }
     reporteFechas.textContent = `Del ${moment(fechaDesde).format('DD/MM/YYYY')} al ${moment(fechaHasta).format('DD/MM/YYYY')}`;
 
     let totalCamionesPrev = 0, totalTonPrev = 0, totalPastillasPrev = 0;
     let totalCamionesCur = 0, totalTonCur = 0, totalPastillasCur = 0;
 
     reporteTablaBody.innerHTML = operacionesFiltradas.map(op => {
-        const camiones = op.modalidad === 'descarga' ? (op.toneladas / 28) : 0;
-        
-        const camionesPrev = op.tratamiento === 'preventivo' ? camiones : 0;
-        const tonPrev = op.tratamiento === 'preventivo' ? op.toneladas : 0;
-        const pastillasPrev = op.tratamiento === 'preventivo' ? op.producto_usado_cantidad : 0;
+        let camionesPrev = 0, tonPrev = 0, pastillasPrev = 0;
+        let camionesCur = 0, tonCur = 0, pastillasCur = 0;
 
-        const camionesCur = op.tratamiento === 'curativo' ? camiones : 0;
-        const tonCur = op.tratamiento === 'curativo' ? op.toneladas : 0;
-        const pastillasCur = op.tratamiento === 'curativo' ? op.producto_usado_cantidad : 0;
+        if (op.tratamiento === 'preventivo') {
+            tonPrev = op.toneladas || 0;
+            pastillasPrev = op.producto_usado_cantidad || 0;
+            camionesPrev = op.modalidad === 'trasilado' ? 'TRANSILE' : Math.round((op.toneladas || 0) / 28);
+        } else if (op.tratamiento === 'curativo') {
+            tonCur = op.toneladas || 0;
+            pastillasCur = op.producto_usado_cantidad || 0;
+            camionesCur = op.modalidad === 'trasilado' ? 'TRANSILE' : Math.round((op.toneladas || 0) / 28);
+        }
 
-        totalCamionesPrev += camionesPrev;
+        if (typeof camionesPrev === 'number') totalCamionesPrev += camionesPrev;
         totalTonPrev += tonPrev;
         totalPastillasPrev += pastillasPrev;
-        totalCamionesCur += camionesCur;
+        if (typeof camionesCur === 'number') totalCamionesCur += camionesCur;
         totalTonCur += tonCur;
         totalPastillasCur += pastillasCur;
 
@@ -86,10 +110,10 @@ function renderReporte(operaciones, fechaDesde, fechaHasta) {
                 <td class="py-2 px-2 border-r">${moment(op.created_at).format('DD/MM/YYYY')}</td>
                 <td class="py-2 px-2 border-r">${op.depositos?.nombre || 'N/A'}</td>
                 <td class="py-2 px-2 border-r-2 border-gray-400">${op.mercaderias?.nombre || 'N/A'}</td>
-                <td class="py-2 px-2 text-center border-r">${Math.round(camionesPrev).toLocaleString() || 0}</td>
+                <td class="py-2 px-2 text-center border-r">${camionesPrev !== 'TRANSILE' ? (camionesPrev || 0).toLocaleString() : 'TRANSILE'}</td>
                 <td class="py-2 px-2 text-center border-r">${tonPrev.toLocaleString() || 0}</td>
                 <td class="py-2 px-2 text-center border-r-2 border-gray-400">${pastillasPrev.toLocaleString() || 0}</td>
-                <td class="py-2 px-2 text-center border-r">${Math.round(camionesCur).toLocaleString() || 0}</td>
+                <td class="py-2 px-2 text-center border-r">${camionesCur !== 'TRANSILE' ? (camionesCur || 0).toLocaleString() : 'TRANSILE'}</td>
                 <td class="py-2 px-2 text-center border-r">${tonCur.toLocaleString() || 0}</td>
                 <td class="py-2 px-2 text-center border-r-2 border-gray-400">${pastillasCur.toLocaleString() || 0}</td>
                 <td class="py-2 px-2 border-r-2 border-gray-400">${op.observacion_aprobacion || ''}</td>
@@ -112,13 +136,90 @@ function renderReporte(operaciones, fechaDesde, fechaHasta) {
     `;
 
     exportarPdfBtn.onclick = () => exportarAPDF(operacionesFiltradas, fechaDesde, fechaHasta);
+    exportarExcelBtn.onclick = () => exportarAExcel(operacionesFiltradas, fechaDesde, fechaHasta);
+}
+
+function exportarAExcel(operaciones, fechaDesde, fechaHasta) {
+    const header1 = ["QUINCENA", "FECHA", "SILO", "PRODUCTO", "PREVENTIVO", null, null, "CURATIVO", null, null, "OBSERVACIONES", "SUPERVISOR"];
+    const header2 = [null, null, null, null, "CAMIONES", "TONELADAS", "PASTILLAS", "CAMIONES", "TONELADAS", "PASTILLAS", null, null];
+    
+    let totalCamionesPrev = 0, totalTonPrev = 0, totalPastillasPrev = 0;
+    let totalCamionesCur = 0, totalTonCur = 0, totalPastillasCur = 0;
+
+    const body = operaciones.map(op => {
+        let camionesPrev = 0, tonPrev = 0, pastillasPrev = 0;
+        let camionesCur = 0, tonCur = 0, pastillasCur = 0;
+
+        if (op.tratamiento === 'preventivo') {
+            tonPrev = op.toneladas || 0;
+            pastillasPrev = op.producto_usado_cantidad || 0;
+            camionesPrev = op.modalidad === 'trasilado' ? 'TRANSILE' : Math.round((op.toneladas || 0) / 28);
+        } else if (op.tratamiento === 'curativo') {
+            tonCur = op.toneladas || 0;
+            pastillasCur = op.producto_usado_cantidad || 0;
+            camionesCur = op.modalidad === 'trasilado' ? 'TRANSILE' : Math.round((op.toneladas || 0) / 28);
+        }
+
+        if (typeof camionesPrev === 'number') totalCamionesPrev += camionesPrev;
+        totalTonPrev += tonPrev;
+        totalPastillasPrev += pastillasPrev;
+        if (typeof camionesCur === 'number') totalCamionesCur += camionesCur;
+        totalTonCur += tonCur;
+        totalPastillasCur += pastillasCur;
+
+        let supervisorInfo = 'Pendiente de Aprobación';
+        if (op.estado_aprobacion === 'aprobado' && op.supervisor) {
+            supervisorInfo = `${op.supervisor.nombre} ${op.supervisor.apellido}`;
+        } else if (op.estado_aprobacion === 'rechazado') {
+            supervisorInfo = 'Rechazado';
+        }
+        
+        return [
+            getQuincena(op.created_at),
+            moment(op.created_at).format('DD/MM/YYYY'),
+            op.depositos?.nombre || 'N/A',
+            op.mercaderias?.nombre || 'N/A',
+            camionesPrev, tonPrev, pastillasPrev,
+            camionesCur, tonCur, pastillasCur,
+            op.observacion_aprobacion || '',
+            supervisorInfo
+        ];
+    });
+
+    const footer = ["TOTALES", null, null, null, Math.round(totalCamionesPrev), totalTonPrev, totalPastillasPrev, Math.round(totalCamionesCur), totalTonCur, totalPastillasCur, null, null];
+    
+    const finalData = [header1, header2, ...body, footer];
+    const ws = XLSX.utils.aoa_to_sheet(finalData);
+
+    ws['!merges'] = [
+        { s: { r: 0, c: 4 }, e: { r: 0, c: 6 } }, { s: { r: 0, c: 7 }, e: { r: 0, c: 9 } },
+        { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },
+        { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }, { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } },
+        { s: { r: 0, c: 10 }, e: { r: 1, c: 10 } }, { s: { r: 0, c: 11 }, e: { r: 1, c: 11 } },
+        { s: { r: finalData.length - 1, c: 0 }, e: { r: finalData.length - 1, c: 3 } }
+    ];
+
+    ws['!cols'] = [ {wch:15}, {wch:12}, {wch:8}, {wch:12}, {wch:10}, {wch:10}, {wch:10}, {wch:10}, {wch:10}, {wch:10}, {wch:40}, {wch:25} ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Reporte Fumigación");
+
+    const clienteNombre = user.role === 'admin' ? (filtroCliente.options[filtroCliente.selectedIndex].text || 'General') : 'General';
+    const fechaStr = `${moment(fechaDesde).format('DD-MM-YY')}_al_${moment(fechaHasta).format('DD-MM-YY')}`;
+    const fileName = `Reporte_${clienteNombre}_${fechaStr}.xlsx`;
+    XLSX.writeFile(wb, fileName);
 }
 
 function exportarAPDF(operaciones, fechaDesde, fechaHasta) {
+    // Esta función se mantiene igual que antes
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape' });
 
-    const titulo = 'Reporte de Operaciones';
+    let titulo = 'Reporte de Operaciones';
+    if (user.role === 'admin') {
+        const clienteSeleccionado = filtroCliente.options[filtroCliente.selectedIndex];
+        titulo = clienteSeleccionado.value ? `Reporte de ${clienteSeleccionado.text}` : 'Reporte General de Operaciones';
+    }
     const subtitulo = `Período: ${moment(fechaDesde).format('DD/MM/YYYY')} - ${moment(fechaHasta).format('DD/MM/YYYY')}`;
 
     doc.setFontSize(18);
@@ -132,26 +233,32 @@ function exportarAPDF(operaciones, fechaDesde, fechaHasta) {
             { content: 'PREVENTIVO', colSpan: 3, styles: { halign: 'center' } }, { content: 'CURATIVO', colSpan: 3, styles: { halign: 'center' } },
             { content: 'OBSERVACIONES', rowSpan: 2, styles: { halign: 'center' } }, { content: 'SUPERVISOR', rowSpan: 2, styles: { halign: 'center' } }
         ],
-        [
-            'CAMIONES', 'TONELADAS', 'PASTILLAS',
-            'CAMIONES', 'TONELADAS', 'PASTILLAS'
-        ]
+        [ 'CAMIONES', 'TONELADAS', 'PASTILLAS', 'CAMIONES', 'TONELADAS', 'PASTILLAS' ]
     ];
 
     let totalCamionesPrev = 0, totalTonPrev = 0, totalPastillasPrev = 0;
     let totalCamionesCur = 0, totalTonCur = 0, totalPastillasCur = 0;
     
     const body = operaciones.map(op => {
-        const camiones = op.modalidad === 'descarga' ? (op.toneladas / 28) : 0;
-        const camionesPrev = op.tratamiento === 'preventivo' ? camiones : 0;
-        const tonPrev = op.tratamiento === 'preventivo' ? op.toneladas : 0;
-        const pastillasPrev = op.tratamiento === 'preventivo' ? op.producto_usado_cantidad : 0;
-        const camionesCur = op.tratamiento === 'curativo' ? camiones : 0;
-        const tonCur = op.tratamiento === 'curativo' ? op.toneladas : 0;
-        const pastillasCur = op.tratamiento === 'curativo' ? op.producto_usado_cantidad : 0;
+        let camionesPrev = 0, tonPrev = 0, pastillasPrev = 0;
+        let camionesCur = 0, tonCur = 0, pastillasCur = 0;
 
-        totalCamionesPrev += camionesPrev; totalTonPrev += tonPrev; totalPastillasPrev += pastillasPrev;
-        totalCamionesCur += camionesCur; totalTonCur += tonCur; totalPastillasCur += pastillasCur;
+        if (op.tratamiento === 'preventivo') {
+            tonPrev = op.toneladas || 0;
+            pastillasPrev = op.producto_usado_cantidad || 0;
+            camionesPrev = op.modalidad === 'trasilado' ? 'TRANSILE' : Math.round((op.toneladas || 0) / 28);
+        } else if (op.tratamiento === 'curativo') {
+            tonCur = op.toneladas || 0;
+            pastillasCur = op.producto_usado_cantidad || 0;
+            camionesCur = op.modalidad === 'trasilado' ? 'TRANSILE' : Math.round((op.toneladas || 0) / 28);
+        }
+        
+        if (typeof camionesPrev === 'number') totalCamionesPrev += camionesPrev;
+        totalTonPrev += tonPrev;
+        totalPastillasPrev += pastillasPrev;
+        if (typeof camionesCur === 'number') totalCamionesCur += camionesCur;
+        totalTonCur += tonCur;
+        totalPastillasCur += pastillasCur;
 
         let supervisorInfo = 'Pendiente';
         if (op.estado_aprobacion === 'aprobado' && op.supervisor) {
@@ -165,10 +272,10 @@ function exportarAPDF(operaciones, fechaDesde, fechaHasta) {
             moment(op.created_at).format('DD/MM/YYYY'),
             op.depositos?.nombre || 'N/A',
             op.mercaderias?.nombre || 'N/A',
-            Math.round(camionesPrev).toLocaleString(),
+            camionesPrev,
             tonPrev.toLocaleString(),
             pastillasPrev.toLocaleString(),
-            Math.round(camionesCur).toLocaleString(),
+            camionesCur,
             tonCur.toLocaleString(),
             pastillasCur.toLocaleString(),
             op.observacion_aprobacion || '',
@@ -188,11 +295,7 @@ function exportarAPDF(operaciones, fechaDesde, fechaHasta) {
     ]];
 
     doc.autoTable({
-        head: head,
-        body: body,
-        foot: foot,
-        startY: 36,
-        theme: 'grid',
+        head: head, body: body, foot: foot, startY: 36, theme: 'grid',
         headStyles: { fillColor: [44, 62, 80], textColor: 255, halign: 'center', valign: 'middle', fontSize: 7 },
         footStyles: { fillColor: [210, 210, 210], textColor: 0, halign: 'center' },
         styles: { fontSize: 6.5, cellPadding: 1.5, lineColor: 200, lineWidth: 0.1 },
@@ -200,16 +303,15 @@ function exportarAPDF(operaciones, fechaDesde, fechaHasta) {
             const thickCols = [3, 6, 9, 10];
             if (thickCols.includes(data.column.index)) {
                 doc.setLineWidth(0.4);
-                doc.setDrawColor(150); // Un gris un poco más oscuro para las líneas gruesas
+                doc.setDrawColor(150);
                 doc.line(data.cell.x + data.cell.width, data.cell.y, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
-                doc.setDrawColor(200); // Volver al color por defecto de la grilla
-                doc.setLineWidth(0.1);
             }
         },
     });
     
+    const clienteNombre = user.role === 'admin' ? (filtroCliente.options[filtroCliente.selectedIndex].text || 'General') : 'General';
     const fechaStr = `${moment(fechaDesde).format('DD-MM-YY')}_al_${moment(fechaHasta).format('DD-MM-YY')}`;
-    const fileName = `Reporte_${fechaStr}.pdf`;
+    const fileName = `Reporte_${clienteNombre}_${fechaStr}.pdf`;
     doc.save(fileName);
 }
 
@@ -222,6 +324,10 @@ formReporte.addEventListener('submit', async (e) => {
     const dateRange = $(filtroFecha).data('daterangepicker');
     const fechaDesde = dateRange.startDate.format('YYYY-MM-DD');
     const fechaHasta = dateRange.endDate.format('YYYY-MM-DD');
+    let clienteId = null;
+    if (user.role === 'admin') {
+        clienteId = filtroCliente.value;
+    }
     
     let query = supabase
         .from('operaciones')
@@ -229,14 +335,16 @@ formReporte.addEventListener('submit', async (e) => {
         .gte('created_at', fechaDesde)
         .lte('created_at', `${fechaHasta}T23:59:59`);
 
-    if (user.cliente_ids) {
+    if (user.role === 'admin' && clienteId) {
+        query = query.eq('cliente_id', clienteId);
+    } else if (user.role === 'supervisor' && user.cliente_ids) {
         query = query.in('cliente_id', user.cliente_ids);
     }
     
     const { data, error } = await query;
 
     if (error) {
-        reporteContainer.innerHTML = '<p class="text-red-500 text-center">Error al generar el reporte.</p>';
+        reporteContainer.innerHTML = `<p class="text-red-500 text-center">Error al generar el reporte.</p>`;
         console.error(error);
         return;
     }
@@ -245,6 +353,7 @@ formReporte.addEventListener('submit', async (e) => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
+    await poblarClientes();
     $(filtroFecha).daterangepicker({
         opens: 'left',
         locale: { cancelLabel: 'Limpiar', applyLabel: 'Aplicar', format: 'DD/MM/YYYY' }

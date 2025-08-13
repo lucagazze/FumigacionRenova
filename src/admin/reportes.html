@@ -43,15 +43,21 @@
             </div>
 
           <div id="reporte-generado" class="hidden mt-6">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
               <div>
                 <h3 class="text-2xl font-bold" id="reporte-titulo">Reporte de Operaciones</h3>
                 <p class="text-sm text-gray-500" id="reporte-fechas"></p>
               </div>
-              <button id="exportar-pdf" class="btn-secondary py-2 px-4 rounded-lg flex items-center space-x-2">
-                <span class="material-icons">picture_as_pdf</span>
-                <span>Exportar a PDF</span>
-              </button>
+              <div class="flex items-center gap-2">
+                <button id="exportar-excel" class="btn-secondary py-2 px-4 rounded-lg flex items-center space-x-2">
+                  <span class="material-icons">grid_on</span>
+                  <span>Exportar a Excel</span>
+                </button>
+                <button id="exportar-pdf" class="btn-secondary py-2 px-4 rounded-lg flex items-center space-x-2">
+                  <span class="material-icons">picture_as_pdf</span>
+                  <span>Exportar a PDF</span>
+                </button>
+              </div>
             </div>
             <div class="overflow-x-auto">
               <table class="min-w-full bg-white text-sm">
@@ -88,6 +94,8 @@
   </div>
   <script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
   <script src="https://unpkg.com/jspdf-autotable@latest/dist/jspdf.plugin.autotable.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  
   <script type="module" src="reportes.js"></script>
 </body>
 </html>
