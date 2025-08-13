@@ -19,7 +19,7 @@ const clienteFilterContainer = document.getElementById('cliente-filter-container
 
 async function poblarClientes() {
     if (user.role !== 'admin') {
-        clienteFilterContainer.style.display = 'none';
+        if (clienteFilterContainer) clienteFilterContainer.style.display = 'none';
         return;
     }
 
@@ -35,6 +35,12 @@ async function poblarClientes() {
     });
 }
 
+function getQuincena(dateStr) {
+    const day = moment(dateStr).date();
+    return day <= 15 ? '1er Quincena' : '2da Quincena';
+}
+
+
 function renderReporte(operaciones, fechaDesde, fechaHasta) {
     const reporteGenerado = document.getElementById('reporte-generado');
     const reporteTitulo = document.getElementById('reporte-titulo');
@@ -45,11 +51,14 @@ function renderReporte(operaciones, fechaDesde, fechaHasta) {
 
     reporteContainer.innerHTML = '';
     
-    const operacionesFiltradas = operaciones.filter(op => op.tipo_registro === 'producto' && op.estado_aprobacion !== 'rechazado');
+    const operacionesFiltradas = operaciones
+        .filter(op => op.tipo_registro === 'producto') // Solo mostrar aplicaciones
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
 
     if (operacionesFiltradas.length === 0) {
         reporteGenerado.classList.add('hidden');
-        reporteContainer.innerHTML = '<p class="text-center text-gray-500">No se encontraron operaciones para los filtros seleccionados.</p>';
+        reporteContainer.innerHTML = '<p class="text-center text-gray-500">No se encontraron aplicaciones de producto para los filtros seleccionados.</p>';
         return;
     }
 
@@ -63,80 +72,71 @@ function renderReporte(operaciones, fechaDesde, fechaHasta) {
     }
     reporteFechas.textContent = `Del ${moment(fechaDesde).format('DD/MM/YYYY')} al ${moment(fechaHasta).format('DD/MM/YYYY')}`;
 
-    const operacionesAgrupadas = operacionesFiltradas.reduce((acc, op) => {
-        const key = `${op.deposito_id}-${op.mercaderia_id}-${op.tratamiento}-${op.estado_aprobacion}`;
-        if (!acc[key]) {
-            acc[key] = {
-                ...op,
-                toneladas: 0,
-                count: 0
-            };
-        }
-        acc[key].toneladas += op.toneladas || 0;
-        acc[key].count++;
-        return acc;
-    }, {});
+    let totalCamionesPrev = 0, totalTonPrev = 0, totalPastillasPrev = 0;
+    let totalCamionesCur = 0, totalTonCur = 0, totalPastillasCur = 0;
 
-    let totalGeneralToneladas = 0;
-    let totalPreventivo = 0;
-    let totalCurativo = 0;
-    reporteTablaBody.innerHTML = '';
+    reporteTablaBody.innerHTML = operacionesFiltradas.map(op => {
+        const camiones = op.modalidad === 'descarga' ? (op.toneladas / 28) : 0;
+        
+        const camionesPrev = op.tratamiento === 'preventivo' ? camiones : 0;
+        const tonPrev = op.tratamiento === 'preventivo' ? op.toneladas : 0;
+        const pastillasPrev = op.tratamiento === 'preventivo' ? op.producto_usado_cantidad : 0;
 
-    Object.values(operacionesAgrupadas).forEach(op => {
-        const estadoAprobacion = op.estado_aprobacion?.charAt(0).toUpperCase() + op.estado_aprobacion?.slice(1) || 'Pendiente';
-        const claseAprobacion = op.estado_aprobacion === 'aprobado' ? 'text-green-600' : 'text-yellow-600';
-        totalGeneralToneladas += op.toneladas;
+        const camionesCur = op.tratamiento === 'curativo' ? camiones : 0;
+        const tonCur = op.tratamiento === 'curativo' ? op.toneladas : 0;
+        const pastillasCur = op.tratamiento === 'curativo' ? op.producto_usado_cantidad : 0;
 
-        if (op.tratamiento === 'preventivo') {
-            totalPreventivo += op.toneladas;
-        } else if (op.tratamiento === 'curativo') {
-            totalCurativo += op.toneladas;
+        totalCamionesPrev += camionesPrev;
+        totalTonPrev += tonPrev;
+        totalPastillasPrev += pastillasPrev;
+        totalCamionesCur += camionesCur;
+        totalTonCur += tonCur;
+        totalPastillasCur += pastillasCur;
+
+        let supervisorInfo = '<span class="text-yellow-600">Pendiente de Aprobación</span>';
+        if (op.estado_aprobacion === 'aprobado' && op.supervisor) {
+            supervisorInfo = `${op.supervisor.nombre} ${op.supervisor.apellido}`;
+        } else if (op.estado_aprobacion === 'rechazado') {
+            supervisorInfo = '<span class="text-red-600">Rechazado</span>';
         }
 
-        const row = document.createElement('tr');
-        row.className = 'border-b border-gray-200 hover:bg-gray-100 cursor-pointer';
-        row.setAttribute('data-id', op.id);
-        row.innerHTML = `
-            <td class="py-3 px-4 text-left whitespace-nowrap">${moment(fechaDesde).format('DD/MM/YYYY')} - ${moment(fechaHasta).format('DD/MM/YYYY')}</td>
-            <td class="py-3 px-4 text-left">${op.clientes?.nombre || 'N/A'}</td>
-            <td class="py-3 px-4 text-left">${op.mercaderias?.nombre || 'N/A'}</td>
-            <td class="py-3 px-4 text-left">${op.tratamiento || 'N/A'}</td>
-            <td class="py-3 px-4 text-left font-semibold">${(op.toneladas).toLocaleString()} tn</td>
-            <td class="py-3 px-4 text-left">${op.depositos?.nombre || 'N/A'}</td>
-            <td class="py-3 px-4 text-left"><span class="font-semibold ${claseAprobacion}">${estadoAprobacion}</span></td>
+        return `
+            <tr class="border-b border-gray-200 hover:bg-gray-50">
+                <td class="py-2 px-2 border-r">${getQuincena(op.created_at)}</td>
+                <td class="py-2 px-2 border-r">${moment(op.created_at).format('DD/MM/YYYY')}</td>
+                <td class="py-2 px-2 border-r">${op.depositos?.nombre || 'N/A'}</td>
+                <td class="py-2 px-2 border-r-2 border-gray-400">${op.mercaderias?.nombre || 'N/A'}</td>
+                <td class="py-2 px-2 text-center border-r">${Math.round(camionesPrev).toLocaleString() || 0}</td>
+                <td class="py-2 px-2 text-center border-r">${tonPrev.toLocaleString() || 0}</td>
+                <td class="py-2 px-2 text-center border-r-2 border-gray-400">${pastillasPrev.toLocaleString() || 0}</td>
+                <td class="py-2 px-2 text-center border-r">${Math.round(camionesCur).toLocaleString() || 0}</td>
+                <td class="py-2 px-2 text-center border-r">${tonCur.toLocaleString() || 0}</td>
+                <td class="py-2 px-2 text-center border-r-2 border-gray-400">${pastillasCur.toLocaleString() || 0}</td>
+                <td class="py-2 px-2 border-r-2 border-gray-400">${op.observacion_aprobacion || ''}</td>
+                <td class="py-2 px-2">${supervisorInfo}</td>
+            </tr>
         `;
-        row.addEventListener('click', () => {
-            window.location.href = `operacion_detalle.html?id=${op.id}`;
-        });
-        reporteTablaBody.appendChild(row);
-    });
-
+    }).join('');
+    
     reporteTablaFoot.innerHTML = `
         <tr>
-            <td colspan="4" class="py-3 px-2 text-left font-bold">Total Preventivo</td>
-            <td class="py-3 px-2 text-left font-bold">${totalPreventivo.toLocaleString()} tn</td>
-            <td colspan="2" class="py-3 px-2"></td>
-        </tr>
-        <tr>
-            <td colspan="4" class="py-3 px-2 text-left font-bold">Total Curativo</td>
-            <td class="py-3 px-2 text-left font-bold">${totalCurativo.toLocaleString()} tn</td>
-            <td colspan="2" class="py-3 px-2"></td>
-        </tr>
-        <tr class="bg-gray-300">
-            <td colspan="4" class="py-3 px-2 text-left font-bold">Total General</td>
-            <td class="py-3 px-2 text-left font-bold">${totalGeneralToneladas.toLocaleString()} tn</td>
-            <td colspan="2" class="py-3 px-2"></td>
+            <td class="py-2 px-2 border-r" colspan="4"><b>TOTALES</b></td>
+            <td class="py-2 px-2 text-center border-r"><b>${Math.round(totalCamionesPrev).toLocaleString()}</b></td>
+            <td class="py-2 px-2 text-center border-r"><b>${totalTonPrev.toLocaleString()}</b></td>
+            <td class="py-2 px-2 text-center border-r-2 border-gray-400"><b>${totalPastillasPrev.toLocaleString()}</b></td>
+            <td class="py-2 px-2 text-center border-r"><b>${Math.round(totalCamionesCur).toLocaleString()}</b></td>
+            <td class="py-2 px-2 text-center border-r"><b>${totalTonCur.toLocaleString()}</b></td>
+            <td class="py-2 px-2 text-center border-r-2 border-gray-400"><b>${totalPastillasCur.toLocaleString()}</b></td>
+            <td class="py-2 px-2 border-r-2 border-gray-400" colspan="2"></td>
         </tr>
     `;
 
-    exportarPdfBtn.onclick = () => exportarAPDF(Object.values(operacionesAgrupadas), fechaDesde, fechaHasta, totalGeneralToneladas, totalPreventivo, totalCurativo);
+    exportarPdfBtn.onclick = () => exportarAPDF(operacionesFiltradas, fechaDesde, fechaHasta);
 }
 
-function exportarAPDF(operacionesAgrupadas, fechaDesde, fechaHasta, totalGeneralToneladas, totalPreventivo, totalCurativo) {
+function exportarAPDF(operaciones, fechaDesde, fechaHasta) {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({
-        orientation: 'landscape'
-    });
+    const doc = new jsPDF({ orientation: 'landscape' });
 
     let titulo = 'Reporte de Operaciones';
     let clienteSeleccionado;
@@ -150,55 +150,92 @@ function exportarAPDF(operacionesAgrupadas, fechaDesde, fechaHasta, totalGeneral
     doc.text(titulo, 14, 22);
     doc.setFontSize(11);
     doc.text(subtitulo, 14, 30);
-    doc.text(`Generado el: ${moment().format('DD/MM/YYYY HH:mm')}`, 14, 36);
 
-    const tableColumn = ["Fecha", "Cliente", "Producto", "Tratamiento", "Toneladas Registradas", "Depósito", "Aprobación"];
-    const tableRows = [];
+    const head = [
+        [
+            { content: 'QUINCENA', rowSpan: 2, styles: { halign: 'center' } }, { content: 'FECHA', rowSpan: 2, styles: { halign: 'center' } }, { content: 'SILO', rowSpan: 2, styles: { halign: 'center' } }, { content: 'PRODUCTO', rowSpan: 2, styles: { halign: 'center' } },
+            { content: 'PREVENTIVO', colSpan: 3, styles: { halign: 'center' } }, { content: 'CURATIVO', colSpan: 3, styles: { halign: 'center' } },
+            { content: 'OBSERVACIONES', rowSpan: 2, styles: { halign: 'center' } }, { content: 'SUPERVISOR', rowSpan: 2, styles: { halign: 'center' } }
+        ],
+        [
+            'CAMIONES', 'TONELADAS', 'PASTILLAS',
+            'CAMIONES', 'TONELADAS', 'PASTILLAS'
+        ]
+    ];
 
-    operacionesAgrupadas.forEach(op => {
-        const rowData = [
-            `${moment(fechaDesde).format('DD/MM/YYYY')} - ${moment(fechaHasta).format('DD/MM/YYYY')}`,
-            op.clientes?.nombre || 'N/A',
-            op.mercaderias?.nombre || 'N/A',
-            op.tratamiento || 'N/A',
-            (op.toneladas).toLocaleString() + ' tn',
+    let totalCamionesPrev = 0, totalTonPrev = 0, totalPastillasPrev = 0;
+    let totalCamionesCur = 0, totalTonCur = 0, totalPastillasCur = 0;
+    
+    const body = operaciones.map(op => {
+        const camiones = op.modalidad === 'descarga' ? (op.toneladas / 28) : 0;
+        const camionesPrev = op.tratamiento === 'preventivo' ? camiones : 0;
+        const tonPrev = op.tratamiento === 'preventivo' ? op.toneladas : 0;
+        const pastillasPrev = op.tratamiento === 'preventivo' ? op.producto_usado_cantidad : 0;
+        const camionesCur = op.tratamiento === 'curativo' ? camiones : 0;
+        const tonCur = op.tratamiento === 'curativo' ? op.toneladas : 0;
+        const pastillasCur = op.tratamiento === 'curativo' ? op.producto_usado_cantidad : 0;
+
+        totalCamionesPrev += camionesPrev; totalTonPrev += tonPrev; totalPastillasPrev += pastillasPrev;
+        totalCamionesCur += camionesCur; totalTonCur += tonCur; totalPastillasCur += pastillasCur;
+
+        let supervisorInfo = 'Pendiente';
+        if (op.estado_aprobacion === 'aprobado' && op.supervisor) {
+            supervisorInfo = `${op.supervisor.nombre} ${op.supervisor.apellido}`;
+        } else if (op.estado_aprobacion === 'rechazado') {
+            supervisorInfo = 'Rechazado';
+        }
+        
+        return [
+            getQuincena(op.created_at),
+            moment(op.created_at).format('DD/MM/YYYY'),
             op.depositos?.nombre || 'N/A',
-            op.estado_aprobacion?.charAt(0).toUpperCase() + op.estado_aprobacion?.slice(1) || 'Pendiente'
+            op.mercaderias?.nombre || 'N/A',
+            Math.round(camionesPrev).toLocaleString(),
+            tonPrev.toLocaleString(),
+            pastillasPrev.toLocaleString(),
+            Math.round(camionesCur).toLocaleString(),
+            tonCur.toLocaleString(),
+            pastillasCur.toLocaleString(),
+            op.observacion_aprobacion || '',
+            supervisorInfo
         ];
-        tableRows.push(rowData);
     });
+
+    const foot = [[
+        { content: 'TOTALES', colSpan: 4, styles: { fontStyle: 'bold', halign: 'right' } },
+        { content: Math.round(totalCamionesPrev).toLocaleString(), styles: { fontStyle: 'bold', halign: 'center' } },
+        { content: totalTonPrev.toLocaleString(), styles: { fontStyle: 'bold', halign: 'center' } },
+        { content: totalPastillasPrev.toLocaleString(), styles: { fontStyle: 'bold', halign: 'center' } },
+        { content: Math.round(totalCamionesCur).toLocaleString(), styles: { fontStyle: 'bold', halign: 'center' } },
+        { content: totalTonCur.toLocaleString(), styles: { fontStyle: 'bold', halign: 'center' } },
+        { content: totalPastillasCur.toLocaleString(), styles: { fontStyle: 'bold', halign: 'center' } },
+        { content: '', colSpan: 2 },
+    ]];
 
     doc.autoTable({
-        head: [tableColumn],
-        body: tableRows,
-        startY: 42,
-        theme: 'striped',
-        headStyles: { fillColor: [22, 160, 133] },
-        didDrawPage: function (data) {
-            // Footer
-            let str = "Página " + doc.internal.getNumberOfPages();
-            doc.setFontSize(10);
-            doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
-        }
+        head: head,
+        body: body,
+        foot: foot,
+        startY: 36,
+        theme: 'grid',
+        headStyles: { fillColor: [44, 62, 80], textColor: 255, halign: 'center', valign: 'middle', fontSize: 7 },
+        footStyles: { fillColor: [210, 210, 210], textColor: 0, halign: 'center' },
+        styles: { fontSize: 6.5, cellPadding: 1.5, lineColor: 200, lineWidth: 0.1 },
+        didDrawCell: (data) => {
+            const thickCols = [3, 6, 9, 10];
+            if (thickCols.includes(data.column.index)) {
+                doc.setLineWidth(0.4);
+                doc.setDrawColor(150); // Un gris un poco más oscuro para las líneas gruesas
+                doc.line(data.cell.x + data.cell.width, data.cell.y, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+                doc.setDrawColor(200); // Volver al color por defecto de la grilla
+                doc.setLineWidth(0.1);
+            }
+        },
     });
     
-    let finalY = doc.lastAutoTable.finalY;
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'bold');
-    
-    doc.text('Total Preventivo:', 110, finalY + 10);
-    doc.text(`${totalPreventivo.toLocaleString()} tn`, 150, finalY + 10);
-    
-    doc.text('Total Curativo:', 110, finalY + 16);
-    doc.text(`${totalCurativo.toLocaleString()} tn`, 150, finalY + 16);
-
-    doc.text('Total General:', 110, finalY + 22);
-    doc.text(`${totalGeneralToneladas.toLocaleString()} tn`, 150, finalY + 22);
-
-
     const clienteNombre = clienteSeleccionado && clienteSeleccionado.value ? clienteSeleccionado.text : 'General';
-    const fechaStr = `${moment(fechaDesde).format('DD-MM-YY')} al ${moment(fechaHasta).format('DD-MM-YY')}`;
-    const fileName = `Registro Fumigacion Fagaz (${clienteNombre}, ${fechaStr}).pdf`;
+    const fechaStr = `${moment(fechaDesde).format('DD-MM-YY')}_al_${moment(fechaHasta).format('DD-MM-YY')}`;
+    const fileName = `Reporte_${clienteNombre}_${fechaStr}.pdf`;
     doc.save(fileName);
 }
 
@@ -215,18 +252,12 @@ formReporte.addEventListener('submit', async (e) => {
     if (user.role === 'admin') {
         clienteId = filtroCliente.value;
     }
-
-    // Guardar en localStorage
-    localStorage.setItem('reporteClienteId', clienteId);
-    localStorage.setItem('reporteFechaDesde', fechaDesde);
-    localStorage.setItem('reporteFechaHasta', fechaHasta);
     
     let query = supabase
         .from('operaciones')
-        .select(`*, clientes(nombre), depositos(nombre, tipo), mercaderias(nombre)`)
+        .select(`*, clientes(nombre), depositos(nombre, tipo), mercaderias(nombre), supervisor:supervisor_id(nombre, apellido)`)
         .gte('created_at', fechaDesde)
-        .lte('created_at', `${fechaHasta}T23:59:59`)
-        .order('created_at', { ascending: true });
+        .lte('created_at', `${fechaHasta}T23:59:59`);
 
     if (user.role === 'admin' && clienteId) {
         query = query.eq('cliente_id', clienteId);
@@ -237,7 +268,7 @@ formReporte.addEventListener('submit', async (e) => {
     const { data, error } = await query;
 
     if (error) {
-        reporteContainer.innerHTML = '<p class="text-red-500 text-center">Error al generar el reporte.</p>';
+        reporteContainer.innerHTML = `<p class="text-red-500 text-center">Error al generar el reporte.</p>`;
         console.error(error);
         return;
     }
@@ -247,33 +278,8 @@ formReporte.addEventListener('submit', async (e) => {
 
 document.addEventListener('DOMContentLoaded', async () => {
     await poblarClientes();
-
     $(filtroFecha).daterangepicker({
         opens: 'left',
-        locale: {
-            cancelLabel: 'Limpiar',
-            applyLabel: 'Aplicar',
-            fromLabel: 'Desde',
-            toLabel: 'Hasta',
-            format: 'DD/MM/YYYY'
-        }
+        locale: { cancelLabel: 'Limpiar', applyLabel: 'Aplicar', format: 'DD/MM/YYYY' }
     });
-
-    // Restaurar desde localStorage
-    const savedClienteId = localStorage.getItem('reporteClienteId');
-    const savedFechaDesde = localStorage.getItem('reporteFechaDesde');
-    const savedFechaHasta = localStorage.getItem('reporteFechaHasta');
-
-    if (savedClienteId && user.role === 'admin') {
-        filtroCliente.value = savedClienteId;
-    }
-
-    if (savedFechaDesde && savedFechaHasta) {
-        $(filtroFecha).data('daterangepicker').setStartDate(moment(savedFechaDesde));
-        $(filtroFecha).data('daterangepicker').setEndDate(moment(savedFechaHasta));
-        $(filtroFecha).val(moment(savedFechaDesde).format('DD/MM/YYYY') + ' - ' + moment(savedFechaHasta).format('DD/MM/YYYY'));
-        
-        // Trigger form submission
-        formReporte.dispatchEvent(new Event('submit'));
-    }
 });

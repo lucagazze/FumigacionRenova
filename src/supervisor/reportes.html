@@ -20,7 +20,7 @@
   <div class="relative flex min-h-screen flex-col overflow-x-hidden">
     <header id="header"></header>
     <main class="flex-1 py-8">
-      <div class="content-container max-w-5xl mx-auto space-y-8">
+      <div class="content-container max-w-7xl mx-auto space-y-8">
         <h1 class="text-3xl sm:text-4xl font-bold text-black">Reportes de Operaciones</h1>
         
         <div class="bg-white p-6 rounded-xl shadow-lg">
@@ -36,8 +36,7 @@
           </form>
 
           <div id="reporte-container" class="space-y-6">
-            <!-- El contenido del reporte se generará aquí -->
-          </div>
+            </div>
 
           <div id="reporte-generado" class="hidden mt-6">
             <div class="flex justify-between items-center mb-4">
@@ -50,28 +49,33 @@
                 <span>Exportar a PDF</span>
               </button>
             </div>
-            <div>
-              <div class="overflow-x-auto">
-                <table class="min-w-full bg-white rounded-lg shadow-md">
-                  <thead class="bg-gray-800 text-white">
-                    <tr>
-                      <th class="py-3 px-4 text-left">Fecha</th>
-                      <th class="py-3 px-4 text-left">Cliente</th>
-                      <th class="py-3 px-4 text-left">Producto</th>
-                      <th class="py-3 px-4 text-left">Tratamiento</th>
-                      <th class="py-3 px-4 text-left font-bold">Toneladas</th>
-                      <th class="py-3 px-4 text-left">Depósito</th>
-                      <th class="py-3 px-4 text-left">Aprobación</th>
-                    </tr>
-                  </thead>
-                  <tbody id="reporte-tabla-body" class="text-gray-700">
-                    <!-- Las filas del reporte se insertarán aquí -->
+            <div class="overflow-x-auto">
+              <table class="min-w-full bg-white text-sm">
+                <thead class="bg-gray-800 text-white">
+                  <tr>
+                    <th rowspan="2" class="py-2 px-2 text-left border-r">QUINCENA</th>
+                    <th rowspan="2" class="py-2 px-2 text-left border-r">FECHA</th>
+                    <th rowspan="2" class="py-2 px-2 text-left border-r">SILO</th>
+                    <th rowspan="2" class="py-2 px-2 text-left border-r-2 border-gray-500">PRODUCTO</th>
+                    <th colspan="3" class="py-2 px-2 text-center border-b border-r-2 border-gray-500">PREVENTIVO</th>
+                    <th colspan="3" class="py-2 px-2 text-center border-b border-r-2 border-gray-500">CURATIVO</th>
+                    <th rowspan="2" class="py-2 px-2 text-left border-r-2 border-gray-500">OBSERVACIONES</th>
+                    <th rowspan="2" class="py-2 px-2 text-left">SUPERVISOR</th>
+                  </tr>
+                  <tr>
+                    <th class="py-2 px-2 text-center font-medium border-r">CAMIONES</th>
+                    <th class="py-2 px-2 text-center font-medium border-r">TONELADAS</th>
+                    <th class="py-2 px-2 text-center font-medium border-r-2 border-gray-500">PASTILLAS</th>
+                    <th class="py-2 px-2 text-center font-medium border-r">CAMIONES</th>
+                    <th class="py-2 px-2 text-center font-medium border-r">TONELADAS</th>
+                    <th class="py-2 px-2 text-center font-medium border-r-2 border-gray-500">PASTILLAS</th>
+                  </tr>
+                </thead>
+                <tbody id="reporte-tabla-body" class="text-gray-700">
                   </tbody>
-                  <tfoot id="reporte-tabla-foot" class="bg-gray-200 font-bold">
-                    <!-- El pie de la tabla con los totales se insertará aquí -->
+                <tfoot id="reporte-tabla-foot" class="bg-gray-200 font-bold">
                   </tfoot>
-                </table>
-              </div>
+              </table>
             </div>
           </div>
         </div>
