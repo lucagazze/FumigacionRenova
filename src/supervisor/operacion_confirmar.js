@@ -114,5 +114,5 @@ async function updateOperationStatus(operacionId, estado, observacion) {
     }
 
     alert('Operación actualizada correctamente.');
-    window.location.href = 'dashboard.html';
+    window.history.back(); // <-- ESTA ES LA LÍNEA MODIFICADA
 }

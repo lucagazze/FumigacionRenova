@@ -89,7 +89,8 @@ form.addEventListener('submit', async (e) => {
         console.error("Error updating original operations:", updateError);
     }
 
-    // ⭐ NUEVO: Se limpian los registros que quedaron pendientes de aprobación
+    // --- AQUÍ ESTÁ LA LÓGICA ---
+    // Se aprueban automáticamente todos los registros que quedaron pendientes en esta operación.
     const { error: updatePendientesError } = await supabase
         .from('operaciones')
         .update({ 

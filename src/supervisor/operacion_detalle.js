@@ -90,24 +90,35 @@ function renderizarPagina(container, opBase, allRecords) {
             <div class="font-semibold"><strong>Total Producto:</strong><br>${totalProducto.toLocaleString()} ${unidadLabel}</div>
         </div>
         <div class="border-t pt-6 mt-6">
-            <h3 class="text-xl font-bold text-gray-800 mb-4">Línea de Tiempo de la Operación</h3>
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Línea de Tiempo de la Operación</h3>
+                <label for="toggleMuestreos" class="flex items-center cursor-pointer">
+                    <span id="toggleMuestreosLabel" class="mr-3 text-sm font-medium text-gray-900">Ocultar Muestreos</span>
+                    <div class="relative">
+                        <input type="checkbox" id="toggleMuestreos" class="sr-only peer">
+                        <div class="block bg-gray-200 w-14 h-8 rounded-full peer-checked:bg-green-500 transition"></div>
+                        <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform transform peer-checked:translate-x-full"></div>
+                    </div>
+                </label>
+            </div>
             <div class="space-y-2">
                 ${allRecords.map(registro => {
                     let detalle = '';
                     let actionButtons = '';
-
                     const isRechazado = registro.estado_aprobacion === 'rechazado';
-                    const itemClass = isRechazado ? 'line-through text-gray-400' : '';
+                    const isMuestreo = registro.tipo_registro === 'muestreo';
+                    let itemClass = isRechazado ? 'line-through text-gray-400' : '';
+                    if (isMuestreo) itemClass += ' registro-muestreo';
 
                     if (user.role === 'supervisor' && registro.estado_aprobacion === 'pendiente' && registro.tipo_registro !== 'muestreo') {
                         actionButtons += `<a href="../supervisor/operacion_confirmar.html?id=${registro.id}" class="btn bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600">Revisar</a>`;
-                    } else if (registro.tipo_registro !== 'inicial' && registro.estado_aprobacion !== 'aprobado') {
-                        actionButtons += `<button class="btn-delete-registro p-1" data-registro-id="${registro.id}" title="Eliminar"><span class="material-icons text-red-500 hover:text-red-700">delete</span></button>`;
                     }
 
                     if (registro.observacion_aprobacion) {
                         actionButtons += `<button class="btn-show-observacion p-1" data-observacion="${registro.observacion_aprobacion}" title="Ver observación"><span class="material-icons text-yellow-500 hover:text-yellow-700">comment</span></button>`;
                     }
+
+                    let finalHtml;
 
                     switch(registro.tipo_registro) {
                         case 'inicial': 
@@ -118,10 +129,11 @@ function renderizarPagina(container, opBase, allRecords) {
                             detalle = `<b>${registro.operario_nombre}</b> aplicó <b>${(registro.producto_usado_cantidad || 0).toLocaleString()} ${unidadLabel}</b> en ${(registro.toneladas || 0).toLocaleString()} tn. <span class="font-semibold">${tratamientoProducto}</span>`;
                             break;
                         case 'muestreo':
+                            detalle = `<b>${registro.operario_nombre}</b> registró un muestreo.`;
+                            actionButtons += `<button class="btn-ver-muestreo p-1" data-muestreo-id="${registro.id}" title="Ver detalles del muestreo"><span class="material-icons text-blue-500 hover:text-blue-700">visibility</span></button>`;
+                            
                             const muestreoData = registro.muestreos && registro.muestreos.length > 0 ? registro.muestreos[0] : {};
                             const tieneArchivos = muestreoData.media_url && muestreoData.media_url.length > 0;
-                            detalle = `<b>${registro.operario_nombre}</b> registró un muestreo. <button class="text-blue-600 hover:underline btn-ver-muestreo" data-muestreo-id="${registro.id}">Ver detalles</button>`;
-                            
                             let muestreoDetailsHTML = '';
                             if (tieneArchivos || muestreoData.observacion) {
                                 muestreoDetailsHTML = `
@@ -140,20 +152,23 @@ function renderizarPagina(container, opBase, allRecords) {
                                 `;
                             }
         
-                            return `<div class="text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm ${itemClass}">
+                            finalHtml = `<div class="p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm ${itemClass}">
                                         <div class="flex items-center justify-between">
-                                            <div><b>${new Date(registro.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}:</b> ${detalle}</div>
+                                            <div><b>${new Date(registro.created_at).toLocaleString('es-AR')}:</b> ${detalle}</div>
                                             <div class="flex-shrink-0 ml-4 flex items-center gap-2">${actionButtons}</div>
                                         </div>
                                         ${muestreoDetailsHTML}
                                     </div>`;
+                            break;
                         case 'finalizacion': 
                             detalle = `Operación finalizada por <b>${registro.operario_nombre}</b>.`; 
                             break;
                     }
 
+                    if (finalHtml) return finalHtml;
+
                     return `<div class="flex items-center justify-between text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm ${itemClass}">
-                                <div><b>${new Date(registro.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}:</b> ${detalle}</div>
+                                <div><b>${new Date(registro.created_at).toLocaleString('es-AR')}:</b> ${detalle}</div>
                                 <div class="flex-shrink-0 ml-4 flex items-center gap-2">${actionButtons}</div>
                             </div>`;
                 }).join('')}
@@ -199,6 +214,17 @@ function renderizarPagina(container, opBase, allRecords) {
                 detailsContainer.classList.toggle('hidden');
             }
         }
+    });
+
+    const toggleMuestreos = document.getElementById('toggleMuestreos');
+    const toggleLabel = document.getElementById('toggleMuestreosLabel');
+    toggleMuestreos.addEventListener('change', (e) => {
+        const isChecked = e.target.checked;
+        const muestreoRecords = container.querySelectorAll('.registro-muestreo');
+        muestreoRecords.forEach(record => {
+            record.classList.toggle('hidden', isChecked);
+        });
+        toggleLabel.textContent = isChecked ? 'Mostrar Muestreos' : 'Ocultar Muestreos';
     });
 }
 

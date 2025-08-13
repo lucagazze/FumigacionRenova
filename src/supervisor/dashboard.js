@@ -31,49 +31,49 @@ async function renderPendientes() {
     }
 
     container.innerHTML = operaciones.map(op => {
-        const unidad = op.metodo_fumigacion === 'liquido' ? 'cm³' : 'pastillas';
-        let tipoRegistro, icono, colorFondo, colorBorde, detalle;
+        let tipoRegistro, icono, colorFondo, colorBorde, detalleSimple;
 
-        // --- LÓGICA CORREGIDA AQUÍ ---
         if (op.tipo_registro === 'inicial') {
             tipoRegistro = 'Inicio de Operación';
             icono = 'flag';
             colorFondo = 'bg-blue-50';
             colorBorde = 'border-blue-300 hover:border-blue-500';
-            detalle = `<p class="text-sm ml-9">Iniciado por <b>${op.operario_nombre}</b>.</p>`;
+            detalleSimple = `Por <b>${op.operario_nombre}</b>`;
         } else if (op.tipo_registro === 'producto') {
             tipoRegistro = 'Aplicación de Producto';
             icono = 'science';
             colorFondo = 'bg-yellow-50';
             colorBorde = 'border-yellow-300 hover:border-yellow-500';
-            detalle = `<p class="text-sm ml-9"><b>${op.operario_nombre}</b> aplicó <b>${(op.producto_usado_cantidad ?? 0).toLocaleString()} ${unidad}</b> en <b>${(op.toneladas ?? 0).toLocaleString()} tn</b>.</p>`;
-        } else if (op.tipo_registro === 'finalizacion') { // <-- AÑADIDO ESTE CASO
+            
+            const toneladas = (op.toneladas ?? 0).toLocaleString();
+            const tratamiento = op.tratamiento ? op.tratamiento.charAt(0).toUpperCase() + op.tratamiento.slice(1) : 'N/A';
+            const modalidad = op.modalidad ? op.modalidad.charAt(0).toUpperCase() + op.modalidad.slice(1) : 'N/A';
+            detalleSimple = `<b>${toneladas} tn</b> (${tratamiento} - ${modalidad})`;
+
+        } else if (op.tipo_registro === 'finalizacion') {
             tipoRegistro = 'Finalización de Operación';
             icono = 'check_circle';
             colorFondo = 'bg-red-50';
             colorBorde = 'border-red-300 hover:border-red-500';
-            detalle = `<p class="text-sm ml-9">Solicitado por <b>${op.operario_nombre}</b>.</p>`;
+            detalleSimple = `Solicitado por <b>${op.operario_nombre}</b>`;
         } else {
-            tipoRegistro = 'Registro'; // Caso por defecto
-            icono = 'assignment';
-            colorFondo = 'bg-gray-50';
-            colorBorde = 'border-gray-300 hover:border-gray-500';
-            detalle = `<p class="text-sm ml-9">Registrado por <b>${op.operario_nombre}</b>.</p>`;
+            return ''; // No mostrar otros tipos en esta vista
         }
 
         return `
-        <a href="operacion_confirmar.html?id=${op.id}" class="block p-4 rounded-lg shadow border ${colorFondo} ${colorBorde} transition hover:shadow-md">
-            <div class="flex flex-wrap justify-between items-center gap-2">
-                <div>
-                    <div class="flex items-center gap-3 mb-2">
-                        <span class="material-icons text-lg text-gray-600">${icono}</span>
-                        <h3 class="font-bold text-lg text-gray-800">${tipoRegistro}</h3>
+        <a href="operacion_confirmar.html?id=${op.id}" class="block p-3 rounded-lg shadow-sm border ${colorFondo} ${colorBorde} transition hover:shadow-md">
+            <div class="flex items-center justify-between gap-4 w-full">
+                <div class="flex items-center gap-3">
+                    <span class="material-icons text-gray-600">${icono}</span>
+                    <div class="text-sm">
+                        <p class="font-bold text-gray-800">${tipoRegistro}: <span class="font-medium">${op.clientes.nombre} - Depósito ${op.depositos.nombre}</span></p>
+                        <p class="text-xs text-gray-500">${new Date(op.created_at).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })} hs</p>
                     </div>
-                    <p class="text-sm text-gray-500 ml-9">${new Date(op.created_at).toLocaleString('es-AR')}</p>
-                    <p class="text-sm font-semibold ml-9 mt-1">${op.clientes.nombre} - Depósito ${op.depositos.nombre}</p>
-                    ${detalle}
                 </div>
-                <div class="flex items-center gap-2 text-blue-600 font-semibold">
+                <div class="hidden md:block text-sm text-gray-600 flex-shrink-0">
+                    ${detalleSimple}
+                </div>
+                <div class="flex-shrink-0 flex items-center gap-2 text-blue-600 font-semibold text-sm">
                     <span>Revisar y Aprobar</span>
                     <span class="material-icons">arrow_forward</span>
                 </div>
@@ -112,17 +112,16 @@ async function renderEnCursoParaFinalizar() {
 
     container.innerHTML = operaciones.map(op => {
         return `
-        <a href="operacion_detalle.html?id=${op.id}" class="block p-4 rounded-lg shadow border bg-green-50 border-green-300 transition hover:shadow-md hover:border-green-500">
-            <div class="flex flex-wrap justify-between items-center gap-2">
-                <div>
-                    <div class="flex items-center gap-3 mb-2">
-                        <span class="material-icons text-lg text-gray-600">gps_fixed</span>
-                        <h3 class="font-bold text-lg text-gray-800">Operación en Curso</h3>
+        <a href="operacion_detalle.html?id=${op.id}" class="block p-3 rounded-lg shadow-sm border bg-green-50 border-green-300 transition hover:shadow-md hover:border-green-500">
+            <div class="flex items-center justify-between gap-4 w-full">
+                <div class="flex items-center gap-3">
+                    <span class="material-icons text-green-700">gps_fixed</span>
+                    <div class="text-sm">
+                        <p class="font-bold text-gray-800">En Curso: <span class="font-medium">${op.clientes.nombre} - Depósito ${op.depositos.nombre}</span></p>
+                        <p class="text-xs text-gray-500">${new Date(op.created_at).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })} hs</p>
                     </div>
-                    <p class="text-sm text-gray-500 ml-9">${new Date(op.created_at).toLocaleString('es-AR')}</p>
-                    <p class="text-sm font-semibold ml-9 mt-1">${op.clientes.nombre} - Depósito ${op.depositos.nombre}</p>
                 </div>
-                <div class="flex items-center gap-2 text-red-600 font-semibold">
+                <div class="flex-shrink-0 flex items-center gap-2 text-red-600 font-semibold text-sm">
                     <span>Ver Detalle para Finalizar</span>
                     <span class="material-icons">flag</span>
                 </div>
@@ -132,9 +131,23 @@ async function renderEnCursoParaFinalizar() {
     }).join('');
 }
 
-
-document.addEventListener('DOMContentLoaded', async () => {
-    document.getElementById('header').innerHTML = renderHeader();
+// --- Función para cargar todos los datos del dashboard ---
+async function loadDashboardData() {
     await renderPendientes();
     await renderEnCursoParaFinalizar();
+}
+
+// Carga inicial cuando el DOM está listo
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('header').innerHTML = renderHeader();
+    loadDashboardData();
+});
+
+// --- MODIFICACIÓN AQUÍ ---
+// Vuelve a cargar los datos cada vez que la página se muestra
+// (incluyendo cuando se presiona el botón "atrás" del navegador)
+window.addEventListener('pageshow', (event) => {
+    // La propiedad 'persisted' es true si la página se carga desde el cache.
+    // Recargamos los datos para asegurar que la información esté actualizada.
+    loadDashboardData();
 });

@@ -17,39 +17,41 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           
           <div class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-xl font-semibold mb-4">Clientes</h2>
+            <h2 id="formClienteTitle" class="text-xl font-semibold mb-4">Añadir Cliente</h2>
             <form id="formCliente" class="flex gap-2 mb-4">
+              <input type="hidden" id="clienteId">
               <input type="text" id="nombreCliente" placeholder="Nombre del cliente" class="input-field flex-grow" required>
-              <button type="submit" class="btn-primary">Añadir</button>
+              <button id="btnGuardarCliente" type="submit" class="btn-primary">Añadir</button>
             </form>
+             <button id="btnCancelarCliente" type="button" class="btn-secondary w-full hidden mb-4">Cancelar Edición</button>
             <div id="listaClientes" class="space-y-2"></div>
           </div>
 
           <div class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-xl font-semibold mb-4">Mercaderías</h2>
+            <h2 id="formMercaderiaTitle" class="text-xl font-semibold mb-4">Añadir Mercadería</h2>
             <form id="formMercaderia" class="flex gap-2 mb-4">
+              <input type="hidden" id="mercaderiaId">
               <input type="text" id="nombreMercaderia" placeholder="Nombre de la mercadería" class="input-field flex-grow" required>
-              <button type="submit" class="btn-primary">Añadir</button>
+              <button id="btnGuardarMercaderia" type="submit" class="btn-primary">Añadir</button>
             </form>
+            <button id="btnCancelarMercaderia" type="button" class="btn-secondary w-full hidden mb-4">Cancelar Edición</button>
             <div id="listaMercaderias" class="space-y-2"></div>
           </div>
 
           <div class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-xl font-semibold mb-4">Depósitos (Silos/Celdas)</h2>
+            <h2 id="formDepositoTitle" class="text-xl font-semibold mb-4">Añadir Depósito</h2>
             <form id="formDeposito" class="space-y-4 mb-4">
-              
+              <input type="hidden" id="depositoId">
               <div>
                 <label for="depositoClienteSelect" class="block text-sm font-medium mb-1 text-gray-600">Cliente al que pertenece</label>
                 <select id="depositoClienteSelect" class="input-field w-full" required>
                   <option value="">Cargando clientes...</option>
                 </select>
               </div>
-
               <div>
                 <label for="nombreDeposito" class="block text-sm font-medium mb-1 text-gray-600">Nombre del Depósito</label>
                 <input type="text" id="nombreDeposito" placeholder="Ej: 301" class="input-field w-full" required>
               </div>
-              
               <div>
                 <label for="tipoDeposito" class="block text-sm font-medium mb-1 text-gray-600">Tipo</label>
                 <select id="tipoDeposito" class="input-field w-full">
@@ -57,14 +59,13 @@
                   <option value="celda">Celda</option>
                 </select>
               </div>
-
                <div>
                 <label for="capacidadDeposito" class="block text-sm font-medium mb-1 text-gray-600">Capacidad (Toneladas)</label>
                 <input type="number" id="capacidadDeposito" placeholder="Ej: 13500" class="input-field w-full">
               </div>
-
-              <button type="submit" class="btn-primary w-full !py-3 !rounded-lg">Añadir Depósito</button>
+              <button id="btnGuardarDeposito" type="submit" class="btn-primary w-full !py-3 !rounded-lg">Añadir Depósito</button>
             </form>
+            <button id="btnCancelarDeposito" type="button" class="btn-secondary w-full hidden mb-4">Cancelar Edición</button>
             <div id="listaDepositos" class="space-y-2"></div>
           </div>
 
