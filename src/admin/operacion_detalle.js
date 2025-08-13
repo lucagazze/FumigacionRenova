@@ -276,7 +276,9 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
                 if (registro.tipo_registro === 'finalizacion') {
                     await revertirFinalizacion(registro);
                 } else {
-                    await eliminarRegistro(registro);
+                    if (confirm('¿Seguro que deseas borrar este registro?')) {
+                        await eliminarRegistro(registro, container, opBase, allRecords, limpieza);
+                    }
                 }
             }
         } else if (deleteOpTarget) {
@@ -292,6 +294,21 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
             renderObservacionModal(observacion);
         }
     });
+// --- FUNCION PARA ELIMINAR REGISTRO PENDIENTE ---
+async function eliminarRegistro(registro, container, opBase, allRecords, limpieza) {
+    // Elimina el registro de la base de datos
+    const { error } = await supabase.from('operaciones').delete().eq('id', registro.id);
+    if (error) {
+        alert('Error al eliminar el registro: ' + error.message);
+        return;
+    }
+    // Elimina el registro del array local y vuelve a renderizar la página
+    const idx = allRecords.findIndex(r => r.id === registro.id);
+    if (idx !== -1) {
+        allRecords.splice(idx, 1);
+    }
+    renderizarPagina(container, opBase, allRecords, limpieza);
+}
 
     const toggleMuestreos = document.getElementById('toggleMuestreos');
     const toggleLabel = document.getElementById('toggleMuestreosLabel');
