@@ -10,6 +10,9 @@ const form = document.getElementById('formUsuario');
 const formTitle = document.getElementById('form-title');
 const btnCancel = document.getElementById('btnCancel');
 const usuarioIdField = document.getElementById('usuarioId');
+const nombreInput = document.getElementById('nombre');
+const apellidoInput = document.getElementById('apellido');
+const emailInput = document.getElementById('email');
 const passwordInput = document.getElementById('password');
 const passwordHelper = document.getElementById('password-helper');
 const roleSelect = document.getElementById('role');
@@ -69,8 +72,7 @@ function renderUsuarios(usersToRender) {
                     ${u.role !== 'admin' ? u.clientes.join(', ') || 'Ninguno' : 'N/A'}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button data-id="${u.id}" class="edit-btn text-blue-600 hover:text-blue-900 p-1" title="Editar"><span class="material-icons">edit</span></button>
-                    <button data-id="${u.id}" class="delete-btn text-red-600 hover:text-red-900 p-1" title="Eliminar"><span class="material-icons">delete</span></button>
+                    <button data-id="${u.id}" class="edit-btn text-blue-600 hover:text-blue-900 p-1" title="Editar Clientes Asignados"><span class="material-icons">edit</span></button>
                 </td>
             </tr>
         `;
@@ -108,6 +110,14 @@ function aplicarFiltros() {
     renderUsuarios(filteredUsers);
 }
 
+function setFormState(disabled) {
+    nombreInput.disabled = disabled;
+    apellidoInput.disabled = disabled;
+    emailInput.disabled = disabled;
+    passwordInput.disabled = disabled;
+    roleSelect.disabled = disabled;
+}
+
 function resetForm() {
     form.reset();
     usuarioIdField.value = '';
@@ -119,6 +129,7 @@ function resetForm() {
     roleSelect.value = 'operario';
     clienteCheckboxContainer.classList.add('hidden');
     roleSelect.dispatchEvent(new Event('change'));
+    setFormState(false); // Habilitar campos para nuevo usuario
 }
 
 // --- Función handleFormSubmit CORREGIDA ---
@@ -126,32 +137,9 @@ async function handleFormSubmit(e) {
     e.preventDefault();
     const id = usuarioIdField.value;
     
-    const userData = {
-        email: document.getElementById('email').value,
-        nombre: document.getElementById('nombre').value,
-        apellido: document.getElementById('apellido').value,
-        role: roleSelect.value,
-        password: passwordInput.value
-    };
-    
-    let savedUser;
-
+    // Si estamos editando (id existe), solo manejamos la lógica de clientes.
     if (id) {
-        // --- ACTUALIZAR USUARIO (FORMA SEGURA) ---
-        const { data, error } = await supabase.functions.invoke('actualizar-usuario', { body: { id, ...userData } });
-        if (error) return alert(`Error al actualizar: ${error.message}`);
-        savedUser = data.user;
-    } else {
-        // --- CREAR NUEVO USUARIO (FORMA SEGURA) ---
-        if (!userData.password) return alert("La contraseña es obligatoria para nuevos usuarios.");
-        const { data, error } = await supabase.functions.invoke('crear-usuario', { body: userData });
-        if (error) return alert(`Error al crear usuario: ${error.message}`);
-        savedUser = data.user;
-    }
-
-    // --- LÓGICA MEJORADA PARA ASIGNAR CLIENTES ---
-    if (savedUser.user_metadata.role === 'operario' || savedUser.user_metadata.role === 'supervisor') {
-        const userToEdit = allUsersWithClients.find(u => u.id === savedUser.id) || { cliente_ids: [] };
+        const userToEdit = allUsersWithClients.find(u => u.id === id) || { cliente_ids: [] };
         const clientesActuales = new Set(userToEdit.cliente_ids);
         const clientesNuevos = new Set(Array.from(document.querySelectorAll('[name="cliente"]:checked')).map(cb => cb.value));
 
@@ -159,20 +147,48 @@ async function handleFormSubmit(e) {
         const paraQuitar = [...clientesActuales].filter(id => !clientesNuevos.has(id));
 
         if (paraQuitar.length > 0) {
-            await supabase.from('operario_clientes').delete().eq('operario_id', savedUser.id).in('cliente_id', paraQuitar);
+            await supabase.from('operario_clientes').delete().eq('operario_id', id).in('cliente_id', paraQuitar);
         }
         if (paraAnadir.length > 0) {
-            const nuevasRelaciones = paraAnadir.map(cliente_id => ({ operario_id: savedUser.id, cliente_id }));
+            const nuevasRelaciones = paraAnadir.map(cliente_id => ({ operario_id: id, cliente_id }));
+            await supabase.from('operario_clientes').insert(nuevasRelaciones);
+        }
+        
+        alert(`Clientes del usuario actualizados con éxito.`);
+        resetForm();
+        await cargarYRenderizarUsuarios();
+        return;
+    }
+
+    // --- Lógica para CREAR NUEVO USUARIO (se mantiene igual) ---
+    const userData = {
+        email: document.getElementById('email').value,
+        nombre: document.getElementById('nombre').value,
+        apellido: document.getElementById('apellido').value,
+        role: roleSelect.value,
+        password: passwordInput.value
+    };
+
+    if (!userData.password) return alert("La contraseña es obligatoria para nuevos usuarios.");
+    const { data, error } = await supabase.functions.invoke('crear-usuario', { body: userData });
+    if (error) return alert(`Error al crear usuario: ${error.message}`);
+    const savedUser = data.user;
+
+    // Asignar clientes al nuevo usuario
+    if (savedUser.user_metadata.role === 'operario' || savedUser.user_metadata.role === 'supervisor') {
+        const clientesNuevos = Array.from(document.querySelectorAll('[name="cliente"]:checked')).map(cb => cb.value);
+        if (clientesNuevos.length > 0) {
+            const nuevasRelaciones = clientesNuevos.map(cliente_id => ({ operario_id: savedUser.id, cliente_id }));
             await supabase.from('operario_clientes').insert(nuevasRelaciones);
         }
     }
     
-    alert(`Usuario ${id ? 'actualizado' : 'creado'} con éxito.`);
+    alert(`Usuario creado con éxito.`);
     resetForm();
     await cargarYRenderizarUsuarios();
 }
 
-// --- Event Listeners (sin cambios importantes, solo el de borrado) ---
+// --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', async () => {
     await poblarSelectClientes();
     await cargarYRenderizarUsuarios();
@@ -209,13 +225,16 @@ listaUsuarios.addEventListener('click', async (e) => {
         if (!userToEdit) return alert('No se pudo encontrar el usuario.');
         
         usuarioIdField.value = userToEdit.id;
-        document.getElementById('nombre').value = userToEdit.nombre;
-        document.getElementById('apellido').value = userToEdit.apellido;
-        document.getElementById('email').value = userToEdit.email;
+        nombreInput.value = userToEdit.nombre;
+        apellidoInput.value = userToEdit.apellido;
+        emailInput.value = userToEdit.email;
         roleSelect.value = userToEdit.role;
-        passwordInput.placeholder = "Dejar en blanco para no cambiar";
+        passwordInput.placeholder = "No se puede modificar";
         passwordInput.required = false;
         passwordHelper.classList.add('hidden');
+        
+        // Deshabilitar campos
+        setFormState(true);
         
         document.querySelectorAll('[name="cliente"]').forEach(cb => cb.checked = false);
         const showClientes = userToEdit.role === 'operario' || userToEdit.role === 'supervisor';
@@ -227,22 +246,10 @@ listaUsuarios.addEventListener('click', async (e) => {
             });
         }
 
-        formTitle.textContent = 'Editar Usuario';
+        formTitle.textContent = 'Editar Clientes Asignados';
         btnCancel.classList.remove('hidden');
         form.scrollIntoView({ behavior: 'smooth' });
     }
 
-    const deleteButton = e.target.closest('.delete-btn');
-    if (deleteButton) {
-        const id = deleteButton.dataset.id;
-        if (confirm('¿Está seguro de que desea eliminar este usuario? Esta acción es irreversible.')) {
-            const { error } = await supabase.functions.invoke('eliminar-usuario', { body: { id } });
-            if (error) {
-                alert(`Error al eliminar usuario: ${error.message}`);
-            } else {
-                alert('Usuario eliminado correctamente.');
-                await cargarYRenderizarUsuarios();
-            }
-        }
-    }
+    // Lógica de eliminación eliminada
 });

@@ -101,6 +101,8 @@ function renderizarPagina(container, opBase, allRecords) {
 
                     if (user.role === 'supervisor' && registro.estado_aprobacion === 'pendiente' && registro.tipo_registro !== 'muestreo') {
                         actionButtons += `<a href="../supervisor/operacion_confirmar.html?id=${registro.id}" class="btn bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600">Revisar</a>`;
+                    } else if (registro.tipo_registro !== 'inicial' && registro.estado_aprobacion !== 'aprobado') {
+                        actionButtons += `<button class="btn-delete-registro p-1" data-registro-id="${registro.id}" title="Eliminar"><span class="material-icons text-red-500 hover:text-red-700">delete</span></button>`;
                     }
 
                     if (registro.observacion_aprobacion) {

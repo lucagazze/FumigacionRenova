@@ -105,14 +105,12 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
     }
 
     // ===== LÓGICA DE GARANTÍA UNIFICADA Y CORREGIDA =====
-    // Esta lógica ahora es idéntica a la de historial.js
     let garantiaHtml = '';
     if (opBase.estado === 'finalizada') {
         if (opBase.con_garantia && opBase.fecha_vencimiento_garantia) {
             const hoy = new Date();
             hoy.setHours(0, 0, 0, 0);
             const vencimiento = new Date(opBase.fecha_vencimiento_garantia + 'T00:00:00');
-            const vencimientoStr = vencimiento.toLocaleDateString('es-AR');
             
             if (vencimiento >= hoy) {
                 garantiaHtml = `<div><strong>Garantía:</strong><br><span class="font-semibold text-green-600 flex items-center gap-1"><span class="material-icons text-base">check_circle</span>Vigente</span></div>`;
@@ -123,16 +121,22 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
             garantiaHtml = `<div><strong>Garantía:</strong><br><span class="font-semibold text-red-600 flex items-center gap-1"><span class="material-icons text-base">cancel</span>No Incluida</span></div>`;
         }
     }
+    
+    // Lógica para mostrar el botón de eliminar operación
+    const algunaTareaAprobada = allRecords.some(r => r.estado_aprobacion === 'aprobado');
+    const eliminarBtnHtml = !algunaTareaAprobada ? `
+        <button id="btnEliminarOperacionCompleta" class="btn btn-danger flex items-center gap-2">
+            <span class="material-icons text-base">delete_forever</span>
+            <span>Eliminar Operación Completa</span>
+        </button>
+    ` : '';
 
 
     // Contenido HTML principal
     container.innerHTML = `
         <div class="flex flex-wrap justify-between items-center gap-4">
             <h3 class="text-xl font-bold text-gray-800">Resumen General</h3>
-            <button id="btnEliminarOperacionCompleta" class="btn btn-danger flex items-center gap-2">
-                <span class="material-icons text-base">delete_forever</span>
-                <span>Eliminar Operación Completa</span>
-            </button>
+            ${eliminarBtnHtml}
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm p-4 mt-4 bg-gray-50 rounded-lg border">
             <div><strong>Cliente:</strong><br>${opBase.clientes?.nombre || 'N/A'}</div>
@@ -156,13 +160,25 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
                 ${allRecords.map(registro => {
                     let detalle = '';
                     let actionButtons = '';
+                    let estadoBadge = '';
                     const isRechazado = registro.estado_aprobacion === 'rechazado';
                     const itemClass = isRechazado ? 'line-through text-gray-400' : '';
 
-                    if (['producto', 'inicial'].includes(registro.tipo_registro)) {
-                         actionButtons += `<button class="btn-edit-registro p-1" data-registro-id="${registro.id}" title="Editar"><span class="material-icons text-blue-500 hover:text-blue-700">edit</span></button>`;
+                    if (registro.tipo_registro !== 'muestreo') {
+                        switch (registro.estado_aprobacion) {
+                            case 'aprobado':
+                                estadoBadge = `<span class="text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-800 ml-2">Aprobado</span>`;
+                                break;
+                            case 'pendiente':
+                                estadoBadge = `<span class="text-xs font-bold px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 ml-2">Pendiente</span>`;
+                                break;
+                            case 'rechazado':
+                                estadoBadge = `<span class="text-xs font-bold px-2 py-1 rounded-full bg-red-100 text-red-800 ml-2">Rechazado</span>`;
+                                break;
+                        }
                     }
-                    if (registro.tipo_registro !== 'inicial') {
+
+                    if (registro.tipo_registro !== 'inicial' && registro.estado_aprobacion !== 'aprobado') {
                         actionButtons += `<button class="btn-delete-registro p-1" data-registro-id="${registro.id}" title="Eliminar"><span class="material-icons text-red-500 hover:text-red-700">delete</span></button>`;
                     }
                     if (registro.observacion_aprobacion) {
@@ -170,15 +186,24 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
                     }
 
                     switch(registro.tipo_registro) {
-                        case 'inicial': detalle = `Operación iniciada por <b>${registro.operario_nombre}</b>.`; break;
-                        case 'producto': detalle = `<b>${registro.operario_nombre}</b> aplicó <b>${registro.producto_usado_cantidad?.toLocaleString() || 0} ${unidadLabel}</b> en ${registro.toneladas?.toLocaleString() || 0} tn.`; break;
-                        case 'muestreo': detalle = `<b>${registro.operario_nombre}</b> registró un muestreo.`; break;
-                        case 'finalizacion': detalle = `Operación finalizada por <b>${registro.operario_nombre_finalizacion || registro.operario_nombre}</b>.`; break;
+                        case 'inicial': 
+                            detalle = `Operación iniciada por <b>${registro.operario_nombre}</b>.`; 
+                            break;
+                        case 'producto': 
+                            const tratamientoProducto = registro.tratamiento ? `(${registro.tratamiento})` : '';
+                            detalle = `<b>${registro.operario_nombre}</b> aplicó <b>${registro.producto_usado_cantidad?.toLocaleString() || 0} ${unidadLabel}</b> en ${registro.toneladas?.toLocaleString() || 0} tn. <span class="font-semibold">${tratamientoProducto}</span>`; 
+                            break;
+                        case 'muestreo': 
+                            detalle = `<b>${registro.operario_nombre}</b> registró un muestreo.`; 
+                            break;
+                        case 'finalizacion': 
+                            detalle = `Operación finalizada por <b>${registro.operario_nombre_finalizacion || registro.operario_nombre}</b>.`; 
+                            break;
                     }
                     const rechazoLabel = isRechazado ? ` <b class="text-red-500 no-underline">(RECHAZADO)</b>` : '';
 
                     return `<div class="flex items-center justify-between text-sm p-3 bg-white border-l-4 border-gray-300 rounded-r-lg shadow-sm ${itemClass}" data-muestreo-op-id="${registro.id}">
-                                <div><b>${new Date(registro.created_at).toLocaleString('es-AR')}:</b> ${detalle}${rechazoLabel}</div>
+                                <div><b>${new Date(registro.created_at).toLocaleString('es-AR')}:</b> ${detalle}${estadoBadge}</div>
                                 <div class="flex-shrink-0 ml-4 flex items-center gap-2">${actionButtons}</div>
                             </div>`;
                 }).join('')}
@@ -202,16 +227,12 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
     
     // EVENT LISTENER GLOBAL
     container.addEventListener('click', async (e) => {
-        const editTarget = e.target.closest('.btn-edit-registro');
         const deleteTarget = e.target.closest('.btn-delete-registro');
         const deleteOpTarget = e.target.closest('#btnEliminarOperacionCompleta');
         const muestreoTarget = e.target.closest('[data-muestreo-op-id]');
         const obsBtn = e.target.closest('.btn-show-observacion');
 
-        if (editTarget) {
-            const registro = allRecords.find(r => r.id === editTarget.dataset.registroId);
-            if (registro) renderEditModal(registro);
-        } else if (deleteTarget) {
+        if (deleteTarget) {
             const registroId = deleteTarget.dataset.registroId;
             const registro = allRecords.find(r => r.id === registroId);
             if(registro) {
@@ -319,81 +340,6 @@ function renderMuestreoModal(muestreo) {
     });
 }
 
-function renderEditModal(registro) {
-    const isProducto = registro.tipo_registro === 'producto';
-    const metodo = registro.metodo_fumigacion;
-    const unidadLabel = metodo === 'pastillas' ? 'pastillas' : 'cm³';
-    const fechaLocal = new Date(new Date(registro.created_at).getTime() - (new Date().getTimezoneOffset() * 60000));
-    const fechaFormateada = fechaLocal.toISOString().slice(0, 16);
-
-    const modalHTML = `
-        <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 relative">
-                <button id="close-edit-modal" class="absolute top-4 right-4"><span class="material-icons">close</span></button>
-                <h4 class="text-2xl font-bold mb-4">Editar Aplicación</h4>
-                <form id="edit-form" class="space-y-4">
-                    <input type="hidden" id="edit-registro-id" value="${registro.id}">
-                    <div><label for="edit-fecha" class="block font-semibold mb-1">Fecha y Hora</label><input type="datetime-local" id="edit-fecha" class="input-field" value="${fechaFormateada}"></div>
-                    ${isProducto ? `
-                    <div><label for="edit-tratamiento" class="block font-semibold mb-1">Tratamiento</label><select id="edit-tratamiento" class="input-field"><option value="preventivo" ${registro.tratamiento === 'preventivo' ? 'selected' : ''}>Preventivo</option><option value="curativo" ${registro.tratamiento === 'curativo' ? 'selected' : ''}>Curativo</option></select></div>
-                    <div><label for="edit-toneladas" class="block font-semibold mb-1">Toneladas</label><input type="number" id="edit-toneladas" class="input-field" value="${registro.toneladas || ''}" step="any"></div>
-                    <div class="p-3 bg-green-50 rounded-lg border"><label class="block font-semibold text-green-800">Producto Recalculado</label><p id="edit-producto-calculado" class="text-xl font-bold text-green-700">-</p></div>
-                    ` : ''}
-                    <div class="flex justify-end gap-4 pt-4"><button type="button" id="cancel-edit" class="btn btn-secondary">Cancelar</button><button type="submit" class="btn btn-primary">Guardar y Ajustar</button></div>
-                </form>
-            </div>
-        </div>`;
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-    const modal = document.getElementById('edit-modal');
-    const closeModal = () => modal.remove();
-    modal.addEventListener('click', (e) => {
-        if (e.target.id === 'edit-modal' || e.target.closest('#close-edit-modal') || e.target.closest('#cancel-edit')) closeModal();
-    });
-
-    if (isProducto) {
-        const tratamientoEl = document.getElementById('edit-tratamiento');
-        const toneladasEl = document.getElementById('edit-toneladas');
-        const productoCalculadoEl = document.getElementById('edit-producto-calculado');
-        const updateCalculo = () => {
-            const toneladas = parseFloat(toneladasEl.value) || 0;
-            let cantidad = 0;
-            if (metodo === 'pastillas') {
-                cantidad = Math.round(toneladas * (tratamientoEl.value === 'curativo' ? 3 : 2));
-            } else {
-                cantidad = toneladas * (tratamientoEl.value === 'curativo' ? 20 : 12);
-            }
-            productoCalculadoEl.textContent = `${cantidad.toLocaleString('es-AR')} ${unidadLabel}`;
-            productoCalculadoEl.dataset.cantidad = cantidad;
-        };
-        tratamientoEl.addEventListener('change', updateCalculo);
-        toneladasEl.addEventListener('input', updateCalculo);
-        updateCalculo();
-    }
-
-    document.getElementById('edit-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        try {
-            const updates = { created_at: new Date(document.getElementById('edit-fecha').value).toISOString() };
-            if (isProducto) {
-                const nuevaCantidad = parseFloat(document.getElementById('edit-producto-calculado').dataset.cantidad);
-                const stockDifference = nuevaCantidad - registro.producto_usado_cantidad;
-                updates.toneladas = parseFloat(document.getElementById('edit-toneladas').value);
-                updates.tratamiento = document.getElementById('edit-tratamiento').value;
-                updates.producto_usado_cantidad = nuevaCantidad;
-                if (stockDifference !== 0) await ajustarStock(registro, stockDifference);
-            }
-            const { error } = await supabase.from('operaciones').update(updates).eq('id', registro.id);
-            if (error) throw error;
-            alert('Registro actualizado.');
-            closeModal();
-            location.reload();
-        } catch (error) {
-            alert('Error: ' + error.message);
-        }
-    });
-}
-
 async function ajustarStock(registro, diferencia) {
     const deposito = registro.deposito_origen_stock;
     if (!deposito) throw new Error("Registro sin depósito de origen.");
@@ -434,41 +380,35 @@ async function eliminarOperacionCompleta(originalId) {
     if (!confirm('¿SEGURO? Se eliminará toda la operación (incluyendo su historial) y se RESTAURARÁ el stock utilizado. Esta acción es irreversible.')) return;
     
     try {
-        // 1. Encontrar todos los registros de la operación a eliminar.
         const { data: records, error: recordsError } = await supabase
             .from('operaciones')
-            .select('id')
+            .select('*')
             .or(`id.eq.${originalId},operacion_original_id.eq.${originalId}`);
         if (recordsError) throw recordsError;
         
         const recordIds = records.map(r => r.id);
 
-        // 2. Encontrar todos los movimientos de stock asociados a esos registros.
         const { data: history, error: historyErr } = await supabase
             .from('historial_stock')
             .select('*')
             .in('operacion_id', recordIds);
         if (historyErr) throw historyErr;
 
-        // 3. Calcular el total de stock a restaurar por depósito y tipo de producto.
         const stockToRestore = {};
         for (const rec of history) {
             const key = `${rec.deposito}_${rec.tipo_producto}`;
             if (!stockToRestore[key]) {
                 stockToRestore[key] = { kg: 0, unidades: 0 };
             }
-            // Si fue un 'uso' o 'extraccion', lo sumamos para devolverlo. Si fue una 'adicion', lo restamos.
             const factor = rec.tipo_movimiento.includes('uso') || rec.tipo_movimiento.includes('extraccion') ? 1 : -1;
             stockToRestore[key].kg += (rec.cantidad_kg_movido || 0) * factor;
             stockToRestore[key].unidades += (rec.cantidad_unidades_movidas || 0) * factor;
         }
 
-        // 4. Actualizar la tabla de stock con los valores restaurados.
         for (const key in stockToRestore) {
             const [deposito, tipo_producto] = key.split('_');
             const { kg, unidades } = stockToRestore[key];
 
-            // Obtenemos el stock actual para sumarle lo que devolvemos.
             const { data: currentStock, error: fetchErr } = await supabase
                 .from('stock')
                 .select('*')
@@ -478,7 +418,7 @@ async function eliminarOperacionCompleta(originalId) {
 
             if (fetchErr) {
                 console.warn(`No se encontró stock para ${key}, omitiendo restauración.`);
-                continue; // Si no hay stock, no podemos restaurar nada.
+                continue;
             }
             
             await supabase.from('stock').update({
@@ -487,8 +427,6 @@ async function eliminarOperacionCompleta(originalId) {
             }).eq('id', currentStock.id);
         }
 
-        // 5. Finalmente, eliminar la operación original. 
-        // Si configuraste el ON DELETE CASCADE, esto eliminará en cascada todos los registros hijos.
         const { error: deleteOpError } = await supabase.from('operaciones').delete().eq('id', originalId);
         if (deleteOpError) throw deleteOpError;
 
@@ -500,9 +438,3 @@ async function eliminarOperacionCompleta(originalId) {
         console.error("Error en eliminarOperacionCompleta:", error);
     }
 }
-
-
-
-
-
-
