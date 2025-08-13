@@ -291,9 +291,32 @@ function renderizarPagina(container, opBase, allRecords, limpieza) {
             }
         } else if (obsBtn) {
             const observacion = obsBtn.dataset.observacion;
-            renderObservacionModal(observacion);
+            mostrarObservacionModal(observacion);
         }
     });
+// --- MODAL PARA OBSERVACIÓN ---
+function mostrarObservacionModal(observacion) {
+    let modal = document.getElementById('modal-observacion');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-observacion';
+        modal.innerHTML = `
+            <div class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full relative">
+                    <button id="cerrar-modal-observacion" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700"><span class="material-icons">close</span></button>
+                    <h2 class="text-lg font-bold mb-2">Observación</h2>
+                    <div id="texto-observacion" class="text-gray-800 whitespace-pre-line"></div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    modal.querySelector('#texto-observacion').textContent = observacion || 'Sin observación.';
+    modal.style.display = 'block';
+    modal.querySelector('#cerrar-modal-observacion').onclick = () => {
+        modal.style.display = 'none';
+    };
+}
 // --- FUNCION PARA ELIMINAR REGISTRO PENDIENTE ---
 async function eliminarRegistro(registro, container, opBase, allRecords, limpieza) {
     // Elimina el registro de la base de datos
