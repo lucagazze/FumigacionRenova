@@ -5,8 +5,9 @@ import { renderOperaciones } from '../common/data.js';
 
 requireRole('supervisor');
 
-function renderSilosEnCursoSupervisor(operaciones, onSiloClick) {
+function renderSilosEnCursoSupervisor(operaciones, allOperationsForFiltering) {
     const silosEnCursoContainer = document.getElementById('silosEnCursoContainer');
+    const historialContainer = document.getElementById('historial-container');
     const opsEnCurso = operaciones.filter(op => op.estado === 'en curso' && op.tipo_registro === 'inicial');
 
     if (opsEnCurso.length === 0) {
@@ -40,7 +41,7 @@ function renderSilosEnCursoSupervisor(operaciones, onSiloClick) {
         const yPos = 95 - fillHeight;
 
         silosEnCursoContainer.innerHTML += `
-            <div class="flex flex-col items-center gap-2 silo-wrapper" data-operacion-id="${rootId}" title="Click para ver el detalle y finalizar la operación">
+            <div class="flex flex-col items-center gap-2 silo-wrapper" data-operacion-id="${rootId}" title="Click para filtrar esta operación">
                 <svg viewBox="0 0 100 100" class="silo-svg">
                     <path class="silo-outline" d="M 10 10 H 90 V 90 C 90 95, 80 100, 70 100 H 30 C 20 100, 10 95, 10 90 V 10 Z" />
                     <rect class="silo-fill-rect" x="15" y="${yPos}" width="70" height="${fillHeight}" rx="10"/>
@@ -55,8 +56,15 @@ function renderSilosEnCursoSupervisor(operaciones, onSiloClick) {
         const siloWrapper = e.target.closest('.silo-wrapper');
         if (siloWrapper) {
             const operacionId = siloWrapper.dataset.operacionId;
-            // AHORA REDIRIGE A LA PÁGINA DE DETALLE
-            window.location.href = `operacion_detalle.html?id=${operacionId}`;
+            const registrosDeLaOperacion = allOperationsForFiltering.filter(
+                record => record.id === operacionId || record.operacion_original_id === operacionId
+            );
+            
+            document.getElementById('filtrosRegistro').reset();
+            $('#filtroFecha').val('');
+            
+            renderOperaciones(historialContainer, registrosDeLaOperacion, false, true);
+            historialContainer.scrollIntoView({ behavior: 'smooth' });
         }
     });
 }
@@ -75,7 +83,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     container.innerHTML = '<p class="text-center p-4">Cargando historial...</p>';
 
-    // Inicializar Date Range Picker
     $(filtroFechaInput).daterangepicker({
         autoUpdateInput: false,
         opens: 'left',
@@ -112,10 +119,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tipo = document.getElementById('filtroTipo').value;
         const estado = document.getElementById('filtroEstado').value;
         const siloCelda = document.getElementById('filtroSiloCelda').value;
-        const dateRange = $(filtroFechaInput).data('daterangepicker');
-        const fechaDesde = dateRange.startDate && dateRange.startDate.isValid() ? dateRange.startDate.toDate() : null;
-        const fechaHasta = dateRange.endDate && dateRange.endDate.isValid() ? dateRange.endDate.toDate() : null;
-
+        
+        // --- MODIFICACIÓN AQUÍ ---
+        let fechaDesde = null;
+        let fechaHasta = null;
+        
+        // Solo aplicamos el filtro de fecha si el campo de texto tiene un valor.
+        if ($(filtroFechaInput).val()) {
+            const dateRange = $(filtroFechaInput).data('daterangepicker');
+            fechaDesde = dateRange.startDate && dateRange.startDate.isValid() ? dateRange.startDate.toDate() : null;
+            fechaHasta = dateRange.endDate && dateRange.endDate.isValid() ? dateRange.endDate.toDate() : null;
+        }
+        
         if (tipo) operacionesFiltradas = operacionesFiltradas.filter(op => op.tipo_registro === tipo);
         if (estado) operacionesFiltradas = operacionesFiltradas.filter(op => op.estado === estado);
         if (siloCelda) operacionesFiltradas = operacionesFiltradas.filter(op => op.deposito_id === siloCelda);
@@ -132,13 +147,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderOperaciones(container, operacionesFiltradas, false, true);
     };
 
-    renderSilosEnCursoSupervisor(allOperations);
+    renderSilosEnCursoSupervisor(allOperations, allOperations);
     renderOperaciones(container, allOperations, false, true);
 
     const filtrosForm = document.getElementById('filtrosRegistro');
     filtrosForm.addEventListener('change', aplicarTodosLosFiltros);
 
-    // Eventos del Date Picker
     $(filtroFechaInput).on('apply.daterangepicker', function(ev, picker) {
         $(this).val(picker.startDate.format('DD/MM/YYYY') + ' - ' + picker.endDate.format('DD/MM/YYYY'));
         aplicarTodosLosFiltros();
@@ -161,7 +175,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('btnClearSiloFilter').addEventListener('click', () => {
         filtrosForm.reset();
         $(filtroFechaInput).val('');
-        aplicarTodosLosFiltros();
+        renderOperaciones(container, allOperations, false, true);
     });
 
     container.addEventListener('click', (e) => {
