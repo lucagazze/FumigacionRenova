@@ -111,7 +111,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Limpieza</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vto. Garantía</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Observaciones</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -133,9 +132,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <td class="px-6 py-4 text-sm text-gray-700">${new Date(l.fecha_limpieza + 'T00:00:00').toLocaleDateString('es-AR')}</td>
                                 <td class="px-6 py-4 text-sm ${garantiaClass}">${vtoGarantia ? vtoGarantia.toLocaleDateString('es-AR') : 'N/A'}</td>
                                 <td class="px-6 py-4 text-sm text-gray-600 max-w-xs break-words">${l.observaciones || '-'}</td>
-                                <td class="px-6 py-4 text-right">
-                                    <button data-id="${l.id}" class="delete-btn text-red-500 hover:text-red-700 p-1"><span class="material-icons">delete</span></button>
-                                </td>
                             </tr>
                         `;
                     }).join('')}
@@ -204,21 +200,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             depositoSelect.innerHTML = '<option value="">Seleccione un cliente primero</option>';
             depositoSelect.disabled = true;
             await cargarHistorial();
-        }
-    });
-
-    historialContainer.addEventListener('click', async (e) => {
-        const deleteButton = e.target.closest('.delete-btn');
-        if (deleteButton) {
-            const id = deleteButton.dataset.id;
-            if (confirm('¿Está seguro de que desea eliminar este registro de limpieza?')) {
-                const { error } = await supabase.from('limpiezas').delete().eq('id', id);
-                if (error) {
-                    alert('Error al eliminar: ' + error.message);
-                } else {
-                    await cargarHistorial();
-                }
-            }
         }
     });
 
