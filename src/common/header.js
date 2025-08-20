@@ -40,6 +40,15 @@ export function renderHeader() {
     `;
   }
   
+  // -- MODIFICACIÓN AQUÍ --
+  // Se añade un bloque para mostrar la información del usuario si existe
+  const userInfoHtml = user ? `
+    <div class="text-right hidden sm:block">
+      <p class="text-sm font-semibold text-gray-800 truncate">${user.nombre} ${user.apellido}</p>
+      <p class="text-xs text-gray-500 capitalize">${user.role}</p>
+    </div>
+  ` : '';
+
   return `
     <header class="flex items-center justify-between border-b bg-white px-4 sm:px-6 py-3 shadow-sm sticky top-0 z-50">
       <div class="flex items-center gap-4">
@@ -50,6 +59,7 @@ export function renderHeader() {
       </div>
       <nav class="hidden md:flex items-center gap-2">${navLinks}</nav>
       <div class="flex items-center gap-4">
+        ${userInfoHtml} 
         <button id="btnLogout" class="text-sm font-medium text-gray-600 hover:text-red-600 flex items-center gap-2">
           <span class="hidden sm:inline">Cerrar Sesión</span>
           <span class="material-icons">logout</span>
@@ -65,7 +75,13 @@ export function renderHeader() {
                 <button id="closeMobileMenu"><span class="material-icons">close</span></button>
             </div>
             <nav class="flex flex-col gap-3">${navLinks}</nav>
-            <div class="mt-auto">
+            <div class="mt-auto border-t pt-4">
+                ${user ? `
+                <div class="mb-4">
+                  <p class="text-sm font-semibold text-gray-800 truncate">${user.nombre} ${user.apellido}</p>
+                  <p class="text-xs text-gray-500 capitalize">${user.role}</p>
+                </div>
+                ` : ''}
                 <button id="logoutMobile" class="w-full text-left text-sm font-medium text-gray-600 hover:text-red-600 flex items-center gap-2 p-3 rounded-md hover:bg-gray-100">
                     <span class="material-icons">logout</span>
                     <span>Cerrar Sesión</span>
