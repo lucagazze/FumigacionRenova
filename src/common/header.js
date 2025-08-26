@@ -52,10 +52,8 @@ export function renderHeader() {
   return `
     <header class="flex items-center justify-between border-b bg-white px-4 sm:px-6 py-3 shadow-sm sticky top-0 z-50">
       <div class="flex items-center gap-4">
-        <a href="/index.html">
-            <img src="/public/assets/img/logotipo.png" alt="Fagaz Logo" class="h-10">
-        </a>
-        <h1 class="text-lg font-bold text-gray-800 hidden sm:block">Gestión Fumigación</h1>
+        <img src="/public/assets/img/logotipo.png" alt="Fagaz Logo" class="h-10 select-none pointer-events-none">
+        <h1 class="text-lg font-bold text-gray-800 hidden sm:block"></h1>
       </div>
       <nav class="hidden md:flex items-center gap-2">${navLinks}</nav>
       <div class="flex items-center gap-4">
@@ -70,10 +68,10 @@ export function renderHeader() {
     <div id="mobileMenu" class="hidden fixed inset-0 z-50">
         <div id="mobileMenuOverlay" class="absolute inset-0 bg-black bg-opacity-50"></div>
         <div class="relative bg-white w-72 h-full p-6 flex flex-col">
-            <div class="flex justify-between items-center mb-8">
-                <img src="/public/assets/img/logotipo.png" alt="Fagaz Logo" class="h-10">
-                <button id="closeMobileMenu"><span class="material-icons">close</span></button>
-            </div>
+      <div class="flex justify-between items-center mb-8">
+        <img src="/public/assets/img/logotipo.png" alt="Fagaz Logo" class="h-10 select-none pointer-events-none">
+        <button id="closeMobileMenu"><span class="material-icons">close</span></button>
+      </div>
             <nav class="flex flex-col gap-3">${navLinks}</nav>
             <div class="mt-auto border-t pt-4">
                 ${user ? `
