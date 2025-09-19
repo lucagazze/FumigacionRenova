@@ -1,26 +1,30 @@
 import { supabase } from './src/common/supabase.js';
 
-// Selectores del DOM
+// --- Selectores del DOM (sin cambios) ---
 const form = document.getElementById('loginForm');
 const loginBtn = document.getElementById('loginBtn');
 const loginText = document.getElementById('loginText');
 const loadingSpinner = document.getElementById('loadingSpinner');
 const errorMsgDiv = document.getElementById('errorMessage');
 const errorTextSpan = document.getElementById('errorText');
-
 const forgotPasswordLink = document.getElementById('forgot-password-link');
 const resetModal = document.getElementById('reset-modal');
 const closeModalBtn = document.getElementById('close-modal-btn');
 const forgotPasswordForm = document.getElementById('forgotPasswordForm');
 const resetMessage = document.getElementById('resetMessage');
-
-// Selectores del Modal de MFA
 const mfaModal = document.getElementById('mfa-modal');
 const mfaForm = document.getElementById('mfaForm');
 
-// Función para completar el login y redirigir
+/**
+ * Función CLAVE: Obtiene los datos del usuario desde la base de datos,
+ * los guarda en el almacenamiento local y luego redirige al dashboard correcto.
+ */
 async function completeLoginAndRedirect() {
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        window.location.href = '/index.html';
+        return;
+    }
     
     const { data: userData, error: userError } = await supabase
         .from('usuarios')
@@ -44,18 +48,17 @@ async function completeLoginAndRedirect() {
     };
     localStorage.setItem('user', JSON.stringify(userToStore));
 
-    // Redirección
+    // Redirección final al dashboard
     if (userToStore.role === 'admin') window.location.href = '/src/admin/dashboard.html';
     else if (userToStore.role === 'supervisor') window.location.href = '/src/supervisor/dashboard.html';
     else if (userToStore.role === 'operario') window.location.href = '/src/operario/home.html';
 }
 
-// Evento para el formulario de login principal
+// --- LÓGICA DE LOGIN ACTUALIZADA ---
 if (form) {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-
-        // Ocultar errores previos y mostrar spinner
+        // ... (lógica de spinner sin cambios)
         errorMsgDiv.classList.add('hidden');
         loginBtn.disabled = true;
         loginText.style.display = 'none';
@@ -64,50 +67,41 @@ if (form) {
         const email = form.email.value;
         const password = form.password.value;
 
-       // Dentro de login.js
-
-try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-
-    // Con la contraseña validada, ahora verificamos el estado de MFA del usuario.
-    const { data: mfaData, error: mfaError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (mfaError) throw mfaError;
-
-    if (mfaData.nextLevel === 'aal2') {
-        // CASO 1: El usuario TIENE 2FA configurado, pero necesita verificar.
-        // Mostramos el modal para que ingrese el código.
-        mfaModal.classList.remove('hidden');
-        
-        // Ocultamos el spinner del botón de login principal.
-        loginBtn.disabled = false;
-        loginText.style.display = 'block';
-        loadingSpinner.style.display = 'none';
-
-    } else if (mfaData.currentLevel === 'aal1') {
-        // CASO 2: El usuario NO TIENE 2FA configurado.
-        // Lo forzamos a la página de configuración.
-        window.location.href = '/src/common/mfa-setup.html';
-    } else {
-        // CASO 3: El usuario ya está completamente verificado (contraseña + 2FA).
-        await completeLoginAndRedirect();
-    }
-
-} catch (err) {
-    // ... (tu manejo de errores se mantiene igual)
-    setTimeout(() => {
-        errorTextSpan.textContent = 'Credenciales incorrectas o error de autenticación.';
-        errorMsgDiv.classList.remove('hidden');
-        
-        loginBtn.disabled = false;
-        loginText.style.display = 'block';
-        loadingSpinner.style.display = 'none';
-    }, 1000);
-}
+        try {
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+            
+            const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+            
+            if (mfaData.nextLevel === 'aal2') {
+                // Caso 1: Requiere código 2FA. Mostramos el modal.
+                mfaModal.classList.remove('hidden');
+                loginBtn.disabled = false;
+                loginText.style.display = 'block';
+                loadingSpinner.style.display = 'none';
+            } else if (mfaData.currentLevel === 'aal1') {
+                // Caso 2: Contraseña correcta, pero 2FA no configurado.
+                // PRIMERO guardamos los datos del usuario y LUEGO redirigimos.
+                await completeLoginAndRedirect(); // Esto guarda el usuario en localStorage
+                window.location.href = '/src/common/mfa-setup.html'; // Ahora sí redirigimos a configurar
+            } else {
+                // Caso 3: Ya está completamente autenticado.
+                await completeLoginAndRedirect();
+            }
+        } catch (err) {
+            // ... (manejo de error sin cambios)
+            setTimeout(() => {
+                errorTextSpan.textContent = 'Credenciales incorrectas o error de autenticación.';
+                errorMsgDiv.classList.remove('hidden');
+                loginBtn.disabled = false;
+                loginText.style.display = 'block';
+                loadingSpinner.style.display = 'none';
+            }, 1000);
+        }
     });
 }
 
-// Evento para el formulario del modal de 2FA
+// Evento para el formulario del modal de 2FA (sin cambios)
 if (mfaForm) {
     mfaForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -120,7 +114,6 @@ if (mfaForm) {
                 factorType: 'totp',
                 code,
             });
-
             if (error) throw error;
 
             mfaModal.classList.add('hidden');
@@ -131,6 +124,8 @@ if (mfaForm) {
         }
     });
 }
+
+
 
 // Lógica para "Olvidé mi contraseña" (sin cambios)
 if (forgotPasswordLink) {

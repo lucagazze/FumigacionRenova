@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js';
 import { renderHeader } from './header.js';
+import { getUser } from './router.js'; // Importamos getUser para obtener el rol
 
 document.getElementById('header').innerHTML = renderHeader();
 
@@ -15,9 +16,24 @@ const mfaStatus = document.getElementById('mfa-status');
 
 let factorId = null;
 
-// --- NUEVA LÓGICA DE INICIO ---
+// --- NUEVA FUNCIÓN DE REDIRECCIÓN ---
+async function redirectToDashboard() {
+    const user = getUser(); // Obtenemos el usuario del localStorage
+    if (!user || !user.role) {
+        // Si no podemos determinar el rol, lo enviamos al login.
+        window.location.href = '/index.html';
+        return;
+    }
+
+    // Redirigimos según el rol
+    if (user.role === 'admin') window.location.href = '/src/admin/dashboard.html';
+    else if (user.role === 'supervisor') window.location.href = '/src/supervisor/dashboard.html';
+    else if (user.role === 'operario') window.location.href = '/src/operario/home.html';
+}
+
+
+// --- LÓGICA DE INICIO ACTUALIZADA ---
 async function initializePage() {
-    // 1. Verificamos si el usuario ya tiene factores 2FA
     const { data, error } = await supabase.auth.mfa.listFactors();
     
     if (error) {
@@ -28,16 +44,15 @@ async function initializePage() {
     const totpFactor = data.all.find(factor => factor.factor_type === 'totp');
 
     if (totpFactor) {
-        // Si ya tiene 2FA, mostramos el mensaje de éxito y ocultamos la configuración
-        mfaSetupFlow.style.display = 'none';
-        mfaStatus.style.display = 'block';
+        // Si ya tiene 2FA, lo redirigimos directamente al dashboard.
+        await redirectToDashboard();
     } else {
-        // Si no tiene 2FA, iniciamos el proceso para configurar uno nuevo
+        // Si no, iniciamos el proceso para configurar uno nuevo.
         await enrollNewFactor();
     }
 }
 
-// Iniciar el proceso de enrolamiento (esta función no cambia)
+// Iniciar el proceso de enrolamiento (sin cambios)
 async function enrollNewFactor() {
     try {
         const { data, error } = await supabase.auth.mfa.enroll({
@@ -47,7 +62,7 @@ async function enrollNewFactor() {
         if (error) throw error;
 
         factorId = data.id;
-        qrCodeContainer.innerHTML = data.totp.qr_code;
+qrCodeContainer.innerHTML = `<img src="${data.totp.qr_code}" alt="Escanea este código para configurar 2FA">`;
     } catch (error) {
         messageEl.textContent = `Error al iniciar la configuración: ${error.message}`;
     }
@@ -58,6 +73,7 @@ startVerificationBtn.addEventListener('click', () => {
     verifySection.style.display = 'block';
 });
 
+// --- LÓGICA DE VERIFICACIÓN ACTUALIZADA ---
 verifyForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const code = totpInput.value;
@@ -74,13 +90,13 @@ verifyForm.addEventListener('submit', async (e) => {
         });
         if (verifyError) throw verifyError;
 
-        mfaSetupFlow.style.display = 'none';
-        mfaStatus.style.display = 'block';
+        // Éxito: ahora redirigimos al usuario.
+        await redirectToDashboard();
 
     } catch (error) {
         messageEl.textContent = `Código incorrecto o inválido. Inténtalo de nuevo.`;
     }
 });
 
-// Llamamos a la nueva función de inicialización
+// Llamamos a la función de inicialización
 initializePage();
