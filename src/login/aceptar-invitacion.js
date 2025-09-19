@@ -26,12 +26,14 @@ form.addEventListener('submit', async (e) => {
         messageEl.textContent = `Error al actualizar: ${error.message}`;
         messageEl.className = 'mt-4 text-center text-sm text-red-600';
     } else {
-        formContainer.style.display = 'none';
-        messageEl.innerHTML = '¡Cuenta activada con éxito! Serás redirigido a la página de inicio de sesión en 3 segundos...';
-        messageEl.className = 'mt-4 text-center text-sm text-green-600';
-        
-        setTimeout(() => {
-            window.location.href = '/index.html';
-        }, 3000);
-    }
+    formContainer.style.display = 'none';
+    // Mensaje actualizado para mayor claridad
+    messageEl.innerHTML = '¡Cuenta activada! Ahora serás redirigido para configurar la seguridad de tu cuenta (2FA).';
+    messageEl.className = 'mt-4 text-center text-sm text-green-600';
+    
+    setTimeout(() => {
+        // Redirección a la configuración de 2FA
+        window.location.href = '/src/common/mfa-setup.html'; // <--- LÍNEA CAMBIADA
+    }, 3000);
+}
 });

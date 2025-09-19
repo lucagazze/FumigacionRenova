@@ -64,27 +64,46 @@ if (form) {
         const email = form.email.value;
         const password = form.password.value;
 
-        try {
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) throw error;
-            
-            const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-            
-            if (mfaData.nextLevel === 'aal2') {
-                mfaModal.classList.remove('hidden');
-            } else {
-                await completeLoginAndRedirect();
-            }
-        } catch (err) {
-            setTimeout(() => {
-                errorTextSpan.textContent = 'Credenciales incorrectas o error de autenticación.';
-                errorMsgDiv.classList.remove('hidden');
-                
-                loginBtn.disabled = false;
-                loginText.style.display = 'block';
-                loadingSpinner.style.display = 'none';
-            }, 1000);
-        }
+       // Dentro de login.js
+
+try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+
+    // Con la contraseña validada, ahora verificamos el estado de MFA del usuario.
+    const { data: mfaData, error: mfaError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (mfaError) throw mfaError;
+
+    if (mfaData.nextLevel === 'aal2') {
+        // CASO 1: El usuario TIENE 2FA configurado, pero necesita verificar.
+        // Mostramos el modal para que ingrese el código.
+        mfaModal.classList.remove('hidden');
+        
+        // Ocultamos el spinner del botón de login principal.
+        loginBtn.disabled = false;
+        loginText.style.display = 'block';
+        loadingSpinner.style.display = 'none';
+
+    } else if (mfaData.currentLevel === 'aal1') {
+        // CASO 2: El usuario NO TIENE 2FA configurado.
+        // Lo forzamos a la página de configuración.
+        window.location.href = '/src/common/mfa-setup.html';
+    } else {
+        // CASO 3: El usuario ya está completamente verificado (contraseña + 2FA).
+        await completeLoginAndRedirect();
+    }
+
+} catch (err) {
+    // ... (tu manejo de errores se mantiene igual)
+    setTimeout(() => {
+        errorTextSpan.textContent = 'Credenciales incorrectas o error de autenticación.';
+        errorMsgDiv.classList.remove('hidden');
+        
+        loginBtn.disabled = false;
+        loginText.style.display = 'block';
+        loadingSpinner.style.display = 'none';
+    }, 1000);
+}
     });
 }
 
