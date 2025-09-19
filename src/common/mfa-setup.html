@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fagaz - Configurar 2FA</title>
+  <link rel="icon" href="/public/assets/img/logohead.webp" type="image/png">
+  <link rel="stylesheet" href="../common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+</head>
+<body class="bg-gray-50">
+  <header id="header"></header>
+  <main class="flex-1 py-8">
+    <div class="content-container max-w-lg mx-auto">
+      <div class="bg-white p-8 rounded-xl shadow-lg">
+        <h2 class="text-2xl font-bold text-gray-800">Configurar Autenticación de Dos Factores</h2>
+        <p class="text-sm text-gray-500 mt-2">Añade una capa extra de seguridad a tu cuenta.</p>
+        
+        <div id="mfa-setup-flow">
+          <div id="enroll-section" class="mt-6">
+            <p class="mb-4">1. Escanea este código QR con tu aplicación de autenticación (Google Authenticator, Authy, etc.).</p>
+            <div id="qr-code" class="flex justify-center p-4 border rounded-lg bg-white"></div>
+            <button id="start-verification-btn" class="btn-primary w-full mt-4 py-3 rounded-lg">He escaneado el código, continuar</button>
+          </div>
+
+          <div id="verify-section" class="hidden mt-6">
+            <p class="mb-4">2. Introduce el código de 6 dígitos de tu aplicación para verificar y activar 2FA.</p>
+            <form id="verify-form">
+              <input type="text" id="totp-code" class="input-field w-full text-center text-2xl tracking-widest" placeholder="123456" required maxlength="6" inputmode="numeric">
+              <button type="submit" class="btn-primary w-full mt-4 py-3 rounded-lg">Verificar y Activar 2FA</button>
+            </form>
+          </div>
+        </div>
+
+        <div id="mfa-status" class="hidden mt-6 text-center">
+            <p class="text-lg font-semibold text-green-600">¡Excelente! 2FA está activado en tu cuenta.</p>
+            <a href="/index.html" class="text-sm text-blue-600 hover:underline mt-4 inline-block">Volver al inicio</a>
+        </div>
+
+        <div id="message" class="mt-4 text-center text-sm text-red-600"></div>
+      </div>
+    </div>
+  </main>
+  <script type="module" src="mfa-setup.js"></script>
+</body>
+</html>

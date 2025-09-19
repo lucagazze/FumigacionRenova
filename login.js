@@ -1,10 +1,6 @@
-import { login } from './src/common/auth.js';
 import { supabase } from './src/common/supabase.js';
 
-// Limpiar cualquier sesión anterior al cargar la página de login
-localStorage.removeItem('user');
-
-// Selectores de elementos del DOM
+// Selectores del DOM
 const form = document.getElementById('loginForm');
 const loginBtn = document.getElementById('loginBtn');
 const loginText = document.getElementById('loginText');
@@ -17,6 +13,42 @@ const resetModal = document.getElementById('reset-modal');
 const closeModalBtn = document.getElementById('close-modal-btn');
 const forgotPasswordForm = document.getElementById('forgotPasswordForm');
 const resetMessage = document.getElementById('resetMessage');
+
+// Selectores del Modal de MFA
+const mfaModal = document.getElementById('mfa-modal');
+const mfaForm = document.getElementById('mfaForm');
+
+// Función para completar el login y redirigir
+async function completeLoginAndRedirect() {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    const { data: userData, error: userError } = await supabase
+        .from('usuarios')
+        .select('role, nombre, apellido, cliente_ids: operario_clientes (cliente_id)')
+        .eq('id', user.id)
+        .single();
+
+    if (userError) throw new Error('El perfil del usuario no fue encontrado.');
+
+    const assignedClientIds = Array.isArray(userData.cliente_ids) 
+        ? userData.cliente_ids.map(c => c.cliente_id) 
+        : [];
+
+    const userToStore = {
+        email: user.email,
+        id: user.id,
+        nombre: userData.nombre,
+        apellido: userData.apellido,
+        role: userData.role,
+        cliente_ids: assignedClientIds
+    };
+    localStorage.setItem('user', JSON.stringify(userToStore));
+
+    // Redirección
+    if (userToStore.role === 'admin') window.location.href = '/src/admin/dashboard.html';
+    else if (userToStore.role === 'supervisor') window.location.href = '/src/supervisor/dashboard.html';
+    else if (userToStore.role === 'operario') window.location.href = '/src/operario/home.html';
+}
 
 // Evento para el formulario de login principal
 if (form) {
@@ -33,55 +65,72 @@ if (form) {
         const password = form.password.value;
 
         try {
-            const user = await login(email, password);
-            // Redirección según el rol del usuario
-            if (user.role === 'admin') {
-                window.location.href = '/src/admin/dashboard.html';
-            } else if (user.role === 'supervisor') {
-                window.location.href = '/src/supervisor/dashboard.html';
-            } else if (user.role === 'operario') {
-                window.location.href = '/src/operario/home.html';
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+            
+            const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+            
+            if (mfaData.nextLevel === 'aal2') {
+                mfaModal.classList.remove('hidden');
             } else {
-                throw new Error("Rol de usuario no reconocido.");
+                await completeLoginAndRedirect();
             }
         } catch (err) {
-            // --- LÓGICA DE FEEDBACK DE ERROR MEJORADA ---
-            // Simula una pequeña demora para seguridad y UX
             setTimeout(() => {
-                errorTextSpan.textContent = err.message || 'Credenciales incorrectas.';
+                errorTextSpan.textContent = 'Credenciales incorrectas o error de autenticación.';
                 errorMsgDiv.classList.remove('hidden');
                 
-                // Reactivar el botón
                 loginBtn.disabled = false;
                 loginText.style.display = 'block';
                 loadingSpinner.style.display = 'none';
-            }, 1000); // Espera 1 segundo antes de mostrar el error
+            }, 1000);
         }
     });
 }
 
-// --- Lógica para "Olvidé mi contraseña" ---
+// Evento para el formulario del modal de 2FA
+if (mfaForm) {
+    mfaForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const code = document.getElementById('mfaCode').value;
+        const mfaMessage = document.getElementById('mfaMessage');
+        mfaMessage.textContent = '';
+        
+        try {
+            const { error } = await supabase.auth.mfa.challengeAndVerify({
+                factorType: 'totp',
+                code,
+            });
 
+            if (error) throw error;
+
+            mfaModal.classList.add('hidden');
+            await completeLoginAndRedirect();
+            
+        } catch (error) {
+            mfaMessage.textContent = 'Código incorrecto. Inténtalo de nuevo.';
+        }
+    });
+}
+
+// Lógica para "Olvidé mi contraseña" (sin cambios)
 if (forgotPasswordLink) {
     forgotPasswordLink.addEventListener('click', (e) => {
         e.preventDefault();
         if(resetModal) resetModal.classList.remove('hidden');
     });
 }
-
 if (closeModalBtn) {
     closeModalBtn.addEventListener('click', () => {
         if(resetModal) resetModal.classList.add('hidden');
         if(resetMessage) resetMessage.textContent = '';
     });
 }
-
 if (forgotPasswordForm) {
     forgotPasswordForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = document.getElementById('resetEmail').value;
         resetMessage.textContent = 'Enviando...';
-        resetMessage.className = 'text-sm mt-4 text-center text-gray-600';
 
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
             redirectTo: `${window.location.origin}/src/login/restablecer-contraseña.html`,
@@ -91,7 +140,7 @@ if (forgotPasswordForm) {
             resetMessage.textContent = `Error: ${error.message}`;
             resetMessage.className = 'text-sm mt-4 text-center text-red-600';
         } else {
-            resetMessage.textContent = 'Si existe una cuenta para este correo, recibirás un enlace para restablecer tu contraseña en breve.';
+            resetMessage.textContent = 'Si existe una cuenta para este correo, recibirás un enlace.';
             resetMessage.className = 'text-sm mt-4 text-center text-green-600';
         }
     });

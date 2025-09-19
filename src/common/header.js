@@ -74,17 +74,21 @@ export function renderHeader() {
       </div>
             <nav class="flex flex-col gap-3">${navLinks}</nav>
             <div class="mt-auto border-t pt-4">
-                ${user ? `
-                <div class="mb-4">
-                  <p class="text-sm font-semibold text-gray-800 truncate">${user.nombre} ${user.apellido}</p>
-                  <p class="text-xs text-gray-500 capitalize">${user.role}</p>
-                </div>
-                ` : ''}
-                <button id="logoutMobile" class="w-full text-left text-sm font-medium text-gray-600 hover:text-red-600 flex items-center gap-2 p-3 rounded-md hover:bg-gray-100">
-                    <span class="material-icons">logout</span>
-                    <span>Cerrar Sesión</span>
-                </button>
-            </div>
+    ${user ? `
+    <div class="mb-4">
+        <p class="text-sm font-semibold text-gray-800 truncate">${user.nombre} ${user.apellido}</p>
+        <p class="text-xs text-gray-500 capitalize">${user.role}</p>
+    </div>
+    ` : ''}
+    <a href="/src/common/mfa-setup.html" class="w-full text-left text-sm font-medium text-gray-600 hover:text-blue-600 flex items-center gap-2 p-3 rounded-md hover:bg-gray-100">
+        <span class="material-icons">security</span>
+        <span>Configurar 2FA</span>
+    </a>
+    <button id="logoutMobile" class="w-full text-left text-sm font-medium text-gray-600 hover:text-red-600 flex items-center gap-2 p-3 rounded-md hover:bg-gray-100">
+        <span class="material-icons">logout</span>
+        <span>Cerrar Sesión</span>
+    </button>
+</div>
         </div>
     </div>
   `;
