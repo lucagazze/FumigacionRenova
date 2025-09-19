@@ -39,30 +39,8 @@ export async function login(email, password) {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const lastLogin = userData.last_login_at ? new Date(userData.last_login_at) : null;
 
-  if (!lastLogin || lastLogin < thirtyDaysAgo) {
-    return { status: 'otp_required', user: { email: loginData.user.email, password: password } };
-  }
-  
-  await supabase
-    .from('usuarios')
-    .update({ last_login_at: new Date().toISOString() })
-    .eq('id', loginData.user.id);
-  
-  const assignedClientIds = Array.isArray(userData.cliente_ids) 
-    ? userData.cliente_ids.map(c => c.cliente_id) 
-    : [];
-
-  const userToStore = {
-    email: loginData.user.email,
-    id: loginData.user.id,
-    nombre: userData.nombre,
-    apellido: userData.apellido,
-    role: userData.role,
-    cliente_ids: assignedClientIds
-  };
-  localStorage.setItem('user', JSON.stringify(userToStore));
-  
-  return { status: 'success', user: userToStore };
+  // Forzamos siempre la verificación por email
+  return { status: 'otp_required', user: { email: loginData.user.email, password: password } };
 }
 
 export async function logout() {
