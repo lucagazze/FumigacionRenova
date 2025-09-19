@@ -1,6 +1,9 @@
 import { supabase } from './src/common/supabase.js';
 
-// --- Selectores del DOM (sin cambios) ---
+// Cierra cualquier sesión activa al cargar la página de login para forzar la re-autenticación.
+supabase.auth.signOut();
+
+// --- Selectores del DOM ---
 const form = document.getElementById('loginForm');
 const loginBtn = document.getElementById('loginBtn');
 const loginText = document.getElementById('loginText');
@@ -15,17 +18,11 @@ const resetMessage = document.getElementById('resetMessage');
 const mfaModal = document.getElementById('mfa-modal');
 const mfaForm = document.getElementById('mfaForm');
 
-/**
- * Función CLAVE: Obtiene los datos del usuario desde la base de datos,
- * los guarda en el almacenamiento local y luego redirige al dashboard correcto.
- */
-async function completeLoginAndRedirect() {
+// Guarda los detalles del usuario en localStorage y devuelve el objeto del usuario.
+async function saveUserDetailsToStorage() {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        window.location.href = '/index.html';
-        return;
-    }
-    
+    if (!user) return null;
+
     const { data: userData, error: userError } = await supabase
         .from('usuarios')
         .select('role, nombre, apellido, cliente_ids: operario_clientes (cliente_id)')
@@ -34,31 +31,30 @@ async function completeLoginAndRedirect() {
 
     if (userError) throw new Error('El perfil del usuario no fue encontrado.');
 
-    const assignedClientIds = Array.isArray(userData.cliente_ids) 
-        ? userData.cliente_ids.map(c => c.cliente_id) 
-        : [];
-
+    const assignedClientIds = Array.isArray(userData.cliente_ids) ? userData.cliente_ids.map(c => c.cliente_id) : [];
     const userToStore = {
-        email: user.email,
-        id: user.id,
-        nombre: userData.nombre,
-        apellido: userData.apellido,
-        role: userData.role,
-        cliente_ids: assignedClientIds
+        email: user.email, id: user.id, nombre: userData.nombre,
+        apellido: userData.apellido, role: userData.role, cliente_ids: assignedClientIds
     };
     localStorage.setItem('user', JSON.stringify(userToStore));
-
-    // Redirección final al dashboard
-    if (userToStore.role === 'admin') window.location.href = '/src/admin/dashboard.html';
-    else if (userToStore.role === 'supervisor') window.location.href = '/src/supervisor/dashboard.html';
-    else if (userToStore.role === 'operario') window.location.href = '/src/operario/home.html';
+    return userToStore;
 }
 
-// --- LÓGICA DE LOGIN ACTUALIZADA ---
+// Redirige al dashboard correcto.
+function redirectToDashboard(user) {
+    if (!user || !user.role) {
+        window.location.href = '/index.html';
+        return;
+    }
+    if (user.role === 'admin') window.location.href = '/src/admin/dashboard.html';
+    else if (user.role === 'supervisor') window.location.href = '/src/supervisor/dashboard.html';
+    else if (user.role === 'operario') window.location.href = '/src/operario/home.html';
+}
+
+// --- Lógica de Login Principal ---
 if (form) {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        // ... (lógica de spinner sin cambios)
         errorMsgDiv.classList.add('hidden');
         loginBtn.disabled = true;
         loginText.style.display = 'none';
@@ -71,25 +67,22 @@ if (form) {
             const { error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) throw error;
             
+            const user = await saveUserDetailsToStorage();
+            if (!user) throw new Error("No se pudieron cargar los detalles del perfil.");
+
             const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
             
             if (mfaData.nextLevel === 'aal2') {
-                // Caso 1: Requiere código 2FA. Mostramos el modal.
                 mfaModal.classList.remove('hidden');
                 loginBtn.disabled = false;
                 loginText.style.display = 'block';
                 loadingSpinner.style.display = 'none';
             } else if (mfaData.currentLevel === 'aal1') {
-                // Caso 2: Contraseña correcta, pero 2FA no configurado.
-                // PRIMERO guardamos los datos del usuario y LUEGO redirigimos.
-                await completeLoginAndRedirect(); // Esto guarda el usuario en localStorage
-                window.location.href = '/src/common/mfa-setup.html'; // Ahora sí redirigimos a configurar
+                window.location.href = '/src/common/mfa-setup.html';
             } else {
-                // Caso 3: Ya está completamente autenticado.
-                await completeLoginAndRedirect();
+                redirectToDashboard(user);
             }
         } catch (err) {
-            // ... (manejo de error sin cambios)
             setTimeout(() => {
                 errorTextSpan.textContent = 'Credenciales incorrectas o error de autenticación.';
                 errorMsgDiv.classList.remove('hidden');
@@ -101,7 +94,7 @@ if (form) {
     });
 }
 
-// Evento para el formulario del modal de 2FA (sin cambios)
+// --- Lógica del Modal de 2FA ---
 if (mfaForm) {
     mfaForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -111,20 +104,19 @@ if (mfaForm) {
         
         try {
             const { error } = await supabase.auth.mfa.challengeAndVerify({
-                factorType: 'totp',
-                code,
+                factorType: 'totp', code,
             });
             if (error) throw error;
 
             mfaModal.classList.add('hidden');
-            await completeLoginAndRedirect();
+            const user = await saveUserDetailsToStorage();
+            redirectToDashboard(user);
             
         } catch (error) {
             mfaMessage.textContent = 'Código incorrecto. Inténtalo de nuevo.';
         }
     });
 }
-
 
 
 // Lógica para "Olvidé mi contraseña" (sin cambios)

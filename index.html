@@ -115,16 +115,19 @@
         </div>
     </div>
   </div>
-  <div id="mfa-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden modal-overlay">
+ 
+
+
+<div id="otp-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden modal-overlay">
   <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-8 m-4">
-      <h3 class="text-xl font-bold mb-4">Verificación de dos pasos</h3>
-      <p class="text-sm text-gray-600 mb-4">Abre tu aplicación de autenticación e introduce el código para continuar.</p>
-      <form id="mfaForm">
-          <label for="mfaCode" class="block text-sm font-semibold text-gray-700 mb-2">Código de 6 dígitos</label>
-          <input type="text" id="mfaCode" class="input-field w-full text-center text-2xl tracking-widest" required maxlength="6" inputmode="numeric">
-          <button type="submit" class="w-full btn-primary text-white font-semibold p-3 rounded-lg mt-4">Verificar e Iniciar Sesión</button>
+      <h3 class="text-xl font-bold mb-4">Verifica tu Identidad</h3>
+      <p class="text-sm text-gray-600 mb-4">Hemos enviado un código de 6 dígitos a tu correo electrónico. Ingrésalo para continuar.</p>
+      <form id="otpForm">
+          <label for="otpCode" class="block text-sm font-semibold text-gray-700 mb-2">Código de Verificación</label>
+          <input type="text" id="otpCode" class="input-field w-full text-center text-2xl tracking-widest" required maxlength="6" inputmode="numeric">
+          <button type="submit" class="w-full btn-primary text-white font-semibold p-3 rounded-lg mt-4">Verificar e Ingresar</button>
       </form>
-      <p id="mfaMessage" class="text-sm mt-4 text-center text-red-600"></p>
+      <p id="otpMessage" class="text-sm mt-4 text-center text-red-600"></p>
   </div>
 </div>
 
