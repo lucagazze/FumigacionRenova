@@ -13,6 +13,8 @@ const errorMsgDiv = document.getElementById('errorMessage');
 const errorTextSpan = document.getElementById('errorText');
 const otpModal = document.getElementById('otp-modal');
 const otpForm = document.getElementById('otpForm');
+const otpCancelBtn = document.getElementById('otpCancelBtn'); // <-- AÑADIR ESTA LÍNEA
+
 
 let userCredentialsForOtp = null;
 
@@ -78,6 +80,8 @@ if (form) {
     });
 }
 
+// Pega este bloque en tu archivo login.js
+
 if (otpForm) {
     otpForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -86,15 +90,19 @@ if (otpForm) {
         otpMessage.textContent = '';
 
         try {
+            // Verifica el código que el usuario ingresó
             const { data, error } = await supabase.auth.verifyOtp({
                 email: userCredentialsForOtp.email,
                 token: otpCode,
                 type: 'email',
             });
 
-            if (error) throw new Error("El código es incorrecto o ha expirado.");
+            if (error) {
+                throw new Error("El código es incorrecto o ha expirado.");
+            }
 
-            // Éxito: data.user contiene el usuario autenticado
+            // Si el código es correcto, 'data.user' contiene el usuario autenticado.
+            // Ahora completamos el proceso de login.
             await completeLoginAndRedirect(data.user);
             
         } catch (error) {
