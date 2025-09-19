@@ -24,23 +24,13 @@
   <link rel="stylesheet" href="src/common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
-  <style>
+   <style>
     :root {
       --primary-color: #53d22c;
       --primary-dark: #45b526;
-      --text-primary: #121a0f;
-      --background-color: #f9fbf9;
     }
     body {
       background: linear-gradient(135deg, #f9fbf9 0%, #e8f5e8 100%);
-      font-family: 'Inter', sans-serif;
-    }
-    .login-container {
-      background: rgba(255, 255, 255, 0.95);
-    }
-    .input-field {
-      border: 2px solid #e5e7eb;
-      transition: all 0.3s ease;
     }
     .input-field:focus {
       border-color: var(--primary-color);
@@ -49,30 +39,18 @@
     .btn-primary {
       background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
     }
-    .fade-in { animation: fadeIn 0.6s ease-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    .logo-container { animation: logoFloat 3s ease-in-out infinite; }
-    @keyframes logoFloat { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-5px); } }
-    .error-message {
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      color: #dc2626;
-    }
-    .modal-overlay { transition: opacity 0.3s ease; }
   </style>
 </head>
 <body>
   <div class="min-h-screen flex items-center justify-center p-4">
-    <div class="login-container w-full max-w-md p-8 rounded-2xl shadow-2xl fade-in">
+    <div class="bg-white w-full max-w-md p-8 rounded-2xl shadow-2xl">
       <div class="text-center mb-8">
-        <div class="logo-container mb-6">
-          <img src="public/assets/img/logotipo.png" alt="Fagaz Logo" class="mx-auto h-20 w-auto">
-        </div>
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Bienvenido</h1>
+        <img src="public/assets/img/logotipo.png" alt="Fagaz Logo" class="mx-auto h-20 w-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mt-6 mb-2">Bienvenido</h1>
         <p class="text-gray-600">Ingresa a tu cuenta para continuar</p>
       </div>
       
-      <div id="errorMessage" class="error-message p-3 rounded-lg mb-4 hidden">
+      <div id="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4 hidden" role="alert">
         <div class="flex items-center">
           <span class="material-icons mr-2">error</span>
           <span id="errorText"></span>
@@ -95,42 +73,26 @@
       </form>
       
       <div class="mt-6 text-center">
-        <a href="#" id="forgot-password-link" class="text-sm text-green-600 hover:text-green-800 font-semibold">¿Olvidaste tu contraseña? Restablecer contraseña</a>
+        <a href="#" id="forgot-password-link" class="text-sm text-green-600 hover:text-green-800 font-semibold">¿Olvidaste tu contraseña?</a>
       </div>
     </div>
   </div>
 
-  <div id="reset-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden modal-overlay">
+  <div id="reset-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+      </div>
+  
+  <div id="otp-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
     <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-8 m-4">
-        <h3 class="text-xl font-bold mb-4">Restablecer Contraseña</h3>
-        <p class="text-sm text-gray-600 mb-4">Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.</p>
-        <form id="forgotPasswordForm">
-            <label for="resetEmail" class="block text-sm font-semibold text-gray-700 mb-2">Correo electrónico</label>
-            <input type="email" id="resetEmail" class="input-field w-full p-3 rounded-lg" required>
-            <button type="submit" class="w-full btn-primary text-white font-semibold p-3 rounded-lg mt-4">Enviar Enlace</button>
+        <h3 class="text-xl font-bold mb-4">Verifica tu Identidad</h3>
+        <p class="text-sm text-gray-600 mb-4">Hemos enviado un código de 6 dígitos a tu correo electrónico. Ingrésalo para continuar.</p>
+        <form id="otpForm">
+            <label for="otpCode" class="block text-sm font-semibold text-gray-700 mb-2">Código de Verificación</label>
+            <input type="text" id="otpCode" class="input-field w-full text-center text-2xl tracking-widest" required maxlength="6" inputmode="numeric">
+            <button type="submit" class="w-full btn-primary text-white font-semibold p-3 rounded-lg mt-4">Verificar e Ingresar</button>
         </form>
-        <p id="resetMessage" class="text-sm mt-4 text-center"></p>
-        <div class="text-center mt-4">
-            <button id="close-modal-btn" class="text-sm text-gray-600 hover:text-gray-800 font-semibold">Cancelar</button>
-        </div>
+        <p id="otpMessage" class="text-sm mt-4 text-center text-red-600"></p>
     </div>
   </div>
- 
-
-
-<div id="otp-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden modal-overlay">
-  <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-8 m-4">
-      <h3 class="text-xl font-bold mb-4">Verifica tu Identidad</h3>
-      <p class="text-sm text-gray-600 mb-4">Hemos enviado un código de 6 dígitos a tu correo electrónico. Ingrésalo para continuar.</p>
-      <form id="otpForm">
-          <label for="otpCode" class="block text-sm font-semibold text-gray-700 mb-2">Código de Verificación</label>
-          <input type="text" id="otpCode" class="input-field w-full text-center text-2xl tracking-widest" required maxlength="6" inputmode="numeric">
-          <button type="submit" class="w-full btn-primary text-white font-semibold p-3 rounded-lg mt-4">Verificar e Ingresar</button>
-      </form>
-      <p id="otpMessage" class="text-sm mt-4 text-center text-red-600"></p>
-  </div>
-</div>
-
   
   <script type="module" src="login.js"></script>
 </body>

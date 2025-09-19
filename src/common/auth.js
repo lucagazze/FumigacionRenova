@@ -24,7 +24,6 @@ export async function login(email, password) {
     throw new Error("No se pudo verificar el usuario. Inténtalo de nuevo.");
   }
 
-  // Obtenemos el perfil del usuario, incluyendo su último login
   const { data: userData, error: userError } = await supabase
     .from('usuarios')
     .select('role, nombre, apellido, last_login_at, cliente_ids: operario_clientes (cliente_id)')
@@ -36,24 +35,19 @@ export async function login(email, password) {
     throw new Error('El perfil del usuario no fue encontrado en la base de datos.');
   }
   
-  // --- NUEVA LÓGICA DE VERIFICACIÓN ---
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const lastLogin = userData.last_login_at ? new Date(userData.last_login_at) : null;
 
-  // Si el último login fue hace más de 30 días o nunca ha iniciado sesión
   if (!lastLogin || lastLogin < thirtyDaysAgo) {
-    // Le decimos a login.js que se requiere verificación por email
     return { status: 'otp_required', user: { email: loginData.user.email, password: password } };
   }
   
-  // Si no se requiere verificación, actualizamos la fecha de último login
   await supabase
     .from('usuarios')
     .update({ last_login_at: new Date().toISOString() })
     .eq('id', loginData.user.id);
   
-  // Guardamos los datos del usuario en el navegador y procedemos
   const assignedClientIds = Array.isArray(userData.cliente_ids) 
     ? userData.cliente_ids.map(c => c.cliente_id) 
     : [];

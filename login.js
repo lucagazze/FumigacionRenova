@@ -1,153 +1,104 @@
+import { login } from './src/common/auth.js';
 import { supabase } from './src/common/supabase.js';
 
-// Cierra cualquier sesión activa al cargar la página de login para forzar la re-autenticación.
+// Limpiar sesión al cargar la página de login
+localStorage.removeItem('user');
 supabase.auth.signOut();
 
-// --- Selectores del DOM ---
 const form = document.getElementById('loginForm');
 const loginBtn = document.getElementById('loginBtn');
 const loginText = document.getElementById('loginText');
 const loadingSpinner = document.getElementById('loadingSpinner');
 const errorMsgDiv = document.getElementById('errorMessage');
 const errorTextSpan = document.getElementById('errorText');
-const forgotPasswordLink = document.getElementById('forgot-password-link');
-const resetModal = document.getElementById('reset-modal');
-const closeModalBtn = document.getElementById('close-modal-btn');
-const forgotPasswordForm = document.getElementById('forgotPasswordForm');
-const resetMessage = document.getElementById('resetMessage');
-const mfaModal = document.getElementById('mfa-modal');
-const mfaForm = document.getElementById('mfaForm');
+const otpModal = document.getElementById('otp-modal');
+const otpForm = document.getElementById('otpForm');
 
-// Guarda los detalles del usuario en localStorage y devuelve el objeto del usuario.
-async function saveUserDetailsToStorage() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+let userCredentialsForOtp = null;
 
+// --- FUNCIÓN ÚNICA PARA GUARDAR DATOS Y REDIRIGIR ---
+async function completeLoginAndRedirect(userAuth) {
     const { data: userData, error: userError } = await supabase
         .from('usuarios')
         .select('role, nombre, apellido, cliente_ids: operario_clientes (cliente_id)')
-        .eq('id', user.id)
+        .eq('id', userAuth.id)
         .single();
 
     if (userError) throw new Error('El perfil del usuario no fue encontrado.');
+    
+    await supabase
+        .from('usuarios')
+        .update({ last_login_at: new Date().toISOString() })
+        .eq('id', userAuth.id);
 
     const assignedClientIds = Array.isArray(userData.cliente_ids) ? userData.cliente_ids.map(c => c.cliente_id) : [];
     const userToStore = {
-        email: user.email, id: user.id, nombre: userData.nombre,
+        email: userAuth.email, id: userAuth.id, nombre: userData.nombre,
         apellido: userData.apellido, role: userData.role, cliente_ids: assignedClientIds
     };
     localStorage.setItem('user', JSON.stringify(userToStore));
-    return userToStore;
+    
+    if (userToStore.role === 'admin') window.location.href = '/src/admin/dashboard.html';
+    else if (userToStore.role === 'supervisor') window.location.href = '/src/supervisor/dashboard.html';
+    else if (userToStore.role === 'operario') window.location.href = '/src/operario/home.html';
 }
 
-// Redirige al dashboard correcto.
-function redirectToDashboard(user) {
-    if (!user || !user.role) {
-        window.location.href = '/index.html';
-        return;
-    }
-    if (user.role === 'admin') window.location.href = '/src/admin/dashboard.html';
-    else if (user.role === 'supervisor') window.location.href = '/src/supervisor/dashboard.html';
-    else if (user.role === 'operario') window.location.href = '/src/operario/home.html';
-}
-
-// --- Lógica de Login Principal ---
 if (form) {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        errorMsgDiv.classList.add('hidden');
+        // ... (código para manejar el spinner)
         loginBtn.disabled = true;
         loginText.style.display = 'none';
         loadingSpinner.style.display = 'block';
+        errorMsgDiv.classList.add('hidden');
 
         const email = form.email.value;
         const password = form.password.value;
 
         try {
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) throw error;
-            
-            const user = await saveUserDetailsToStorage();
-            if (!user) throw new Error("No se pudieron cargar los detalles del perfil.");
+            const result = await login(email, password);
 
-            const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-            
-            if (mfaData.nextLevel === 'aal2') {
-                mfaModal.classList.remove('hidden');
-                loginBtn.disabled = false;
-                loginText.style.display = 'block';
-                loadingSpinner.style.display = 'none';
-            } else if (mfaData.currentLevel === 'aal1') {
-                window.location.href = '/src/common/mfa-setup.html';
-            } else {
-                redirectToDashboard(user);
+            if (result.status === 'otp_required') {
+                userCredentialsForOtp = { email: result.user.email };
+                const { error: otpError } = await supabase.auth.signInWithOtp({ email: userCredentialsForOtp.email });
+                if (otpError) throw new Error("Error al enviar el código de verificación.");
+                otpModal.classList.remove('hidden');
+                
+            } else if (result.status === 'success') {
+                await completeLoginAndRedirect(result.user);
             }
         } catch (err) {
-            setTimeout(() => {
-                errorTextSpan.textContent = 'Credenciales incorrectas o error de autenticación.';
-                errorMsgDiv.classList.remove('hidden');
-                loginBtn.disabled = false;
-                loginText.style.display = 'block';
-                loadingSpinner.style.display = 'none';
-            }, 1000);
+            // ... (código para manejar errores)
+            loginBtn.disabled = false;
+            loginText.style.display = 'block';
+            loadingSpinner.style.display = 'none';
+            errorTextSpan.textContent = err.message;
+            errorMsgDiv.classList.remove('hidden');
         }
     });
 }
 
-// --- Lógica del Modal de 2FA ---
-if (mfaForm) {
-    mfaForm.addEventListener('submit', async (e) => {
+if (otpForm) {
+    otpForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const code = document.getElementById('mfaCode').value;
-        const mfaMessage = document.getElementById('mfaMessage');
-        mfaMessage.textContent = '';
-        
-        try {
-            const { error } = await supabase.auth.mfa.challengeAndVerify({
-                factorType: 'totp', code,
-            });
-            if (error) throw error;
+        const otpCode = document.getElementById('otpCode').value;
+        const otpMessage = document.getElementById('otpMessage');
+        otpMessage.textContent = '';
 
-            mfaModal.classList.add('hidden');
-            const user = await saveUserDetailsToStorage();
-            redirectToDashboard(user);
+        try {
+            const { data, error } = await supabase.auth.verifyOtp({
+                email: userCredentialsForOtp.email,
+                token: otpCode,
+                type: 'email',
+            });
+
+            if (error) throw new Error("El código es incorrecto o ha expirado.");
+
+            // Éxito: data.user contiene el usuario autenticado
+            await completeLoginAndRedirect(data.user);
             
         } catch (error) {
-            mfaMessage.textContent = 'Código incorrecto. Inténtalo de nuevo.';
-        }
-    });
-}
-
-
-// Lógica para "Olvidé mi contraseña" (sin cambios)
-if (forgotPasswordLink) {
-    forgotPasswordLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        if(resetModal) resetModal.classList.remove('hidden');
-    });
-}
-if (closeModalBtn) {
-    closeModalBtn.addEventListener('click', () => {
-        if(resetModal) resetModal.classList.add('hidden');
-        if(resetMessage) resetMessage.textContent = '';
-    });
-}
-if (forgotPasswordForm) {
-    forgotPasswordForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('resetEmail').value;
-        resetMessage.textContent = 'Enviando...';
-
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${window.location.origin}/src/login/restablecer-contraseña.html`,
-        });
-
-        if (error) {
-            resetMessage.textContent = `Error: ${error.message}`;
-            resetMessage.className = 'text-sm mt-4 text-center text-red-600';
-        } else {
-            resetMessage.textContent = 'Si existe una cuenta para este correo, recibirás un enlace.';
-            resetMessage.className = 'text-sm mt-4 text-center text-green-600';
+            otpMessage.textContent = error.message;
         }
     });
 }
